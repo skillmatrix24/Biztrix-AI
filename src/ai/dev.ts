@@ -1,0 +1,20 @@
+import { config } from 'dotenv';
+config();
+
+import '@/ai/flows/optimize-stock-reorder.ts';
+import '@/ai/flows/generate-pricing-suggestions.ts';
+import '@/ai/flows/advisor-chat-flow.ts';
+import '@/ai/flows/suggest-project-tasks.ts';
+import '@/ai/flows/customer-risk-analysis.ts';
+import '@/ai/flows/suggest-task-steps.ts';
+import '@/ai/flows/suggest-upsell-modules.ts';
+import '@/ai/flows/autonomous-ops-advisor.ts';
+import '@/ai/flows/loyalty-intelligence-flow.ts';
+import '@/ai/flows/suggest-loyalty-campaign-flow.ts';
+import '@/ai/flows/suggest-automation-template.ts';
+import '@/ai/flows/suggest-automation-sequence.ts';
+import '@/ai/flows/scan-bill-flow.ts';
+import '@/ai/flows/morning-brief-flow.ts';
+import '@/ai/flows/suggest-product-meta.ts';
+import '@/ai/flows/website-chatbot-flow.ts';
+import '@/ai/flows/solar-intelligence-flow.ts';

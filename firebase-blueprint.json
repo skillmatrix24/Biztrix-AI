@@ -1,0 +1,371 @@
+
+{
+  "entities": {
+    "Business": {
+      "title": "Business",
+      "type": "object",
+      "description": "Tenant root node.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["trial", "active", "pro", "suspended"] },
+        "currency": { "type": "string" },
+        "gstEnabled": { "type": "boolean" },
+        "activeAddonIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "SolarInquiry": {
+      "title": "Solar Inquiry",
+      "type": "object",
+      "description": "Initial customer requirement capture.",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "status": { "type": "string" },
+        "requiredCapacity": { "type": "string" },
+        "propertyType": { "type": "string" },
+        "electricityConnection": { "type": "string" },
+        "monthlyBill": { "type": "string" },
+        "roofType": { "type": "string" },
+        "roofArea": { "type": "string" },
+        "location": { "type": "string" },
+        "notes": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "assignedName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SolarSurvey": {
+      "title": "Solar Site Survey",
+      "type": "object",
+      "description": "Technical site audit report.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "inquiryId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "status": { "type": "string" },
+        "surveyDate": { "type": "string", "format": "date" },
+        "assignedTo": { "type": "string" },
+        "assignedName": { "type": "string" },
+        "customerInfo": { "type": "object" },
+        "electrical": { "type": "object" },
+        "rooftop": { "type": "object" },
+        "orientation": { "type": "object" },
+        "installConditions": { "type": "object" },
+        "media": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SolarSystemDesign": {
+      "title": "Solar System Design",
+      "type": "object",
+      "description": "Technical blueprint and BOM mapping.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "solarInquiryId": { "type": "string" },
+        "solarSurveyId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "capacityKw": { "type": "string" },
+        "systemType": { "type": "string" },
+        "components": { "type": "array" },
+        "status": { "type": "string" },
+        "calculatedDcKw": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SolarPlant": {
+      "title": "Solar Plant",
+      "type": "object",
+      "description": "Post-commissioning asset record.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "installationId": { "type": "string" },
+        "plantReference": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "SERVICE", "INACTIVE", "DECOMMISSIONED"] },
+        "installedCapacityKwp": { "type": "number" },
+        "systemType": { "type": "string" },
+        "commissioningDate": { "type": "string", "format": "date" },
+        "handoverDate": { "type": "string", "format": "date" },
+        "monitoringStatus": { "type": "string", "enum": ["NOT_CONNECTED", "MANUAL", "READY"] },
+        "equipment": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "serialNumber": { "type": "string" },
+              "category": { "type": "string" },
+              "quantity": { "type": "number" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SolarPurchaseRequisition": {
+      "title": "Solar Purchase Requisition",
+      "type": "object",
+      "description": "Planning node for material procurement.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "installationId": { "type": "string" },
+        "designId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "status": { "type": "string", "enum": ["DRAFT", "APPROVED", "ORDERED", "PARTIALLY_RECEIVED", "RECEIVED", "CANCELLED"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "vendorId": { "type": "string" },
+        "vendorName": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "productName": { "type": "string" },
+              "required": { "type": "number" },
+              "ordered": { "type": "number" },
+              "received": { "type": "number" },
+              "unitCost": { "type": "number" }
+            }
+          }
+        },
+        "totalEstimatedCost": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SolarDealerCommission": {
+      "title": "Solar Dealer Commission",
+      "type": "object",
+      "description": "Payout record for solar channel partners.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "dealerId": { "type": "string" },
+        "solarQuotationId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["CALCULATED", "APPROVED", "PAYABLE", "PAID"] },
+        "type": { "type": "string", "enum": ["PERCENTAGE", "FIXED", "PER_KW"] }
+      }
+    },
+    "SolarWarranty": {
+      "title": "Solar Warranty Registry",
+      "type": "object",
+      "description": "Post-installation support node.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "solarInstallationId": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["ACTIVE", "EXPIRING_SOON", "EXPIRED"] }
+      }
+    },
+    "SolarServiceRequest": {
+      "title": "Solar Service Request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "installationId": { "type": "string" },
+        "warrantyId": { "type": "string" },
+        "amcContractId": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" },
+        "description": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "scheduledAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SolarAmcContract": {
+      "title": "Solar AMC Contract",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "installationId": { "type": "string" },
+        "contractNumber": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "status": { "type": "string" },
+        "frequency": { "type": "string" }
+      }
+    },
+    "Coupon": {
+      "title": "Universal Offer Node",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "type": { "type": "string" },
+        "value": { "type": "number" },
+        "status": { "type": "string" },
+        "minOrder": { "type": "number" }
+      }
+    },
+    "Task": {
+      "title": "Workflow Task Node",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "assignedTo": { "type": "string" }
+      }
+    },
+    "Notification": {
+      "title": "System Alert Node",
+      "type": "object",
+      "properties": {
+        "recipientId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "type": { "type": "string" }
+      }
+    },
+    "Order": {
+      "title": "Payment Order Node",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string" },
+        "tierId": { "type": "string" }
+      }
+    },
+    "PaymentGatewayConfig": {
+      "title": "Gateway Configuration",
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string" },
+        "apiKey": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "Reference": {
+      "title": "External Reference Node",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      }
+    },
+    "WhatsappChat": {
+      "title": "WhatsApp Chat Session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Customer Phone Number (e.g. 919876543210)" },
+        "customerName": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "unreadCount": { "type": "number" },
+        "isVerified": { "type": "boolean" }
+      }
+    },
+    "WhatsappMessage": {
+      "title": "WhatsApp Message Log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "direction": { "type": "string", "enum": ["inbound", "outbound"] },
+        "type": { "type": "string", "enum": ["text", "template", "image", "video"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["sent", "delivered", "read", "failed"] }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["password", "google", "phone"]
+  },
+  "firestore": {
+    "/businesses/{businessId}": {
+      "schema": "#/backend/entities/Business",
+      "description": "Root business node."
+    },
+    "/businesses/{businessId}/solarInquiries/{id}": {
+      "schema": "#/backend/entities/SolarInquiry",
+      "description": "Solar potential leads node."
+    },
+    "/businesses/{businessId}/solarSurveys/{id}": {
+      "schema": "#/backend/entities/SolarSurvey",
+      "description": "Technical site audit report node."
+    },
+    "/businesses/{businessId}/solarSystemDesigns/{id}": {
+      "schema": "#/backend/entities/SolarSystemDesign",
+      "description": "Engineering blueprint node."
+    },
+    "/businesses/{businessId}/solarPlants/{plantId}": {
+      "schema": "#/backend/entities/SolarPlant",
+      "description": "Installed asset registry."
+    },
+    "/businesses/{businessId}/solarPurchaseRequisitions/{reqId}": {
+      "schema": "#/backend/entities/SolarPurchaseRequisition",
+      "description": "Material planning and procurement nodes."
+    },
+    "/businesses/{businessId}/solarDealerCommissions/{commissionId}": {
+      "schema": "#/backend/entities/SolarDealerCommission",
+      "description": "Registry of dealer commissions."
+    },
+    "/businesses/{businessId}/solarWarranties/{warrantyId}": {
+      "schema": "#/backend/entities/SolarWarranty",
+      "description": "Registry of system warranties."
+    },
+    "/businesses/{businessId}/solarServiceRequests/{requestId}": {
+      "schema": "#/backend/entities/SolarServiceRequest",
+      "description": "Solar technical service tickets."
+    },
+    "/businesses/{businessId}/solarAmcContracts/{contractId}": {
+      "schema": "#/backend/entities/SolarAmcContract",
+      "description": "Maintenance contract registry."
+    },
+    "/businesses/{businessId}/coupons/{couponId}": {
+      "schema": "#/backend/entities/Coupon",
+      "description": "Registry of universal reward cards."
+    },
+    "/businesses/{businessId}/tasks/{taskId}": {
+      "schema": "#/backend/entities/Task",
+      "description": "Team operational tasks."
+    },
+    "/businesses/{businessId}/notifications/{notificationId}": {
+      "schema": "#/backend/entities/Notification",
+      "description": "System and task-based alerts for users."
+    },
+    "/businesses/{businessId}/orders/{orderId}": {
+      "schema": "#/backend/entities/Order",
+      "description": "Payment session buffers."
+    },
+    "/businesses/{businessId}/paymentGatewayConfigs/{configId}": {
+      "schema": "#/backend/entities/PaymentGatewayConfig",
+      "description": "Settlement provider credentials."
+    },
+    "/businesses/{businessId}/references/{referenceId}": {
+      "schema": "#/backend/entities/Reference",
+      "description": "Registry of external referrers for Gift Nodes."
+    },
+    "/businesses/{businessId}/chats/{chatId}": {
+      "schema": "#/backend/entities/WhatsappChat",
+      "description": "Unified chat sessions for customer communication."
+    },
+    "/businesses/{businessId}/chats/{chatId}/messages/{messageId}": {
+      "schema": "#/backend/entities/WhatsappMessage",
+      "description": "Message thread for a specific chat node."
+    }
+  }
+}

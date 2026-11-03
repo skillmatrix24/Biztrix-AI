@@ -1,0 +1,7 @@
+{
+  "name": "Biztrix AI",
+  "description": "Enterprise Grade Business Management, Automation & AI Advisor",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

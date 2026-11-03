@@ -1,0 +1,266 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Platform Owner check - SkillMatrix Master Node
+     */
+    function isPlatformOwner() {
+      return isSignedIn() && (
+        request.auth.uid == 'sEM5J1HuMCW8RbBTbvnJ5EwaDYA2' ||
+        request.auth.uid == 'jA4htunMjSVcMBpRuzfSx8yooHC2' ||
+        request.auth.token.email == 'skillmatrix24@gmail.com' ||
+        request.auth.token.email == 'gw7infra@gmail.com'
+      );
+    }
+
+    /**
+     * GLOBAL MASTER OVERRIDE
+     * Provides the Platform Owner unrestricted access across all nodes.
+     */
+    match /{allPaths=**} {
+      allow read, write: if isPlatformOwner();
+    }
+
+    // --- SYSTEM & AUDIT RULES ---
+
+    match /system/logs/payments/{logId} {
+      allow read: if true;
+      allow create: if true;
+    }
+
+    match /system/counters/memberships/{businessId} {
+      allow read, write: if true;
+    }
+
+    match /system/{document=**} {
+      allow read: if true;
+      allow write: if isPlatformOwner();
+    }
+
+    // --- BUSINESS & USER HELPERS ---
+
+    function isBusinessMember(businessId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let bizPath = /databases/$(database)/documents/businesses/$(businessId);
+      
+      return isSignedIn() && (
+        (exists(userPath) && get(userPath).data.businessId == businessId) ||
+        (exists(bizPath) && get(bizPath).data.ownerId == request.auth.uid)
+      );
+    }
+
+    function isBusinessAdmin(businessId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let bizPath = /databases/$(database)/documents/businesses/$(businessId);
+      
+      return isSignedIn() && (
+        (exists(bizPath) && get(bizPath).data.ownerId == request.auth.uid) ||
+        (exists(userPath) && 
+         get(userPath).data.businessId == businessId && 
+         (get(userPath).data.role.lower() in ['admin', 'manager', 'owner']))
+      );
+    }
+
+    /**
+     * Helper to verify if the requester is the customer in question
+     */
+    function isTargetCustomer(businessId, customerId) {
+      let customerPath = /databases/$(database)/documents/businesses/$(businessId)/customers/$(customerId);
+      return isSignedIn() && exists(customerPath) && (
+        get(customerPath).data.phone == request.auth.token.phone_number ||
+        get(customerPath).data.phone == request.auth.token.phone_number.replace('+91', '')
+      );
+    }
+
+    // --- DATA INTEGRITY HELPERS ---
+
+    function isStockValid() {
+      // Prevents writing a document with negative stock
+      return request.resource == null || !('stock' in request.resource.data) || request.resource.data.stock >= 0;
+    }
+
+    // --- USER RULES ---
+
+    match /users/{userId} {
+      allow read: if true; 
+      allow create: if true; 
+      allow update: if isSignedIn() && (
+        request.auth.uid == userId || 
+        (request.resource.data.businessId != null && isBusinessMember(request.resource.data.businessId)) ||
+        isPlatformOwner()
+      );
+      allow delete: if isSignedIn() && (
+        request.auth.uid == userId ||
+        (resource.data.businessId != null && isBusinessAdmin(resource.data.businessId)) ||
+        isPlatformOwner()
+      );
+    }
+
+    match /notifications {
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.recipientId);
+      allow read, write: if true;
+    }
+
+    // --- BUSINESS SCOPED RULES ---
+
+    match /businesses/{businessId} {
+      // Public reading allowed for published stores
+      allow read: if true;
+      allow create: if true; 
+      allow update: if isBusinessAdmin(businessId) || isPlatformOwner(); 
+
+      // STOREFRONT READS
+      match /websites/{docId} {
+        allow read: if true;
+      }
+      
+      match /products/{productId} {
+        // Public can read only products intended for the storefront
+        allow read: if resource.data.showOnWebsite == true || isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if (isBusinessMember(businessId) && isStockValid()) || isPlatformOwner();
+      }
+
+      // PRIVATE CONFIG (Credentials Node)
+      match /privateConfig/{docId} {
+        allow read, write: if false;
+      }
+
+      // SOLAR ASSETS
+      match /solarPlants/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      // SOLAR PROCUREMENT
+      match /solarPurchaseRequisitions/{id} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // SOLAR CUSTOMER PORTAL OVERRIDES
+      match /solarInquiries/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /solarSurveys/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /solarSystemDesigns/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /solarInstallations/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /solarAmcContracts/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+      match /solarWarranties/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /solarServiceRequests/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow create: if isTargetCustomer(businessId, request.resource.data.customerId) || isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /socialReviews/{id} {
+        allow read: if true;
+        allow create: if true;
+      }
+      match /quotations/{id} {
+        allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /loyaltyTiers/{tierId} {
+        allow read, list: if true; 
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /loyaltyJoinConfig/{configId} {
+        allow read: if true; 
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /loyaltyConfig/{configId} {
+        allow read: if true; 
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /loyaltyActivity/{activityId} {
+        allow read: if true;
+        allow write: if true;
+      }
+
+      match /campaigns/{campaignId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /coupons/{couponId} {
+        allow read, list: if true; 
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /paymentGatewayConfigs/{configId} {
+        allow read: if true;
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /orders/{orderId} {
+        // Public direct writes blocked. All creation flows through secure Server Actions (Admin SDK).
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /payments/{paymentId} {
+        // Public direct writes blocked. Payment records generated by server-side settlement node.
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /notifications/{notifId} {
+        allow read: if isSignedIn() && (resource.data.recipientId == request.auth.uid || isBusinessMember(businessId) || isPlatformOwner());
+        allow create: if true;
+        allow update: if isSignedIn() && (resource.data.recipientId == request.auth.uid || isBusinessMember(businessId) || isPlatformOwner());
+        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /memberships/{memberId} {
+        allow read: if true; 
+        allow create: if true; 
+        allow update: if true; 
+      }
+
+      match /customers/{customerId} {
+        // Public direct writes blocked. All creation flows through secure Server Actions (Admin SDK).
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner(); 
+      }
+
+      match /complaints/{ticketId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
+
+        match /timeline/{logId} {
+          allow read, write: if true;
+        }
+      }
+
+      match /{allPaths=**} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if (isBusinessMember(businessId) && isStockValid()) || isPlatformOwner();
+      }
+    }
+  }
+}

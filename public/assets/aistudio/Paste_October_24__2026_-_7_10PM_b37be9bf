@@ -1,0 +1,397 @@
+starting build "2ecb6320-ba64-44fb-8dd3-bbe3e66dbf47" using release legacy
+FETCHSOURCE
+From https://github.com/skillmatrix24/Biztrix-Ai
+ * branch            49e1dff4b7eb958f6799e5eb56d8ff5b6c47700e -> FETCH_HEAD
+HEAD is now at 49e1dff chore(deps): update project dependencies
+GitCommit:
+49e1dff4b7eb958f6799e5eb56d8ff5b6c47700e
+BUILD
+Starting Step #0 - "ubuntu"
+Step #0 - "ubuntu": Already have image (with digest): gcr.io/cloud-builders/gcloud
+Finished Step #0 - "ubuntu"
+Starting Step #1 - "preparer"
+Step #1 - "preparer": Pulling image: asia-southeast1-docker.pkg.dev/serverless-runtimes/utilities/preparer:base_20260522_18_04_RC00
+Step #1 - "preparer": base_20260522_18_04_RC00: Pulling from serverless-runtimes/utilities/preparer
+Step #1 - "preparer": 9e26080316c5: Pulling fs layer
+Step #1 - "preparer": 9e26080316c5: Verifying Checksum
+Step #1 - "preparer": 9e26080316c5: Download complete
+Step #1 - "preparer": 9e26080316c5: Pull complete
+Step #1 - "preparer": Digest: sha256:df91c043d1811c1bfc55563e70b21ccb1f5864b0c8713334418a044ced6c3e75
+Step #1 - "preparer": Status: Downloaded newer image for asia-southeast1-docker.pkg.dev/serverless-runtimes/utilities/preparer:base_20260522_18_04_RC00
+Step #1 - "preparer": asia-southeast1-docker.pkg.dev/serverless-runtimes/utilities/preparer:base_20260522_18_04_RC00
+Step #1 - "preparer": 2026/10/24 13:36:08 GEMINI_API_KEY has no availability specified, applying the default of 'BUILD' and 'RUNTIME'
+Step #1 - "preparer": 2026/10/24 13:36:08 GOOGLE_GENAI_API_KEY has no availability specified, applying the default of 'BUILD' and 'RUNTIME'
+Step #1 - "preparer": 2026/10/24 13:36:08 WARNING: X_FIREBASE_SUPPORTED_HOSTS is a reserved key, removing it from the final environment variables
+Step #1 - "preparer": 2026/10/24 13:36:08 FIREBASE_CONFIG has no availability specified, applying the default of 'BUILD' and 'RUNTIME'
+Step #1 - "preparer": 2026/10/24 13:36:08 Final app hosting schema:
+Step #1 - "preparer": runConfig:
+Step #1 - "preparer":   cpu: null
+Step #1 - "preparer":   memoryMiB: null
+Step #1 - "preparer":   concurrency: null
+Step #1 - "preparer":   maxInstances: 1
+Step #1 - "preparer":   minInstances: null
+Step #1 - "preparer":   vpcAccess: null
+Step #1 - "preparer":   cpuAlwaysAllocated: null
+Step #1 - "preparer": env:
+Step #1 - "preparer": - variable: GEMINI_API_KEY
+Step #1 - "preparer":   value: [REDACTED]
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase Console
+Step #1 - "preparer": - variable: GOOGLE_GENAI_API_KEY
+Step #1 - "preparer":   value: [REDACTED]
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase Console
+Step #1 - "preparer": - variable: FIREBASE_CONFIG
+Step #1 - "preparer":   value: '{"databaseURL":"","projectId":"studio-763845891-d07da","storageBucket":"studio-763845891-d07da.firebasestorage.app"}'
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": - variable: FIREBASE_WEBAPP_CONFIG
+Step #1 - "preparer":   value: '{"apiKey":"AIzaSyAvcJJW8QUGfehoxDnuLUPD0XZjf2UyJ0s","appId":"1:642997801555:web:87783552d9a8151cdeaca6","authDomain":"studio-763845891-d07da.firebaseapp.com","databaseURL":"","messagingSenderId":"642997801555","projectId":"studio-763845891-d07da","storageBucket":"studio-763845891-d07da.firebasestorage.app"}'
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": - variable: NG_TRUST_PROXY_HEADERS
+Step #1 - "preparer":   value: X-Forwarded-Host
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": - variable: NG_ALLOWED_HOSTS
+Step #1 - "preparer":   value: biztrix-ai-642997801555.asia-southeast1.run.app,biztrix-ai-33yclysk6q-as.a.run.app,t-129096545---biztrix-ai-33yclysk6q-as.a.run.app,biztrix-ai--studio-763845891-d07da.asia-southeast1.hosted.app,biztrix.in
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": 
+Step #1 - "preparer": 2026/10/24 13:36:08 Final app hosting schema:
+Step #1 - "preparer": runConfig:
+Step #1 - "preparer":   cpu: null
+Step #1 - "preparer":   memoryMiB: null
+Step #1 - "preparer":   concurrency: null
+Step #1 - "preparer":   maxInstances: 1
+Step #1 - "preparer":   minInstances: null
+Step #1 - "preparer":   vpcAccess: null
+Step #1 - "preparer":   cpuAlwaysAllocated: null
+Step #1 - "preparer": env:
+Step #1 - "preparer": - variable: GEMINI_API_KEY
+Step #1 - "preparer":   value: [REDACTED]
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase Console
+Step #1 - "preparer": - variable: GOOGLE_GENAI_API_KEY
+Step #1 - "preparer":   value: [REDACTED]
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase Console
+Step #1 - "preparer": - variable: FIREBASE_CONFIG
+Step #1 - "preparer":   value: '{"databaseURL":"","projectId":"studio-763845891-d07da","storageBucket":"studio-763845891-d07da.firebasestorage.app"}'
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": - variable: FIREBASE_WEBAPP_CONFIG
+Step #1 - "preparer":   value: '{"apiKey":"AIzaSyAvcJJW8QUGfehoxDnuLUPD0XZjf2UyJ0s","appId":"1:642997801555:web:87783552d9a8151cdeaca6","authDomain":"studio-763845891-d07da.firebaseapp.com","databaseURL":"","messagingSenderId":"642997801555","projectId":"studio-763845891-d07da","storageBucket":"studio-763845891-d07da.firebasestorage.app"}'
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - BUILD
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": - variable: NG_TRUST_PROXY_HEADERS
+Step #1 - "preparer":   value: X-Forwarded-Host
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": - variable: NG_ALLOWED_HOSTS
+Step #1 - "preparer":   value: biztrix-ai-642997801555.asia-southeast1.run.app,biztrix-ai-33yclysk6q-as.a.run.app,t-129096545---biztrix-ai-33yclysk6q-as.a.run.app,biztrix-ai--studio-763845891-d07da.asia-southeast1.hosted.app,biztrix.in
+Step #1 - "preparer":   availability:
+Step #1 - "preparer":   - RUNTIME
+Step #1 - "preparer":   source: Firebase System
+Step #1 - "preparer": 
+Finished Step #1 - "preparer"
+Starting Step #2 - "pre-buildpack"
+Step #2 - "pre-buildpack": Already have image: asia-southeast1-docker.pkg.dev/serverless-runtimes/google-24-full/builder/nodejs:nodejs_20261022_RC00
+Step #2 - "pre-buildpack": Preparing directory /layers
+Step #2 - "pre-buildpack": Preparing directory /workspace
+Step #2 - "pre-buildpack": Preparing directory /builder/home
+Step #2 - "pre-buildpack": Preparing directory /builder/outputs
+Step #2 - "pre-buildpack": Preparing directory /platform/env
+Step #2 - "pre-buildpack": Passing build environment variable X_GOOGLE_TARGET_PLATFORM to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable APPHOSTINGYAML_FILEPATH to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable FIREBASE_OUTPUT_BUNDLE_DIR to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable FIREBASE_APP_HOSTING to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable GOOGLE_RUNTIME to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable GOOGLE_RUNTIME_VERSION to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable X_GOOGLE_SKIP_RUNTIME_LAUNCH to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable NEXTJS_ADAPTER_VERSION to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable ANGULAR_ADAPTER_VERSION to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable GOOGLE_BUILDABLE to buildpacks
+Step #2 - "pre-buildpack": Passing build environment variable BUILDER_OUTPUT to buildpacks
+Finished Step #2 - "pre-buildpack"
+Starting Step #3 - "build"
+Step #3 - "build": Already have image: asia-southeast1-docker.pkg.dev/serverless-runtimes/google-24-full/builder/nodejs:nodejs_20261022_RC00
+Step #3 - "build": Warning: No cached data will be used, no cache specified.
+Step #3 - "build": ===> ANALYZING
+Step #3 - "build": Image with name "asia-southeast1-docker.pkg.dev/studio-763845891-d07da/firebaseapphosting-images/biztrix-ai:build-2026-10-24-001" not found
+Step #3 - "build": ===> DETECTING
+Step #3 - "build": target distro name/version labels not found, reading /etc/os-release file
+Step #3 - "build": 4 of 6 buildpacks participating
+Step #3 - "build": google.nodejs.runtime        1.0.0
+Step #3 - "build": google.nodejs.firebasenextjs 0.0.1
+Step #3 - "build": google.nodejs.npm            1.1.1
+Step #3 - "build": google.nodejs.firebasebundle 0.0.1
+Step #3 - "build": ===> RESTORING
+Step #3 - "build": ===> BUILDING
+Step #3 - "build": target distro name/version labels not found, reading /etc/os-release file
+Step #3 - "build": === Node.js - Runtime Using Runner (google.nodejs.runtime@1.0.0) ===
+Step #3 - "build": Using runtime version from GOOGLE_RUNTIME_VERSION: 24.22.1
+Step #3 - "build": Using exact version 24.22.1 for Node.js
+Step #3 - "build": Adding image label google.runtime-version: nodejs24
+Step #3 - "build": Using exact version 24.22.1 for Node.js
+Step #3 - "build": ***** CACHE MISS: "nodejs"
+Step #3 - "build": Installing Node.js v24.22.1.
+Step #3 - "build": 2026/10/24 13:36:12 [DEBUG] GET https://dl.google.com/runtimes/ubuntu2404/nodejs/nodejs-24.22.1.tar.gz
+Step #3 - "build": Installing the heapsize.sh exec.d script.
+Step #3 - "build": === Node.js - Firebasenextjs Using Runner (google.nodejs.firebasenextjs@0.0.1) ===
+Step #3 - "build": Using NEXTJS_ADAPTER_VERSION: "14.0.21"
+Step #3 - "build": ***** CACHE MISS: "npm_modules"
+Step #3 - "build": Installing nextjs adaptor 14.0.21
+Step #3 - "build": === Node.js - Npm Using Runner (google.nodejs.npm@1.1.1) ===
+Step #3 - "build": ***** CACHE MISS: "npm_modules"
+Step #3 - "build": Installing application dependencies.
+Step #3 - "build": --------------------------------------------------------------------------------
+Step #3 - "build": Running "npm ci --quiet --no-fund --no-audit (NODE_ENV=development)"
+Step #3 - "build": npm error code EUSAGE
+Step #3 - "build": npm error
+Step #3 - "build": npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+Step #3 - "build": npm error
+Step #3 - "build": npm error Invalid: lock file's date-fns@3.6.0 does not satisfy date-fns@4.4.0
+Step #3 - "build": npm error Missing: react-date-range@2.0.1 from lock file
+Step #3 - "build": npm error Invalid: lock file's zod@3.24.2 does not satisfy zod@4.6.7
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Invalid: lock file's zod-to-json-schema@3.24.6 does not satisfy zod-to-json-schema@3.25.2
+Step #3 - "build": npm error Missing: @asteasolutions/zod-to-openapi@7.3.4 from lock file
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Missing: @asteasolutions/zod-to-openapi@7.3.4 from lock file
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Missing: classnames@2.5.1 from lock file
+Step #3 - "build": npm error Missing: react-list@0.8.19 from lock file
+Step #3 - "build": npm error Missing: shallow-equal@1.2.1 from lock file
+Step #3 - "build": npm error Invalid: lock file's openapi3-ts@4.5.0 does not satisfy openapi3-ts@4.6.2
+Step #3 - "build": npm error Invalid: lock file's yaml@2.8.0 does not satisfy yaml@2.9.1
+Step #3 - "build": npm error
+Step #3 - "build": npm error Clean install a project
+Step #3 - "build": npm error
+Step #3 - "build": npm error Usage:
+Step #3 - "build": npm error npm ci
+Step #3 - "build": npm error
+Step #3 - "build": npm error Options:
+Step #3 - "build": npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+Step #3 - "build": npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+Step #3 - "build": npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+Step #3 - "build": npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts]
+Step #3 - "build": npm error [--allow-directory <all|none|root>] [--allow-file <all|none|root>]
+Step #3 - "build": npm error [--allow-git <all|none|root>] [--allow-remote <all|none|root>]
+Step #3 - "build": npm error [--allow-scripts <package-list> [--allow-scripts <package-list> ...]]
+Step #3 - "build": npm error [--strict-allow-scripts] [--dangerously-allow-all-scripts] [--no-audit]
+Step #3 - "build": npm error [--no-bin-links] [--no-fund] [--dry-run]
+Step #3 - "build": npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+Step #3 - "build": npm error [--workspaces] [--include-workspace-root] [--install-links]
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --install-strategy
+Step #3 - "build": npm error     Sets the strategy for installing packages in node_modules.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --legacy-bundling
+Step #3 - "build": npm error     Instead of hoisting package installs in `node_modules`, install packages
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --global-style
+Step #3 - "build": npm error     Only install direct dependencies in the top level `node_modules`,
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --omit
+Step #3 - "build": npm error     Dependency types to omit from the installation tree on disk.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --include
+Step #3 - "build": npm error     Option that allows for defining which types of dependencies to install.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --strict-peer-deps
+Step #3 - "build": npm error     If set to `true`, and `--legacy-peer-deps` is not set, then _any_
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --foreground-scripts
+Step #3 - "build": npm error     Run all build scripts (ie, `preinstall`, `install`, and
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --ignore-scripts
+Step #3 - "build": npm error     If true, npm does not run scripts specified in package.json files.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-directory
+Step #3 - "build": npm error     Limits the ability for npm to install dependencies from directories.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-file
+Step #3 - "build": npm error     Limits the ability for npm to install dependencies from tarball files.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-git
+Step #3 - "build": npm error     Limits the ability for npm to fetch dependencies from git references.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-remote
+Step #3 - "build": npm error     Limits the ability for npm to fetch dependencies from urls.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-scripts
+Step #3 - "build": npm error     Comma-separated list of packages whose install-time lifecycle scripts
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --strict-allow-scripts
+Step #3 - "build": npm error     If `true`, turn the install-script policy from a warning into a hard
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --dangerously-allow-all-scripts
+Step #3 - "build": npm error     If `true`, bypass the `allowScripts` policy entirely and run every
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --audit
+Step #3 - "build": npm error     When "true" submit audit reports alongside the current npm command to the
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --bin-links
+Step #3 - "build": npm error     Tells npm to create symlinks (or `.cmd` shims on Windows) for package
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --fund
+Step #3 - "build": npm error     When "true" displays the message at the end of each `npm install`
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --dry-run
+Step #3 - "build": npm error     Indicates that you don't want npm to make any changes and that it should
+Step #3 - "build": npm error
+Step #3 - "build": npm error   -w|--workspace
+Step #3 - "build": npm error     Enable running a command in the context of the configured workspaces of the
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --workspaces
+Step #3 - "build": npm error     Set to true to run the command in the context of **all** configured
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --include-workspace-root
+Step #3 - "build": npm error     Include the workspace root when workspaces are enabled for a command.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --install-links
+Step #3 - "build": npm error     When set file: protocol dependencies will be packed and installed as
+Step #3 - "build": npm error
+Step #3 - "build": npm error
+Step #3 - "build": npm error aliases: clean-install, ic, install-clean, isntall-clean
+Step #3 - "build": npm error
+Step #3 - "build": npm error Run "npm help ci" for more info
+Step #3 - "build": npm error A complete log of this run can be found in: /www-data-home/.npm/_logs/2026-10-24T13_36_19_099Z-debug-0.log
+Step #3 - "build": Done "npm ci --quiet --no-fund --no-audit (NODE_ENV=development)" (3.418554748s)
+Step #3 - "build": --------------------------------------------------------------------------------
+Step #3 - "build": failed to build: (error ID: 7fa33aaa):
+Step #3 - "build": npm error code EUSAGE
+Step #3 - "build": npm error
+Step #3 - "build": npm error `npm ci` can only install packages when your package.json and package-lock.json or npm-shrinkwrap.json are in sync. Please update your lock file with `npm install` before continuing.
+Step #3 - "build": npm error
+Step #3 - "build": npm error Invalid: lock file's date-fns@3.6.0 does not satisfy date-fns@4.4.0
+Step #3 - "build": npm error Missing: react-date-range@2.0.1 from lock file
+Step #3 - "build": npm error Invalid: lock file's zod@3.24.2 does not satisfy zod@4.6.7
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Invalid: lock file's zod-to-json-schema@3.24.6 does not satisfy zod-to-json-schema@3.25.2
+Step #3 - "build": npm error Missing: @asteasolutions/zod-to-openapi@7.3.4 from lock file
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Missing: @asteasolutions/zod-to-openapi@7.3.4 from lock file
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Missing: zod@3.25.76 from lock file
+Step #3 - "build": npm error Missing: classnames@2.5.1 from lock file
+Step #3 - "build": npm error Missing: react-list@0.8.19 from lock file
+Step #3 - "build": npm error Missing: shallow-equal@1.2.1 from lock file
+Step #3 - "build": npm error Invalid: lock file's openapi3-ts@4.5.0 does not satisfy openapi3-ts@4.6.2
+Step #3 - "build": npm error Invalid: lock file's yaml@2.8.0 does not satisfy yaml@2.9.1
+Step #3 - "build": npm error
+Step #3 - "build": npm error Clean install a project
+Step #3 - "build": npm error
+Step #3 - "build": npm error Usage:
+Step #3 - "build": npm error npm ci
+Step #3 - "build": npm error
+Step #3 - "build": npm error Options:
+Step #3 - "build": npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+Step #3 - "build": npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+Step #3 - "build": npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+Step #3 - "build": npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts]
+Step #3 - "build": npm error [--allow-directory <all|none|root>] [--allow-file <all|none|root>]
+Step #3 - "build": npm error [--allow-git <all|none|root>] [--allow-remote <all|none|root>]
+Step #3 - "build": npm error [--allow-scripts <package-list> [--allow-scripts <package-list> ...]]
+Step #3 - "build": npm error [--strict-allow-scripts] [--dangerously-allow-all-scripts] [--no-audit]
+Step #3 - "build": npm error [--no-bin-links] [--no-fund] [--dry-run]
+Step #3 - "build": npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+Step #3 - "build": npm error [--workspaces] [--include-workspace-root] [--install-links]
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --install-strategy
+Step #3 - "build": npm error     Sets the strategy for installing packages in node_modules.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --legacy-bundling
+Step #3 - "build": npm error     Instead of hoisting package installs in `node_modules`, install packages
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --global-style
+Step #3 - "build": npm error     Only install direct dependencies in the top level `node_modules`,
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --omit
+Step #3 - "build": npm error     Dependency types to omit from the installation tree on disk.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --include
+Step #3 - "build": npm error     Option that allows for defining which types of dependencies to install.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --strict-peer-deps
+Step #3 - "build": npm error     If set to `true`, and `--legacy-peer-deps` is not set, then _any_
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --foreground-scripts
+Step #3 - "build": npm error     Run all build scripts (ie, `preinstall`, `install`, and
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --ignore-scripts
+Step #3 - "build": npm error     If true, npm does not run scripts specified in package.json files.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-directory
+Step #3 - "build": npm error     Limits the ability for npm to install dependencies from directories.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-file
+Step #3 - "build": npm error     Limits the ability for npm to install dependencies from tarball files.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-git
+Step #3 - "build": npm error     Limits the ability for npm to fetch dependencies from git references.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-remote
+Step #3 - "build": npm error     Limits the ability for npm to fetch dependencies from urls.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --allow-scripts
+Step #3 - "build": npm error     Comma-separated list of packages whose install-time lifecycle scripts
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --strict-allow-scripts
+Step #3 - "build": npm error     If `true`, turn the install-script policy from a warning into a hard
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --dangerously-allow-all-scripts
+Step #3 - "build": npm error     If `true`, bypass the `allowScripts` policy entirely and run every
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --audit
+Step #3 - "build": npm error     When "true" submit audit reports alongside the current npm command to the
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --bin-links
+Step #3 - "build": npm error     Tells npm to create symlinks (or `.cmd` shims on Windows) for package
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --fund
+Step #3 - "build": npm error     When "true" displays the message at the end of each `npm install`
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --dry-run
+Step #3 - "build": npm error     Indicates that you don't want npm to make any changes and that it should
+Step #3 - "build": npm error
+Step #3 - "build": npm error   -w|--workspace
+Step #3 - "build": npm error     Enable running a command in the context of the configured workspaces of the
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --workspaces
+Step #3 - "build": npm error     Set to true to run the command in the context of **all** configured
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --include-workspace-root
+Step #3 - "build": npm error     Include the workspace root when workspaces are enabled for a command.
+Step #3 - "build": npm error
+Step #3 - "build": npm error   --install-links
+Step #3 - "build": npm error     When set file: protocol dependencies will be packed and installed as
+Step #3 - "build": npm error
+Step #3 - "build": npm error
+Step #3 - "build": npm error aliases: clean-install, ic, install-clean, isntall-clean
+Step #3 - "build": npm error
+Step #3 - "build": npm error Run "npm help ci" for more info
+Step #3 - "build": npm error A complete log of this run can be found in: /www-data-home/.npm/_logs/2026-10-24T13_36_19_099Z-debug-0.log
+Step #3 - "build": ERROR: failed to build: exit status 1
+Finished Step #3 - "build"
+ERROR
+ERROR: build step 3 "asia-southeast1-docker.pkg.dev/serverless-runtimes/google-24-full/builder/nodejs:nodejs_20261022_RC00" failed: step exited with non-zero status: 51
