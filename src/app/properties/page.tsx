@@ -207,13 +207,13 @@ export default function PropertyManagementPage() {
 
   const currencySymbol = getCurrencySymbol(business?.currency);
 
-  const assetCategories = business?.assetCategories || PRODUCT_OPTIONS;
-  const facingDirections = business?.facingDirections || ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
-  const landTypes = business?.landTypes || ["Khet", "Khar", "Bharri", "FormHouse", "Factory"];
-  const soilTypes = business?.soilTypes || ["Bhura Mitti", "Kala Mitti", "Upjau", "Retili"];
-  const cropTypes = business?.cropTypes || ["Single Crop", "Double Crop", "Triple Crop", "Dalhan", "Tilhan"];
-  const roadTypes = business?.roadTypes || ["Single Road", "Double Road", "Non-Road"];
-  const areaUnits = business?.areaUnits || ["sq.ft", "sq.yd", "Acre", "Guntha", "Bigha"];
+  const assetCategories: string[] = business?.assetCategories || PRODUCT_OPTIONS;
+  const facingDirections: string[] = business?.facingDirections || ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
+  const landTypes: string[] = business?.landTypes || ["Khet", "Khar", "Bharri", "FormHouse", "Factory"];
+  const soilTypes: string[] = business?.soilTypes || ["Bhura Mitti", "Kala Mitti", "Upjau", "Retili"];
+  const cropTypes: string[] = business?.cropTypes || ["Single Crop", "Double Crop", "Triple Crop", "Dalhan", "Tilhan"];
+  const roadTypes: string[] = business?.roadTypes || ["Single Road", "Double Road", "Non-Road"];
+  const areaUnits: string[] = business?.areaUnits || ["sq.ft", "sq.yd", "Acre", "Guntha", "Bigha"];
 
   const canEditProperty = (prop: any) => {
     if (!user?.uid || !prop) return false;

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { 
   Plus, 
   ArrowLeft, 
@@ -208,7 +208,7 @@ function NewSolarProcurementContent() {
                          <div className="space-y-2">
                             {plannedItems.length === 0 ? (
                                <div className="p-4 bg-green-50 rounded-xl border border-green-100 flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-600" /><span className="text-[10px] font-black uppercase text-green-700">Material Ready: No Purchase Required</span></div>
-                            ) : plannedItems.map((item, i) => (
+                            ) : plannedItems.map((item: any, i: number) => (
                                <div key={i} className="p-4 bg-white rounded-xl border flex items-center justify-between shadow-sm">
                                   <div className="text-left">
                                      <p className="text-[11px] font-black text-slate-900 uppercase">{item.productName}</p>
@@ -229,7 +229,7 @@ function NewSolarProcurementContent() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
                        <div className="space-y-2 text-left">
                           <Label className="text-[9px] font-bold uppercase opacity-60">Primary Vendor Node</Label>
-                          <Select value={formData.vendorId} onValueChange={(v) => setFormData({...formData, vendorId: v})}>
+                          <Select value={formData.vendorId || ""} onValueChange={(v) => setFormData({...formData, vendorId: v})}>
                              <SelectTrigger className="h-12 rounded-xl bg-muted/10 border-none shadow-sm font-bold text-xs uppercase"><SelectValue placeholder="Pick Supplier" /></SelectTrigger>
                              <SelectContent className="rounded-xl border-none shadow-2xl">
                                 <SelectItem value="none" className="text-[10px] font-bold uppercase">Manual / Spot Purchase</SelectItem>
@@ -239,7 +239,7 @@ function NewSolarProcurementContent() {
                        </div>
                        <div className="space-y-2 text-left">
                           <Label className="text-[9px] font-bold uppercase opacity-60">Priority Level</Label>
-                          <Select value={formData.priority} onValueChange={(v: any) => setFormData({...formData, priority: v})}>
+                          <Select value={formData.priority || ""} onValueChange={(v: any) => setFormData({...formData, priority: v})}>
                              <SelectTrigger className="h-12 rounded-xl bg-white border-muted font-bold text-xs uppercase"><SelectValue /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 <SelectItem value="low">Routine</SelectItem>
@@ -252,7 +252,7 @@ function NewSolarProcurementContent() {
                     </div>
                     <div className="space-y-2 text-left">
                        <Label className="text-[9px] font-bold uppercase opacity-60">Procurement Note</Label>
-                       <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Reason for specific vendor or pricing negotiation notes..." className="min-h-[100px] rounded-2xl bg-muted/10 border-none p-4 text-xs font-medium" />
+                       <Textarea value={formData.notes || ""} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Reason for specific vendor or pricing negotiation notes..." className="min-h-[100px] rounded-2xl bg-muted/10 border-none p-4 text-xs font-medium" />
                     </div>
                  </div>
               </CardContent>

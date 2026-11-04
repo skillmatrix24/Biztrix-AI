@@ -122,7 +122,7 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
   const { data: groupsRaw } = useCollection<any>(groupsRawQuery);
   const groups = groupsRaw || [];
 
-  const filteredContacts = useMemo(() => {
+  const filteredContacts = useMemo<any[]>(() => {
     const list = contacts || [];
     if (!searchTerm.trim()) return list;
     return list.filter((c: any) => 
@@ -133,8 +133,8 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
 
   const toggleSelectAll = () => {
     if (filteredContacts.length === 0) return;
-    const allFilteredIds = filteredContacts.map((c: any) => c.id);
-    const allSelectedInVisible = allFilteredIds.every(id => selectedIds.includes(id));
+    const allFilteredIds: string[] = filteredContacts.map((c: any) => c.id);
+    const allSelectedInVisible = allFilteredIds.every((id: string) => selectedIds.includes(id));
 
     if (allSelectedInVisible) {
       setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
@@ -475,7 +475,7 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
            </DialogHeader>
            <div className="p-8 space-y-8">
               {groupActionType === 'create' ? (
-                <div className="space-y-3 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Group Name</Label><Input value={targetGroupName} onChange={(e) => setTargetGroupName(e.target.value)} className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none" /></div>
+                <div className="space-y-3 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Group Name</Label><Input value={targetGroupName || ""} onChange={(e) => setTargetGroupName(e.target.value)} className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none" /></div>
               ) : (
                 <div className="space-y-3 text-left">
                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Select Group</Label>

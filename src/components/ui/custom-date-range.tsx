@@ -12,7 +12,7 @@ export function CustomDateRangePicker({ value, onChange }: CustomDateRangeProps)
   return (
     <DateRange
       editableDateInputs={true}
-      onChange={item => onChange(item.selection)}
+      onChange={(item: any) => onChange(item.selection)}
       moveRangeOnFirstSelection={false}
       ranges={[value]}
       rangeColors={['#0C83B3']} // Matches primary color

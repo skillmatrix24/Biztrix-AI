@@ -1219,7 +1219,7 @@ export default function EcommerceManagerPage() {
                 <CardContent className="p-8 space-y-8 text-left">
                   <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Store Front Display Name</Label>
-                    <Input value={storeName} onChange={(e) => setStoreName(e.target.value)} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+                    <Input value={storeName || ""} onChange={(e) => setStoreName(e.target.value)} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
                   </div>
                   <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest flex items-center gap-2">
@@ -1239,16 +1239,16 @@ export default function EcommerceManagerPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Customer Support Email</Label>
-                      <Input value={contactEmail} onChange={(e) => setContactEmail(e.target.value.toLowerCase())} placeholder="support@brand.com" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" />
+                      <Input value={contactEmail || ""} onChange={(e) => setContactEmail(e.target.value.toLowerCase())} placeholder="support@brand.com" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Public Contact Node</Label>
-                      <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" />
+                      <Input value={contactPhone || ""} onChange={(e) => setContactPhone(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" />
                     </div>
                   </div>
                   <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Official Address Registry</Label>
-                    <Textarea value={storeAddress} onChange={(e) => setStoreAddress(e.target.value)} className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-5 text-sm" />
+                    <Textarea value={storeAddress || ""} onChange={(e) => setStoreAddress(e.target.value)} className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-5 text-sm" />
                   </div>
                 </CardContent>
                 <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">

@@ -573,7 +573,7 @@ export default function StaffManagementPage() {
                         <div className="space-y-1 col-span-2 sm:col-span-1">
                           <Label className="text-[8px] font-black uppercase text-slate-400 ml-1">Pay Today</Label>
                           <div className="flex gap-2">
-                            <Input type="number" value={currentManualPayment} onChange={(e) => setManualPayments({...manualPayments, [s.id]: e.target.value})} placeholder="0" className="h-9 text-center text-xs font-bold rounded-xl bg-green-50 text-green-700 border-none shadow-inner" />
+                            <Input type="number" value={currentManualPayment ?? ""} onChange={(e) => setManualPayments({...manualPayments, [s.id]: e.target.value})} placeholder="0" className="h-9 text-center text-xs font-bold rounded-xl bg-green-50 text-green-700 border-none shadow-inner" />
                             <Button size="icon" variant="ghost" className="h-9 w-9 bg-primary/10 text-primary rounded-xl" onClick={() => markAttendance(s.id, currentStatus || 'present', currentOt, currentAllowance, currentManualPayment)}><PlusCircle className="h-4 w-4" /></Button>
                           </div>
                         </div>

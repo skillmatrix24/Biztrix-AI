@@ -141,13 +141,13 @@ export function ReconciliationPanel({
                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Manual Total Override</Label>
                 <div className="relative">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-30" />
-                  <Input placeholder="Amount override" value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} className="pl-12 h-12 text-base font-black rounded-xl bg-white border-none shadow-sm" />
+                  <Input placeholder="Amount override" value={manualAmount || ""} onChange={(e) => setManualAmount(e.target.value)} className="pl-12 h-12 text-base font-black rounded-xl bg-white border-none shadow-sm" />
                 </div>
                 {manualAmount && (
                   <div className="mt-2 space-y-1.5 animate-in slide-in-from-top-1">
                      <Label className="text-[8px] font-black uppercase text-muted-foreground ml-1">Override Reason *</Label>
                      <Input 
-                        value={manualOverrideReason} 
+                        value={manualOverrideReason || ""} 
                         onChange={(e) => setManualOverrideReason(e.target.value)} 
                         placeholder="Why this override?" 
                         className="h-9 rounded-xl bg-white border-none shadow-sm text-[10px] font-bold" 
@@ -170,7 +170,7 @@ export function ReconciliationPanel({
                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Advance Payment Received</Label>
                <div className="relative">
                  <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600 opacity-40" />
-                 <Input placeholder="Advance amount" value={advanceAmount} onChange={(e) => setAdvanceAmount(e.target.value)} className="pl-12 h-12 text-base font-black rounded-xl bg-white border-none shadow-sm text-green-700" />
+                 <Input placeholder="Advance amount" value={advanceAmount || ""} onChange={(e) => setAdvanceAmount(e.target.value)} className="pl-12 h-12 text-base font-black rounded-xl bg-white border-none shadow-sm text-green-700" />
                </div>
              </div>
           </div>
@@ -250,7 +250,7 @@ export function ReconciliationPanel({
            <div className="space-y-2 text-left">
              <Label className="text-[10px] font-black uppercase text-primary ml-1">Apply Coupon Code</Label>
              <div className="flex gap-2">
-               <Input placeholder="CODE" value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-11 rounded-xl font-black uppercase tracking-widest text-xs shadow-inner" />
+               <Input placeholder="CODE" value={couponCode || ""} onChange={(e) => setCouponCode(e.target.value)} className="h-11 rounded-xl font-black uppercase tracking-widest text-xs shadow-inner" />
                <Button onClick={() => handleApplyCoupon()} size="sm" className="h-11 px-4 rounded-xl font-bold uppercase text-[10px] bg-primary text-white shadow-md">Apply</Button>
              </div>
            </div>
@@ -283,7 +283,7 @@ export function ReconciliationPanel({
               <Label className="text-[10px] font-black uppercase text-green-600 tracking-widest ml-1">Amount Collected (Settled Now)</Label>
               <div className="relative">
                 <BanknoteIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-green-600 opacity-60" />
-                <Input placeholder="Amount paid by customer" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} className="pl-12 h-14 text-lg font-black rounded-2xl bg-green-50 border-green-100 shadow-inner text-green-800" />
+                <Input placeholder="Amount paid by customer" value={paidAmount || ""} onChange={(e) => setPaidAmount(e.target.value)} className="pl-12 h-14 text-lg font-black rounded-2xl bg-green-50 border-green-100 shadow-inner text-green-800" />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -302,7 +302,7 @@ export function ReconciliationPanel({
               </div>
               <div className="space-y-2.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Payment Note / Memo</Label>
-                <Input value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} placeholder="Ref or remark..." className="h-12 rounded-xl bg-muted/5 border-none shadow-sm text-xs font-bold" />
+                <Input value={paymentNote || ""} onChange={(e) => setPaymentNote(e.target.value)} placeholder="Ref or remark..." className="h-12 rounded-xl bg-muted/5 border-none shadow-sm text-xs font-bold" />
               </div>
             </div>
           </div>

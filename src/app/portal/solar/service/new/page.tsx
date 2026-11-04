@@ -37,8 +37,8 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking, useUser } from "@/firebase";
-import { doc, collection, serverTimestamp, getDocs, query, where, limit } from "firebase/firestore";
+import { useFirestore, useDoc, useMemoFirebase, addDocumentNonBlocking, useUser, useCollection } from "@/firebase";
+import { doc, collection, serverTimestamp, getDocs, getDoc, query, where, limit } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";

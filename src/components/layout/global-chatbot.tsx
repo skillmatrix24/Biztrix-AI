@@ -157,7 +157,7 @@ export function GlobalChatbot() {
             <CardFooter className="p-4 border-t bg-white shrink-0">
               <form onSubmit={handleSendMessage} className="relative w-full flex items-center">
                 <Input 
-                  value={input} 
+                  value={input || ""} 
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Biztrix ke baare mein puchiye..." 
                   className="h-12 rounded-2xl bg-muted/20 border-none shadow-inner pr-12 text-sm font-bold pl-5 focus-visible:ring-primary"

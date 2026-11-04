@@ -17,7 +17,7 @@ export function DevelopmentBanner({ config }: { config: { isEnabled: boolean, me
     <div className="bg-amber-100 border-b border-amber-200 text-amber-900 px-4 py-2 flex items-center justify-between shadow-sm z-40">
       <div className="flex items-center gap-2 text-sm font-medium">
         <AlertTriangle className="w-4 h-4" />
-        <span>{config.message}</span>
+        <span>{config?.message || 'Website under active development.'}</span>
       </div>
       <button 
         onClick={() => setIsClosed(true)} 

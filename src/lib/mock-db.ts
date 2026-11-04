@@ -151,18 +151,22 @@ export type Vendor = {
   id: string;
   tenantId: string;
   name: string;
+  businessName?: string;
   phone: string;
   email: string;
   gstin: string;
   address: string;
   city?: string;
   state: string;
+  openingBalance?: number;
   totalPurchase: number;
   paidAmount: number;
   pendingBalance: number;
   status: 'Active' | 'Inactive' | 'Pending';
   lastPurchaseDate?: string;
   notes?: string;
+  createdAt?: any;
+  updatedAt?: any;
 };
 
 export type StaffRole = 'Sales' | 'Delivery' | 'Accountant' | 'Manager' | 'Other';
@@ -313,6 +317,7 @@ export type Project = {
   clientName?: string;
   clientType: 'lead' | 'customer';
   team: string[]; // Array of Staff IDs
+  sharePublic?: boolean;
   createdAt: string;
 };
 

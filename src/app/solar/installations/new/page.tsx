@@ -17,7 +17,9 @@ import {
   Settings2,
   ChevronRight,
   Zap,
-  Globe
+  Globe,
+  Lock,
+  Plus
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFirestore, useUser, useDoc, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp, query, where, getDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -207,11 +209,11 @@ function NewInstallationContent() {
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Planned Start Node</Label>
-                       <Input type="date" value={formData.scheduledStartDate} onChange={(e) => setFormData({...formData, scheduledStartDate: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+                       <Input type="date" value={formData.scheduledStartDate || ""} onChange={(e) => setFormData({...formData, scheduledStartDate: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Est. Completion Target</Label>
-                       <Input type="date" value={formData.scheduledEndDate} onChange={(e) => setFormData({...formData, scheduledEndDate: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+                       <Input type="date" value={formData.scheduledEndDate || ""} onChange={(e) => setFormData({...formData, scheduledEndDate: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
                     </div>
                  </div>
 
@@ -225,7 +227,7 @@ function NewInstallationContent() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
                        <div className="space-y-2">
                           <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Site Supervisor / PM</Label>
-                          <Select value={formData.supervisorId} onValueChange={(v) => setFormData({...formData, supervisorId: v})}>
+                          <Select value={formData.supervisorId || ""} onValueChange={(v) => setFormData({...formData, supervisorId: v})}>
                              <SelectTrigger className="h-12 rounded-xl bg-white border-muted font-bold text-xs uppercase"><SelectValue placeholder="Pick Manager" /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 {teamMembers.map((m: any) => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
@@ -249,7 +251,7 @@ function NewInstallationContent() {
 
                  <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Site Instructions (Field Logic)</Label>
-                    <Textarea value={formData.siteNotes} onChange={(e) => setFormData({...formData, siteNotes: e.target.value})} placeholder="Structural warnings, height constraints or access notes..." className="min-h-[120px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 text-sm font-medium" />
+                    <Textarea value={formData.siteNotes || ""} onChange={(e) => setFormData({...formData, siteNotes: e.target.value})} placeholder="Structural warnings, height constraints or access notes..." className="min-h-[120px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 text-sm font-medium" />
                  </div>
               </CardContent>
               <CardFooter className="p-8 bg-muted/10 border-t"><Button onClick={handleLaunch} disabled={isSubmitting || !formData.supervisorId} className="w-full h-16 bg-primary font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl">Deploy Site Node</Button></CardFooter>

@@ -92,19 +92,19 @@ export default function NewPropertyEntryPage() {
     });
   }, [teamMembersRaw, business?.propertyMemberRoles]);
 
-  const assetCategories = business?.assetCategories || PRODUCT_OPTIONS;
-  const bhkConfigs = business?.bhkConfigs || ["1 BHK", "2 BHK", "3 BHK", "4 BHK"];
-  const facingDirections = business?.facingDirections || ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
-  const landTypes = business?.landTypes || ["Khet", "Khar", "Bharri", "FormHouse", "Factory"];
-  const soilTypes = business?.soilTypes || ["Bhura Mitti", "Kala Mitti", "Upjau", "Retili"];
-  const cropTypes = business?.cropTypes || ["Single Crop", "Double Crop", "Triple Crop", "Dalhan", "Tilhan"];
-  const socialCategories = business?.socialCategories || ["OBC", "General", "SC", "ST"];
-  const roadTypes = business?.roadTypes || ["Single Road", "Double Road", "Non-Road"];
-  const areaUnits = business?.areaUnits || ["sq.ft", "sq.yd", "Acre", "Guntha", "Bigha"];
+  const assetCategories: string[] = business?.assetCategories || PRODUCT_OPTIONS;
+  const bhkConfigs: string[] = business?.bhkConfigs || ["1 BHK", "2 BHK", "3 BHK", "4 BHK"];
+  const facingDirections: string[] = business?.facingDirections || ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
+  const landTypes: string[] = business?.landTypes || ["Khet", "Khar", "Bharri", "FormHouse", "Factory"];
+  const soilTypes: string[] = business?.soilTypes || ["Bhura Mitti", "Kala Mitti", "Upjau", "Retili"];
+  const cropTypes: string[] = business?.cropTypes || ["Single Crop", "Double Crop", "Triple Crop", "Dalhan", "Tilhan"];
+  const socialCategories: string[] = business?.socialCategories || ["OBC", "General", "SC", "ST"];
+  const roadTypes: string[] = business?.roadTypes || ["Single Road", "Double Road", "Non-Road"];
+  const areaUnits: string[] = business?.areaUnits || ["sq.ft", "sq.yd", "Acre", "Guntha", "Bigha"];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState<Record<string, any>>({
     title: "",
     agentName: "",
     agentSubName: "",
@@ -195,7 +195,7 @@ export default function NewPropertyEntryPage() {
   const removeImage = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      images: (prev.images || []).filter((_: any, i: number) => i !== index)
     }));
   };
 

@@ -197,7 +197,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
-              <DropdownMenu onValueChange={(open) => open && markAllAsRead()}>
+              <DropdownMenu onOpenChange={(open: boolean) => open && markAllAsRead()}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative h-8 w-8 md:h-9 md:w-9 rounded-full text-muted-foreground hover:text-primary transition-all">
                     <Bell className="h-4 w-4 md:h-5 md:w-5" />

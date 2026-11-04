@@ -133,37 +133,37 @@ export default function PlatformLimitsPage() {
                   icon={Receipt} 
                   label="Monthly Invoices" 
                   value={formData.maxMonthlyInvoices} 
-                  onChange={(v) => setFormData({...formData, maxMonthlyInvoices: parseInt(v)})} 
+                  onChange={(v: string) => setFormData({...formData, maxMonthlyInvoices: parseInt(v)})} 
                 />
                 <LimitField 
                   icon={Package} 
                   label="Master Products" 
                   value={formData.maxProducts} 
-                  onChange={(v) => setFormData({...formData, maxProducts: parseInt(v)})} 
+                  onChange={(v: string) => setFormData({...formData, maxProducts: parseInt(v)})} 
                 />
                 <LimitField 
                   icon={Target} 
                   label="Active Leads" 
                   value={formData.maxActiveLeads} 
-                  onChange={(v) => setFormData({...formData, maxActiveLeads: parseInt(v)})} 
+                  onChange={(v: string) => setFormData({...formData, maxActiveLeads: parseInt(v)})} 
                 />
                 <LimitField 
                   icon={Users} 
                   label="Customer Profiles" 
                   value={formData.maxCustomers} 
-                  onChange={(v) => setFormData({...formData, maxCustomers: parseInt(v)})} 
+                  onChange={(v: string) => setFormData({...formData, maxCustomers: parseInt(v)})} 
                 />
                 <LimitField 
                   icon={Truck} 
                   label="Vendor Profiles" 
                   value={formData.maxVendors} 
-                  onChange={(v) => setFormData({...formData, maxVendors: parseInt(v)})} 
+                  onChange={(v: string) => setFormData({...formData, maxVendors: parseInt(v)})} 
                 />
                 <LimitField 
                   icon={BookOpenText} 
                   label="Monthly Cashbook Entries" 
                   value={formData.maxMonthlyEntries} 
-                  onChange={(v) => setFormData({...formData, maxMonthlyEntries: parseInt(v)})} 
+                  onChange={(v: string) => setFormData({...formData, maxMonthlyEntries: parseInt(v)})} 
                 />
               </div>
             </CardContent>

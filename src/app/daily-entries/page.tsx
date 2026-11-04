@@ -91,7 +91,7 @@ import { Label } from "@/components/ui/label";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useUser, useDoc } from "@/firebase";
-import { collection, query, orderBy, serverTimestamp, doc, where, limit, runTransaction, increment } from "firebase/firestore";
+import { collection, query, orderBy, serverTimestamp, doc, where, limit, runTransaction, increment, getDocs, DocumentReference } from "firebase/firestore";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { subDays, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDay, endOfDay, subMonths } from "date-fns";
@@ -107,6 +107,8 @@ const entrySchema = z.object({
   qty: z.coerce.number().min(0, "Quantity must be positive"),
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
   category: z.string().min(1, "Category is required"),
+  unit: z.string().optional(),
+  vendorName: z.string().optional(),
 });
 
 const FALLBACK_CATEGORIES = ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
@@ -146,9 +148,9 @@ export default function DailyEntriesPage() {
   const { data: business } = useDoc<any>(businessRef);
   
   const currencySymbol = getCurrencySymbol(business?.currency);
-  const dynamicUnits = business?.baseUnits || DEFAULT_UNITS;
-  const dynamicCategories = business?.cashbookCategories || FALLBACK_CATEGORIES;
-  const dynamicParticulars = business?.commonParticulars || FALLBACK_PARTICULARS;
+  const dynamicUnits: string[] = business?.baseUnits || DEFAULT_UNITS;
+  const dynamicCategories: string[] = business?.cashbookCategories || FALLBACK_CATEGORIES;
+  const dynamicParticulars: string[] = business?.commonParticulars || FALLBACK_PARTICULARS;
 
   const isPinned = useMemo(() => {
     const layout = (userProfile?.dashboardLayout as any[]) || [];
@@ -180,10 +182,20 @@ export default function DailyEntriesPage() {
   const { data: staffListData } = useCollection<any>(staffQuery);
   const staffList = staffListData || [];
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    dateRange: 'today' as DateFilterType,
+    particulars: '',
+    vendor: 'all',
+    category: 'all',
+    addedBy: 'all',
+    type: 'all',
+    minRate: '',
+    maxRate: '',
+    customDateRange: { from: undefined, to: undefined } as { from: Date | undefined; to: Date | undefined }
+  });
+  
   const [pageLimit, setPageLimit] = useState(20);
-  const [dateFilter, setDateFilter] = useState<DateFilterType>('today');
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc' | 'desc'} | null>(null);
 
   // Real-time Firestore Connection
@@ -197,21 +209,6 @@ export default function DailyEntriesPage() {
   }, [firestore, businessId, pageLimit]);
   const { data: entriesData, isLoading: isEntriesLoading } = useCollection<any>(entriesQuery);
   const entries = entriesData || [];
-
-  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>(undefined);
-  
-  const [commonDate, setCommonDate] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [editTarget, setEditTarget] = useState<DraftEntry | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const [expandedReportRows, setExpandedReportRows] = useState<Record<string, boolean>>({});
-  const [draftEntries, setDraftEntries] = useState<DraftEntry[]>([
-    { id: '1', type: 'credit', particulars: '', rate: '', qty: '', unit: dynamicUnits[0] || 'pcs', amount: 0, category: dynamicCategories[0] || 'Sales', entryBy: 'Owner', notes: '' }
-  ]);
-
-  useEffect(() => {
-    setCommonDate(new Date().toISOString().split('T')[0]);
-  }, []);
 
   const isDateInRange = (dateStr: string, range: DateFilterType) => {
     if (!dateStr) return false;
@@ -235,31 +232,52 @@ export default function DailyEntriesPage() {
       case 'all':
         return true;
       case 'custom':
-        if (!customDateRange?.from || !customDateRange?.to) return true;
-        return isWithinInterval(entryDate, { start: startOfDay(customDateRange.from), end: endOfDay(customDateRange.to) });
+        if (!filters.customDateRange?.from || !filters.customDateRange?.to) return true;
+        return isWithinInterval(entryDate, { start: startOfDay(filters.customDateRange.from), end: endOfDay(filters.customDateRange.to) });
       default:
         return true;
     }
   };
 
-  const batchStats = useMemo(() => {
-    const credit = draftEntries
-      .filter(e => e.type === 'credit')
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
-    const debit = draftEntries
-      .filter(e => e.type === 'debit')
-      .reduce((sum, e) => sum + (e.amount || 0), 0);
-    return { credit, debit, net: credit - debit };
-  }, [draftEntries]);
+  // Historical data for balance calculation
+  const historicalEntriesQuery = useMemoFirebase(() => {
+    if (!businessId) return null;
+    return query(
+      collection(firestore, 'businesses', businessId, 'cashbook'),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, businessId]);
+  const { data: historicalEntriesData } = useCollection<any>(historicalEntriesQuery);
+  const historicalEntries = historicalEntriesData || [];
+
+  const [commonDate, setCommonDate] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<DraftEntry | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [expandedReportRows, setExpandedReportRows] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setCommonDate(new Date().toISOString().split('T')[0]);
+  }, []);
+
+  const [draftEntries, setDraftEntries] = useState<DraftEntry[]>([
+    { id: '1', type: 'credit', particulars: '', rate: '', qty: '', unit: dynamicUnits[0] || 'pcs', amount: 0, category: dynamicCategories[0] || 'Sales', entryBy: 'Owner', notes: '' }
+  ]);
 
   const filteredEntries = useMemo(() => {
     let list = entries || [];
     list = list.filter(e => {
-      const matchesSearch = e.category?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           e.particulars?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           e.entryBy?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesDate = isDateInRange(e.date, dateFilter);
-      return matchesSearch && matchesDate;
+      const matchesDate = isDateInRange(e.date, filters.dateRange);
+      const matchesParticulars = e.particulars?.toLowerCase().includes(filters.particulars.toLowerCase());
+      const matchesVendor = filters.vendor === 'all' || e.vendorName === filters.vendor;
+      const matchesCategory = filters.category === 'all' || e.category === filters.category;
+      const matchesAddedBy = filters.addedBy === 'all' || (e.entryBy || e.addedBy) === filters.addedBy;
+      const matchesType = filters.type === 'all' || e.type === filters.type;
+      const matchesRate = 
+        (filters.minRate === '' || parseFloat(e.rate) >= parseFloat(filters.minRate)) &&
+        (filters.maxRate === '' || parseFloat(e.rate) <= parseFloat(filters.maxRate));
+      
+      return matchesDate && matchesParticulars && matchesVendor && matchesCategory && matchesAddedBy && matchesType && matchesRate;
     });
 
     if (sortConfig) {
@@ -267,7 +285,7 @@ export default function DailyEntriesPage() {
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
         
-        if (sortConfig.key === 'amount') {
+        if (sortConfig.key === 'amount' || sortConfig.key === 'rate') {
             valA = parseFloat(valA) || 0;
             valB = parseFloat(valB) || 0;
         }
@@ -278,11 +296,42 @@ export default function DailyEntriesPage() {
       });
     }
     return list;
-  }, [entries, searchTerm, dateFilter, sortConfig]);
+  }, [entries, filters, sortConfig]);
 
   const stats = useMemo(() => {
     const list = entries || [];
-    const periodEntries = list.filter(e => isDateInRange(e.date, dateFilter));
+    const historicalList = historicalEntries || [];
+    const now = new Date();
+    
+    // Determine the start date of the filter
+    let filterStart: Date;
+    switch (filters.dateRange) {
+      case 'today': filterStart = startOfDay(now); break;
+      case 'yesterday': filterStart = startOfDay(subDays(now, 1)); break;
+      case 'last7': filterStart = startOfDay(subDays(now, 7)); break;
+      case 'last30': filterStart = startOfDay(subDays(now, 30)); break;
+      case 'thisMonth': filterStart = startOfMonth(now); break;
+      case 'lastMonth': filterStart = startOfMonth(subMonths(now, 1)); break;
+      case 'custom': filterStart = filters.customDateRange?.from ? startOfDay(filters.customDateRange.from) : new Date(0); break;
+      case 'all': filterStart = new Date(0); break;
+      default: filterStart = new Date(0);
+    }
+
+    // Calculate sum of all transactions before the filter start
+    const historicalBalance = historicalList.reduce((sum, e) => {
+      if (!e.date) return sum;
+      const entryDate = parseISO(e.date);
+      // Use the set opening balance date as the baseline, if not set use filter start
+      const balanceStartDate = business?.openingBalanceDate ? parseISO(business.openingBalanceDate) : new Date(0);
+      
+      if (entryDate >= balanceStartDate && entryDate < filterStart) {
+        const amount = parseFloat(e.amount) || 0;
+        return e.type === 'credit' ? sum + amount : e.type === 'debit' ? sum - amount : sum;
+      }
+      return sum;
+    }, 0);
+
+    const periodEntries = list.filter(e => isDateInRange(e.date, filters.dateRange));
     
     const credit = periodEntries
       .filter(e => e.type === 'credit')
@@ -291,6 +340,8 @@ export default function DailyEntriesPage() {
     const debit = periodEntries
       .filter(e => e.type === 'debit')
       .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+    const opening = (business?.openingBalance || 0) + historicalBalance;
 
     return {
       periodCredit: credit,
@@ -302,10 +353,18 @@ export default function DailyEntriesPage() {
         .filter(e => e.type === 'due')
         .reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0),
       netBalance: credit - debit,
-      openingBalance: business?.openingBalance || 0,
-      currentBalance: (business?.openingBalance || 0) + (credit - debit)
+      openingBalance: opening,
+      currentBalance: opening + (credit - debit)
     };
-  }, [entries, dateFilter, business?.openingBalance]);
+  }, [entries, historicalEntries, filters.dateRange, filters.customDateRange, business?.openingBalance, business?.openingBalanceDate]);
+
+  const batchStats = useMemo(() => {
+    const credit = draftEntries.filter(e => e.type === 'credit').reduce((sum, e) => sum + (e.amount || 0), 0);
+    const debit = draftEntries.filter(e => e.type === 'debit').reduce((sum, e) => sum + (e.amount || 0), 0);
+    const nc = draftEntries.filter(e => e.type === 'nc').reduce((sum, e) => sum + (e.amount || 0), 0);
+    const due = draftEntries.filter(e => e.type === 'due').reduce((sum, e) => sum + (e.amount || 0), 0);
+    return { credit, debit, nc, due, net: credit - debit };
+  }, [draftEntries]);
 
   const addRow = () => {
     setDraftEntries([...draftEntries, { 
@@ -353,13 +412,13 @@ export default function DailyEntriesPage() {
   const handleSaveBatch = async () => {
     if (!businessId) return;
     
-    const validEntries = [];
+    const validEntries: z.infer<typeof entrySchema>[] = [];
     for (const entry of draftEntries) {
         if (!entry.particulars && entry.amount === 0) continue; 
         
         const result = entrySchema.safeParse(entry);
         if (!result.success) {
-            toast({ variant: "destructive", title: "Validation Error", description: `${entry.particulars || 'Entry'}: ${result.error.errors[0].message}` });
+            toast({ variant: "destructive", title: "Validation Error", description: `${entry.particulars || 'Entry'}: ${result.error.issues[0]?.message || 'Invalid entry'}` });
             return;
         }
         validEntries.push(result.data);
@@ -371,27 +430,43 @@ export default function DailyEntriesPage() {
     }
 
     try {
+        const productsRef = collection(firestore, 'businesses', businessId, 'products');
+        const productRefMap = new Map<string, DocumentReference>();
+        for (const entry of validEntries) {
+            if (!productRefMap.has(entry.particulars)) {
+                const q = query(productsRef, where('name', '==', entry.particulars), limit(1));
+                const querySnapshot = await getDocs(q);
+                if (!querySnapshot.empty) {
+                    productRefMap.set(entry.particulars, querySnapshot.docs[0].ref);
+                }
+            }
+        }
+
         await runTransaction(firestore, async (transaction) => {
             const entriesRef = collection(firestore, 'businesses', businessId, 'cashbook');
-            const productsRef = collection(firestore, 'businesses', businessId, 'products');
-            
+            const productSnapshots = new Map<string, { ref: DocumentReference; stock: number }>();
+
+            for (const [particulars, prodRef] of productRefMap.entries()) {
+                const prodSnap = await transaction.get(prodRef);
+                if (prodSnap.exists()) {
+                    const pData = prodSnap.data();
+                    productSnapshots.set(particulars, { ref: prodRef, stock: Number(pData.stock) || 0 });
+                }
+            }
+
             for (const entry of validEntries) {
-                // Find matching product
-                const q = query(productsRef, where('name', '==', entry.particulars), limit(1));
-                const querySnapshot = await transaction.get(q);
-                
-                if (!querySnapshot.empty) {
-                    const productDoc = querySnapshot.docs[0];
-                    const productData = productDoc.data();
+                const prodInfo = productSnapshots.get(entry.particulars);
+                if (prodInfo) {
                     const qty = Number(entry.qty);
-                    
                     if (entry.type === 'credit') { // Sale
-                        if ((productData.stock || 0) < qty) {
+                        if (prodInfo.stock < qty) {
                             throw new Error(`Insufficient stock for ${entry.particulars}`);
                         }
-                        transaction.update(productDoc.ref, { stock: increment(-qty) });
+                        prodInfo.stock -= qty;
+                        transaction.update(prodInfo.ref, { stock: increment(-qty) });
                     } else { // Purchase
-                        transaction.update(productDoc.ref, { stock: increment(qty) });
+                        prodInfo.stock += qty;
+                        transaction.update(prodInfo.ref, { stock: increment(qty) });
                     }
                 }
             }
@@ -434,7 +509,7 @@ export default function DailyEntriesPage() {
 
     const result = entrySchema.safeParse(editTarget);
     if (!result.success) {
-        toast({ variant: "destructive", title: "Validation Error", description: result.error.errors[0].message });
+        toast({ variant: "destructive", title: "Validation Error", description: result.error.issues[0]?.message || "Invalid entry" });
         return;
     }
     
@@ -480,7 +555,7 @@ export default function DailyEntriesPage() {
 
   const getDateLabel = () => {
     const now = new Date();
-    switch (dateFilter) {
+    switch (filters.dateRange) {
       case 'today': return now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       case 'yesterday': return 'Yesterday';
       case 'last7': return 'Last 7 Days';
@@ -488,7 +563,7 @@ export default function DailyEntriesPage() {
       case 'thisMonth': return 'This Month';
       case 'lastMonth': return 'Last Month';
       case 'all': return 'Full History';
-      case 'custom': return customDateRange?.from ? `${customDateRange.from.toLocaleDateString('en-IN', {day:'numeric', month:'short'})} - ${customDateRange.to?.toLocaleDateString('en-IN', {day:'numeric', month:'short'}) || '...'}` : 'Select Range';
+      case 'custom': return filters.customDateRange?.from ? `${filters.customDateRange.from.toLocaleDateString('en-IN', {day:'numeric', month:'short'})} - ${filters.customDateRange.to?.toLocaleDateString('en-IN', {day:'numeric', month:'short'}) || '...'}` : 'Select Range';
       default: return 'Filter Date';
     }
   };
@@ -498,7 +573,7 @@ export default function DailyEntriesPage() {
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
       {/* Page Header */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
             <BookOpenText className="h-7 w-7 md:h-8 md:w-8 text-primary" />
@@ -515,362 +590,159 @@ export default function DailyEntriesPage() {
           </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            <div className="flex items-center gap-3 flex-1 sm:flex-none">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex-1 sm:flex-none h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-                    <Calendar className="mr-2 h-3.5 w-3.5" /> {getDateLabel()} <ChevronDown className="ml-auto h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-1">
-                  <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest p-2 opacity-40">Select Window</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => setDateFilter('today')} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Today</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDateFilter('yesterday')} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Yesterday</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDateFilter('last7')} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last 7 Days</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDateFilter('last30')} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last 30 Days</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDateFilter('thisMonth')} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">This Month</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setDateFilter('lastMonth')} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last Month</DropdownMenuItem>
-                  <Separator className="my-1" />
-                  <DropdownMenuItem onClick={() => setDateFilter('all')} className="text-xs font-bold uppercase p-3 cursor-pointer text-primary rounded-xl">Full History</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+        <div className="flex flex-wrap items-center gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
+                  <span className="flex items-center truncate"><Calendar className="mr-2 h-3.5 w-3.5 shrink-0" /> <span className="truncate">{getDateLabel()}</span></span>
+                  <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56 rounded-2xl border-none shadow-2xl p-1">
+                <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest p-2 opacity-40">Select Window</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'today'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Today</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'yesterday'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Yesterday</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'last7'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last 7 Days</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'last30'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last 30 Days</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'thisMonth'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">This Month</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'lastMonth'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last Month</DropdownMenuItem>
+                <Separator className="my-1" />
+                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'all'}))} className="text-xs font-bold uppercase p-3 cursor-pointer text-primary rounded-xl">Full History</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5" /> Range <ChevronDown className="ml-2 h-3.5 w-3.5" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                    <CustomDateRangePicker
-                        value={{
-                            startDate: customDateRange?.from || new Date(),
-                            endDate: customDateRange?.to || new Date(),
-                            key: 'selection'
-                        }}
-                        onChange={(range) => {
-                            setCustomDateRange({ from: range.startDate, to: range.endDate });
-                            if (range.startDate && range.endDate) setDateFilter('custom');
-                        }}
-                    />
-                </PopoverContent>
-              </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
+                  <span className="flex items-center"><CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" /> Range</span>
+                  <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CustomDateRangePicker
+                  value={{
+                    startDate: filters.customDateRange?.from || new Date(),
+                    endDate: filters.customDateRange?.to || new Date(),
+                    key: 'selection'
+                  }}
+                  onChange={(range) => {
+                    setFilters(p => ({...p, customDateRange: { from: range.startDate, to: range.endDate }, dateRange: 'custom'}));
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
 
-              <Button variant="outline" onClick={handleExport} className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-                  <FileText className="mr-2 h-3.5 w-3.5" /> Export
-              </Button>
+            <Button variant="outline" onClick={handleExport} className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
+              <FileText className="mr-2 h-3.5 w-3.5 shrink-0" /> Export
+            </Button>
 
-              <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <Link href="/batch-entry" passHref>
-                  <Button className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-[0.1em] rounded-xl text-white">
-                    <Plus className="mr-2 h-4 w-4" /> Batch Entry
-                  </Button>
-                </Link>
-                <DialogContent className="max-w-[95vw] lg:max-w-[1400px] rounded-[2rem] md:rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden flex flex-col h-[90vh]">
-                  <DialogHeader className="p-4 md:p-6 bg-primary text-white shrink-0">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0 shadow-inner">
-                          <Layers className="h-5 w-5 md:h-6 md:w-6" />
-                        </div>
-                        <div>
-                          <DialogTitle className="text-lg md:text-xl font-bold">Record Cash Entries</DialogTitle>
-                          <DialogDescription className="text-white/70 text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-1">Multi-row rate × quantity booking</DialogDescription>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5 w-full md:w-auto">
-                        <Label className="text-[9px] md:text-[10px] font-bold uppercase text-white/70 ml-1">Entry Date</Label>
-                        <input type="date" value={commonDate} onChange={(e) => setCommonDate(e.target.value)} className="h-9 w-full md:w-40 bg-white/10 border border-white/20 rounded-xl px-3 text-white text-xs font-bold outline-none focus:bg-white/20" />
-                      </div>
-                    </div>
-                  </DialogHeader>
-                  
-                  <ScrollArea className="flex-1 overflow-y-auto">
-                    <div className="p-4 lg:p-0 min-h-full pb-10">
-                      <div className="hidden lg:grid grid-cols-[100px_1fr_120px_100px_120px_120px_140px_140px_140px_100px] gap-2 p-4 bg-muted/50 sticky top-0 z-10 text-[10px] font-black uppercase tracking-widest text-muted-foreground border-b">
-                        <div>Type</div>
-                        <div>Particulars</div>
-                        <div className="text-center">Vendor</div>
-                        <div className="text-center">Rate ({currencySymbol})</div>
-                        <div className="text-center">Qty</div>
-                        <div>Unit</div>
-                        <div className="text-center">Total ({currencySymbol})</div>
-                        <div>Category</div>
-                        <div>By</div>
-                        <div>Actions</div>
-                      </div>
-
-                      <div className="divide-y divide-border">
-                        {draftEntries.map((entry, idx) => (
-                          <div key={entry.id} className="group/row">
-                            <div className="p-4 lg:p-3 lg:grid lg:grid-cols-[100px_1fr_120px_120px_100px_120px_140px_140px_140px_100px] lg:gap-2 items-center hover:bg-muted/5 transition-all">
-                              <div className="lg:hidden flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-[8px] font-black uppercase bg-primary/10 text-primary border-none h-4">Entry #{idx + 1}</Badge>
-                                  <div className={cn("h-1.5 w-1.5 rounded-full", entry.type === 'credit' ? "bg-green-500" : "bg-red-500")} />
-                                </div>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/40 hover:text-destructive hover:bg-destructive/5 rounded-full" onClick={() => removeRow(entry.id)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-
-                              <div className="grid grid-cols-2 lg:contents gap-x-3 gap-y-4">
-                                <div className="col-span-2 lg:col-span-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Flow Type</Label>
-                                  <Select value={entry.type} onValueChange={(v: any) => updateRow(entry.id, 'type', v)}>
-                                    <SelectTrigger className={cn("h-10 border-none shadow-sm text-[10px] font-black uppercase rounded-xl", entry.type === 'credit' ? "text-green-600 bg-green-50" : entry.type === 'debit' ? "text-destructive bg-red-50" : entry.type === 'nc' ? "text-amber-600 bg-amber-50" : "text-blue-600 bg-blue-50")}>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-none shadow-2xl">
-                                      <SelectItem value="credit" className="text-[10px] font-bold uppercase text-green-600">Credit (+)</SelectItem>
-                                      <SelectItem value="debit" className="text-[10px] font-bold uppercase text-destructive">Debit (-)</SelectItem>
-                                      <SelectItem value="nc" className="text-[10px] font-bold uppercase text-amber-600">NC (Not Chargeable)</SelectItem>
-                                      <SelectItem value="due" className="text-[10px] font-bold uppercase text-blue-600">Due Payment</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div className="col-span-2 lg:col-span-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Particulars</Label>
-                                  <div className="relative">
-                                    <Input 
-                                      placeholder="Description..." 
-                                      value={entry.particulars || ""} 
-                                      onChange={(e) => updateRow(entry.id, 'particulars', e.target.value)}
-                                      className="h-10 text-xs border-none bg-muted/20 font-bold rounded-xl pr-10 shadow-inner"
-                                    />
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 absolute right-1 top-1 opacity-40 hover:opacity-100">
-                                          <NotebookPen className="h-3.5 w-3.5 text-primary" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-64 rounded-2xl border-none shadow-2xl p-1">
-                                        <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest p-2 opacity-40">Quick Selection</DropdownMenuLabel>
-                                        <ScrollArea className="h-48">
-                                          {(dynamicParticulars || []).map((p: string) => (
-                                            <DropdownMenuItem key={p} onClick={() => updateRow(entry.id, 'particulars', p)} className="text-xs font-bold uppercase p-2.5 rounded-xl cursor-pointer">
-                                              {p}
-                                            </DropdownMenuItem>
-                                          ))}
-                                        </ScrollArea>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem asChild className="p-0">
-                                          <Link href="/settings?tab=master" className="flex items-center gap-2 p-2.5 text-[10px] font-black uppercase text-primary hover:bg-primary/5 cursor-pointer">
-                                            <Settings className="h-3 w-3" /> Manage Particulars
-                                          </Link>
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                  </div>
-                                </div>
-
-                                {entry.type === 'debit' ? (
-                                  <div className="col-span-2 lg:col-span-1">
-                                    <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Vendor</Label>
-                                    <Select value={entry.vendorName} onValueChange={(v) => updateRow(entry.id, 'vendorName', v)}>
-                                      <SelectTrigger className="h-10 text-[10px] font-bold uppercase border-none bg-muted/20 rounded-xl shadow-sm"><SelectValue placeholder="Select Vendor"/></SelectTrigger>
-                                      <SelectContent className="rounded-xl">
-                                        {(vendorsData || []).map((vendor: any) => <SelectItem key={vendor.id} value={vendor.name} className="text-[10px] uppercase font-bold">{vendor.name}</SelectItem>)}
-                                        <SelectSeparator />
-                                        <Button variant="ghost" className="w-full h-8 justify-start gap-2 text-[9px] font-black uppercase text-primary hover:bg-primary/5" onClick={() => setIsAddVendorOpen(true)}>
-                                          <PlusCircle className="h-3 w-3 mr-1" /> Add New Vendor
-                                        </Button>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                ) : (
-                                  <div className="hidden lg:block"></div>
-                                )}
-
-                                <div className="space-y-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Rate ({currencySymbol})</Label>
-                                  <Input type="number" placeholder="0" value={entry.rate || ""} onChange={(e) => updateRow(entry.id, 'rate', e.target.value)} className="h-10 text-sm font-black border-none bg-primary/5 text-primary text-center rounded-xl shadow-inner" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Qty</Label>
-                                  <Input type="number" placeholder="0" value={entry.qty || ""} onChange={(e) => updateRow(entry.id, 'qty', e.target.value)} className="h-10 text-sm font-black border-none bg-muted/20 text-center rounded-xl shadow-inner" />
-                                </div>
-
-                                <div className="space-y-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Unit</Label>
-                                  <Select value={entry.unit} onValueChange={(v) => updateRow(entry.id, 'unit', v)}>
-                                    <SelectTrigger className="h-10 text-[10px] font-black uppercase border-none bg-muted/20 rounded-xl shadow-sm"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                      {(dynamicUnits || []).map((u: string) => <SelectItem key={u} value={u} className="text-[10px] uppercase font-bold">{u}</SelectItem>)}
-                                      <SelectSeparator />
-                                      <div className="p-1">
-                                        <Button asChild variant="ghost" className="w-full h-8 justify-start gap-2 text-[9px] font-black uppercase text-primary hover:bg-primary/5">
-                                          <Link href="/settings?tab=master"><Settings className="h-3 w-3 mr-1" /> Manage Units</Link>
-                                        </Button>
-                                      </div>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Total ({currencySymbol})</Label>
-                                  <div className="h-10 flex items-center justify-center text-xs font-black bg-primary/10 rounded-xl text-primary border border-primary/10 shadow-inner">
-                                    {currencySymbol}{entry.amount.toLocaleString()}
-                                  </div>
-                                </div>
-
-                                <div className="col-span-1 lg:col-span-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">Category</Label>
-                                  <Select value={entry.category} onValueChange={(v) => updateRow(entry.id, 'category', v)}>
-                                    <SelectTrigger className="h-10 text-[10px] font-bold uppercase border-none bg-muted/20 rounded-xl shadow-sm"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                      {(dynamicCategories || []).map((cat: string) => <SelectItem key={cat} value={cat} className="text-[10px] uppercase font-bold">{cat}</SelectItem>)}
-                                      <SelectSeparator />
-                                      <div className="p-1">
-                                        <Button asChild variant="ghost" className="w-full h-8 justify-start gap-2 text-[9px] font-black uppercase text-primary hover:bg-primary/5">
-                                          <Link href="/settings?tab=master"><Settings className="h-3 w-3 mr-1" /> Manage Categories</Link>
-                                        </Button>
-                                      </div>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div className="col-span-1 lg:col-span-1">
-                                  <Label className="lg:hidden text-[9px] font-black uppercase text-muted-foreground mb-1 block">By</Label>
-                                  <Select value={entry.entryBy} onValueChange={(v) => updateRow(entry.id, 'entryBy', v)}>
-                                    <SelectTrigger className="h-10 text-[10px] font-bold uppercase border-none bg-muted/20 rounded-xl shadow-sm"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                      <SelectItem value="Owner" className="text-[10px] uppercase font-bold">Owner</SelectItem>
-                                      {(staffList || []).map((staff: any) => (
-                                        <SelectItem key={staff.id} value={staff.name} className="text-[10px] uppercase font-bold">{staff.name}</SelectItem>
-                                      ))}
-                                      <SelectSeparator />
-                                      <div className="p-1">
-                                        <Button asChild variant="ghost" className="w-full h-8 justify-start gap-2 text-[9px] font-black uppercase text-primary hover:bg-primary/5">
-                                          <Link href="/settings?tab=users"><Settings className="h-3 w-3 mr-1" /> Manage Team</Link>
-                                        </Button>
-                                      </div>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div className="flex items-center justify-center gap-2 col-span-2 lg:col-span-1">
-                                  <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    onClick={() => toggleRowNote(entry.id)}
-                                    className={cn("h-9 w-9 rounded-xl border-none shadow-sm", expandedRows[entry.id] ? "bg-primary text-white" : "bg-muted/30 text-muted-foreground")}
-                                  >
-                                    <MessageSquare className="h-4 w-4" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="hidden lg:flex h-9 w-9 text-destructive/40 hover:text-destructive hover:bg-destructive/5 rounded-xl opacity-0 group-hover/row:opacity-100 transition-all" onClick={() => removeRow(entry.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-
-                            {expandedRows[entry.id] && (
-                              <div className="px-4 lg:px-8 py-4 bg-muted/10 animate-in slide-in-from-top-2 duration-200">
-                                <div className="space-y-2">
-                                  <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Internal Note / Remark (Optional)</Label>
-                                  <Textarea 
-                                    placeholder="Type any extra details or remarks here..." 
-                                    value={entry.notes || ""}
-                                    onChange={(e) => updateRow(entry.id, 'notes', e.target.value)}
-                                    className="h-20 rounded-xl bg-white border-none shadow-inner text-xs font-bold p-4"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="p-6 border-t bg-muted/5 flex justify-center">
-                        <Button variant="outline" size="sm" className="h-10 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest border-primary/20 text-primary shadow-sm hover:bg-primary/5" onClick={addRow}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Row
-                        </Button>
-                      </div>
-                    </div>
-                  </ScrollArea>
-
-                  <div className="bg-muted/30 p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4 border-t shrink-0 z-20">
-                    <div className="flex gap-6 md:gap-10 overflow-x-auto scrollbar-hide w-full sm:w-auto px-2">
-                      <div className="space-y-0.5 shrink-0">
-                        <p className="text-[8px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Batch Credit</p>
-                        <p className="text-lg md:text-xl font-black text-green-600">{currencySymbol}{batchStats.credit.toLocaleString()}</p>
-                      </div>
-                      <div className="space-y-0.5 shrink-0">
-                        <p className="text-[8px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Batch Debit</p>
-                        <p className="text-lg md:text-xl font-black text-destructive">{currencySymbol}{batchStats.debit.toLocaleString()}</p>
-                      </div>
-                      <div className="space-y-0.5 shrink-0">
-                        <p className="text-[8px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Net Total</p>
-                        <p className={cn("text-lg md:text-xl font-black", batchStats.net >= 0 ? "text-primary" : "text-destructive")}>{currencySymbol}{batchStats.net.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <Button className="h-12 w-full md:w-auto px-12 bg-primary font-black uppercase text-xs tracking-widest shadow-xl rounded-2xl active:scale-95 transition-all" onClick={handleSaveBatch}>
-                      Post Batch Entries
-                    </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
+                  <Filter className="mr-2 h-3.5 w-3.5" /> Filters
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 rounded-2xl border-none shadow-2xl p-5 space-y-4" align="start">
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Particulars Search</Label>
+                  <Input placeholder="Search..." value={filters.particulars} onChange={(e) => setFilters(p => ({...p, particulars: e.target.value}))} className="h-9 rounded-xl text-xs font-bold" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Type</Label>
+                    <Select value={filters.type} onValueChange={(v) => setFilters(p => ({...p, type: v}))}>
+                      <SelectTrigger className="h-9 text-xs font-bold rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem><SelectItem value="credit">Credit</SelectItem><SelectItem value="debit">Debit</SelectItem><SelectItem value="nc">NC</SelectItem><SelectItem value="due">Due</SelectItem></SelectContent>
+                    </Select>
                   </div>
-                </DialogContent>
-              </Dialog>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Vendor</Label>
+                    <Select value={filters.vendor} onValueChange={(v) => setFilters(p => ({...p, vendor: v}))}>
+                      <SelectTrigger className="h-9 text-xs font-bold rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem>{(vendorsData || []).map(v => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Category</Label>
+                  <Select value={filters.category} onValueChange={(v) => setFilters(p => ({...p, category: v}))}>
+                    <SelectTrigger className="h-9 text-xs font-bold rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem>{dynamicCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Min Rate</Label>
+                    <Input type="number" placeholder="0" value={filters.minRate} onChange={(e) => setFilters(p => ({...p, minRate: e.target.value}))} className="h-9 rounded-xl text-xs font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Max Rate</Label>
+                    <Input type="number" placeholder="0" value={filters.maxRate} onChange={(e) => setFilters(p => ({...p, maxRate: e.target.value}))} className="h-9 rounded-xl text-xs font-bold" />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Link href="/batch-entry" passHref>
+              <Button className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-[0.1em] rounded-xl text-white">
+                <Plus className="mr-2 h-4 w-4" /> Batch Entry
+              </Button>
+            </Link>
             </div>
-          </div>
-          
-          <div className="relative w-full lg:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search descriptions..." className="h-11 pl-10 text-xs bg-white border-none shadow-inner rounded-xl w-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          </div>
-        </div>
-      </div>
+            
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-slate-500 relative overflow-hidden group">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Opening Balance</p>
-          <div className="text-2xl md:text-3xl font-black text-slate-600">{currencySymbol}{stats.openingBalance.toLocaleString()}</div>
+          </div>
+
+
+      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-slate-500 relative overflow-hidden group">
+          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Opening Balance</p>
+          <div className="text-lg sm:text-2xl md:text-3xl font-black text-slate-600 truncate">{currencySymbol}{stats.openingBalance.toLocaleString()}</div>
         </Card>
         
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-purple-500 relative overflow-hidden group">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Current Balance</p>
-          <div className="text-2xl md:text-3xl font-black text-purple-600">{currencySymbol}{stats.currentBalance.toLocaleString()}</div>
+        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-purple-500 relative overflow-hidden group">
+          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Current Balance</p>
+          <div className="text-lg sm:text-2xl md:text-3xl font-black text-purple-600 truncate">{currencySymbol}{stats.currentBalance.toLocaleString()}</div>
         </Card>
 
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-amber-500 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><AlertCircle className="h-10 w-10 text-amber-600" /></div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Period NC</p>
-          <div className="text-2xl md:text-3xl font-black text-amber-600">{currencySymbol}{stats.periodNC.toLocaleString()}</div>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-blue-500 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><Clock className="h-10 w-10 text-blue-600" /></div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Period Due</p>
-          <div className="text-2xl md:text-3xl font-black text-blue-600">{currencySymbol}{stats.periodDue.toLocaleString()}</div>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-green-500 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><TrendingUp className="h-10 w-10 text-green-600" /></div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Period Cash In</p>
-          <div className="text-2xl md:text-3xl font-black text-green-600">{currencySymbol}{stats.periodCredit.toLocaleString()}</div>
+        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-green-500 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" /></div>
+          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period Cash In</p>
+          <div className="text-lg sm:text-2xl md:text-3xl font-black text-green-600 truncate">{currencySymbol}{stats.periodCredit.toLocaleString()}</div>
         </Card>
         
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-destructive relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><TrendingDown className="h-10 w-10 text-destructive" /></div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Period Cash Out</p>
-          <div className="text-2xl md:text-3xl font-black text-destructive">{currencySymbol}{stats.periodDebit.toLocaleString()}</div>
+        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-destructive relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><TrendingDown className="h-6 w-6 sm:h-8 sm:w-8 text-destructive" /></div>
+          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period Cash Out</p>
+          <div className="text-lg sm:text-2xl md:text-3xl font-black text-destructive truncate">{currencySymbol}{stats.periodDebit.toLocaleString()}</div>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-amber-500 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600" /></div>
+          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period NC</p>
+          <div className="text-lg sm:text-2xl md:text-3xl font-black text-amber-600 truncate">{currencySymbol}{stats.periodNC.toLocaleString()}</div>
+        </Card>
+
+        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-blue-500 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" /></div>
+          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period Due</p>
+          <div className="text-lg sm:text-2xl md:text-3xl font-black text-blue-600 truncate">{currencySymbol}{stats.periodDue.toLocaleString()}</div>
         </Card>
         
         <Card className={cn(
-          "p-6 rounded-2xl border-l-4 shadow-sm relative overflow-hidden group",
+          "col-span-2 p-3.5 sm:p-5 rounded-2xl border-l-4 shadow-sm relative overflow-hidden group",
           stats.netBalance >= 0 ? "border-l-primary bg-primary/5" : "border-l-destructive bg-destructive/5"
         )}>
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform"><Wallet className="h-10 w-10 text-primary" /></div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Net Balance</p>
-          <div className={cn("text-2xl md:text-3xl font-black", stats.netBalance >= 0 ? "text-primary" : "text-destructive")}>
+          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><Wallet className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /></div>
+          <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary mb-1 truncate">Net Balance</p>
+          <div className={cn("text-lg sm:text-2xl md:text-3xl font-black truncate", stats.netBalance >= 0 ? "text-primary" : "text-destructive")}>
             {currencySymbol}{stats.netBalance.toLocaleString()}
           </div>
         </Card>
       </div>
 
       <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border">
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto w-full">
           <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow className="bg-muted/10">
@@ -891,9 +763,9 @@ export default function DailyEntriesPage() {
             </TableHeader>
             <TableBody>
               {isEntriesLoading ? (
-                <TableRow><TableCell colSpan={6} className="h-40 text-center opacity-40"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="h-40 text-center opacity-40"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
               ) : filteredEntries.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="h-40 text-center opacity-40 uppercase text-[10px] font-black italic tracking-widest">No entries found for this window.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={13} className="h-40 text-center opacity-40 uppercase text-[10px] font-black italic tracking-widest">No entries found for this window.</TableCell></TableRow>
               ) : (
                 filteredEntries.map((entry) => (
                   <React.Fragment key={entry.id}>
@@ -917,10 +789,26 @@ export default function DailyEntriesPage() {
                       <TableCell className="text-xs font-bold text-slate-600 truncate max-w-[100px]">{entry.remark || entry.notes || '-'}</TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full" onClick={() => setEditTarget({...entry, rate: entry.rate.toString(), qty: entry.qty.toString()})}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditTarget({...entry, rate: (entry.rate ?? 0).toString(), qty: (entry.qty ?? 0).toString()});
+                            }}
+                          >
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/50 hover:text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setDeleteTarget(entry.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-destructive/50 hover:text-destructive hover:bg-destructive/10 rounded-full" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(entry.id);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -928,7 +816,7 @@ export default function DailyEntriesPage() {
                     </TableRow>
                     {expandedReportRows[entry.id] && entry.notes && (
                       <TableRow className="bg-muted/5 animate-in slide-in-from-top-1">
-                        <TableCell colSpan={6} className="pl-12 py-4">
+                        <TableCell colSpan={13} className="pl-12 py-4">
                           <div className="flex items-start gap-3">
                             <CornerDownRight className="h-4 w-4 text-primary/40 mt-0.5" />
                             <div className="p-4 bg-white rounded-2xl border shadow-sm max-w-2xl">
@@ -944,70 +832,161 @@ export default function DailyEntriesPage() {
               )}
             </TableBody>
           </Table>
-          <div className="p-4 flex justify-center">
+          <div className="p-4 flex justify-center border-t">
             <Button variant="outline" onClick={() => setPageLimit(prev => prev + 20)} className="rounded-xl font-black uppercase tracking-widest text-xs">Load More</Button>
           </div>
         </div>
 
         <div className="md:hidden divide-y divide-border">
           {isEntriesLoading ? (
-            <div className="p-20 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            <div className="p-16 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-7 w-7 animate-spin text-primary" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading Cash Book...</p>
+            </div>
           ) : filteredEntries.length === 0 ? (
-            <div className="p-20 text-center opacity-30 text-[10px] font-black uppercase italic tracking-widest">No matching records</div>
+            <div className="p-16 text-center opacity-40 text-xs font-black uppercase italic tracking-widest">
+              No matching records found
+            </div>
           ) : (
-            filteredEntries.map((entry) => (
-              <div 
-                key={entry.id} 
-                className="p-5 space-y-4 hover:bg-muted/5 transition-colors cursor-pointer"
-                onClick={() => toggleReportNote(entry.id)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "h-8 w-8 rounded-xl flex items-center justify-center shrink-0",
-                      entry.type === 'credit' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-                    )}>
-                      {entry.type === 'credit' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-slate-900 truncate">{entry.particulars}</p>
-                        {entry.notes && <Badge variant="secondary" className="h-3 text-[6px] font-black px-1 uppercase">Note</Badge>}
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">{new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
-                        <Separator orientation="vertical" className="h-2" />
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">{entry.category}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p className={cn("text-lg font-black", entry.type === 'credit' ? "text-green-600" : "text-destructive")}>
-                    {entry.type === 'credit' ? '+' : '-'} {currencySymbol}{entry.amount.toLocaleString()}
-                  </p>
-                </div>
-                
-                {expandedReportRows[entry.id] && entry.notes && (
-                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 animate-in zoom-in-95">
-                    <p className="text-[8px] font-black uppercase text-primary mb-1 tracking-widest">Remark</p>
-                    <p className="text-xs font-bold text-slate-600 leading-relaxed">"{entry.notes}"</p>
-                  </div>
-                )}
+            filteredEntries.map((entry) => {
+              const isCredit = entry.type === 'credit';
+              const isDebit = entry.type === 'debit';
+              const isNC = entry.type === 'nc';
+              const isDue = entry.type === 'due';
 
-                <div className="flex items-center justify-between bg-muted/20 p-2.5 rounded-xl border border-transparent">
-                  <span className="text-[9px] font-black text-slate-400 uppercase">Rate: {currencySymbol}{entry.rate} × {entry.qty} {entry.unit}</span>
-                  <span className="text-[9px] font-black text-slate-400 uppercase">By: {entry.entryBy || 'Owner'}</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/50 hover:text-destructive hover:bg-destructive/10 rounded-full" onClick={() => setDeleteTarget(entry.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full" onClick={() => setEditTarget({...entry, rate: entry.rate.toString(), qty: entry.qty.toString()})}>
-                    <Edit2 className="h-3 w-3" />
-                  </Button>
+              return (
+                <div 
+                  key={entry.id} 
+                  className="p-4 space-y-3 hover:bg-muted/5 transition-colors cursor-pointer bg-white active:bg-muted/10"
+                  onClick={() => toggleReportNote(entry.id)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={cn(
+                        "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border",
+                        isCredit && "bg-emerald-50 text-emerald-600 border-emerald-200/50",
+                        isDebit && "bg-rose-50 text-rose-600 border-rose-200/50",
+                        isNC && "bg-amber-50 text-amber-600 border-amber-200/50",
+                        isDue && "bg-blue-50 text-blue-600 border-blue-200/50"
+                      )}>
+                        {isCredit && <ArrowUpRight className="h-4 w-4" />}
+                        {isDebit && <ArrowDownLeft className="h-4 w-4" />}
+                        {isNC && <FileText className="h-4 w-4" />}
+                        {isDue && <Clock className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-sm font-bold text-slate-900 truncate block">
+                            {entry.particulars}
+                          </span>
+                          {(entry.notes || entry.remark) && (
+                            <Badge variant="secondary" className="h-4 text-[7px] font-black px-1 uppercase bg-primary/10 text-primary">
+                              Note
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 text-[9px] font-black text-muted-foreground uppercase">
+                          <span>{new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                          <span className="opacity-40">•</span>
+                          <span>{entry.category}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <p className={cn(
+                        "text-base font-black tracking-tight",
+                        isCredit && "text-emerald-600",
+                        isDebit && "text-rose-600",
+                        isNC && "text-amber-600",
+                        isDue && "text-blue-600"
+                      )}>
+                        {isCredit ? '+' : isDebit ? '-' : ''} {currencySymbol}{entry.amount.toLocaleString()}
+                      </p>
+                      <Badge className={cn(
+                        "text-[7px] font-black uppercase mt-0.5 h-4 px-1.5 border-none",
+                        isCredit && "bg-emerald-100 text-emerald-700",
+                        isDebit && "bg-rose-100 text-rose-700",
+                        isNC && "bg-amber-100 text-amber-700",
+                        isDue && "bg-blue-100 text-blue-700"
+                      )}>
+                        {entry.type}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Vendor & Payment Badges if available */}
+                  {(entry.vendorName || entry.paymentMethod) && (
+                    <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                      {entry.vendorName && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[9px] font-bold">
+                          <span className="text-slate-400 font-medium">Vendor:</span> {entry.vendorName}
+                        </div>
+                      )}
+                      {entry.paymentMethod && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[9px] font-bold">
+                          <span className="text-slate-400 font-medium">Pay:</span> {entry.paymentMethod}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Expanded Note preview if toggled */}
+                  {expandedReportRows[entry.id] && (entry.notes || entry.remark) && (
+                    <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in zoom-in-95">
+                      <p className="text-[8px] font-black uppercase text-primary mb-1 tracking-widest flex items-center gap-1">
+                        <MessageSquare className="h-2.5 w-2.5" /> Remark / Note
+                      </p>
+                      <p className="text-xs font-semibold text-slate-700 leading-relaxed italic">
+                        "{entry.notes || entry.remark}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Bottom Strip: Rate x Qty + Creator + Actions */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[10px]">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight">
+                        Rate: {currencySymbol}{entry.rate} × {entry.qty} {entry.unit || 'units'}
+                      </span>
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">
+                        By: {entry.addedBy || entry.entryBy || 'Owner'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-bold"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditTarget({...entry, rate: (entry.rate ?? 0).toString(), qty: (entry.qty ?? 0).toString()});
+                        }}
+                      >
+                        <Edit2 className="h-3.5 w-3.5 mr-1" /> Edit
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(entry.id);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
-          <div className="p-4">
-              <Button variant="outline" onClick={() => setPageLimit(prev => prev + 20)} className="w-full rounded-xl font-black uppercase tracking-widest text-xs">Load More</Button>
+          <div className="p-4 bg-slate-50/50">
+            <Button variant="outline" onClick={() => setPageLimit(prev => prev + 20)} className="w-full h-11 rounded-xl font-black uppercase tracking-widest text-xs bg-white shadow-sm">
+              Load More Entries
+            </Button>
           </div>
         </div>
       </Card>
@@ -1025,61 +1004,105 @@ export default function DailyEntriesPage() {
       </AlertDialog>
 
       <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
-        <DialogContent className="rounded-2xl border-none shadow-2xl max-w-lg">
+        <DialogContent className="rounded-2xl border-none shadow-2xl max-w-lg w-[95vw] sm:w-full p-5 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-widest text-lg">Edit Entry</DialogTitle>
+            <DialogTitle className="font-black uppercase tracking-widest text-base sm:text-lg">Edit Entry</DialogTitle>
           </DialogHeader>
           {editTarget && (
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4 pt-2 sm:pt-4">
               <div className="space-y-1.5">
-                <Label>Particulars</Label>
-                <Input value={editTarget.particulars} onChange={(e) => setEditTarget({...editTarget, particulars: e.target.value})} className="rounded-xl"/>
+                <Label className="text-xs font-bold uppercase text-slate-500">Particulars</Label>
+                <Input value={editTarget.particulars || ""} onChange={(e) => setEditTarget({...editTarget, particulars: e.target.value})} className="rounded-xl h-11"/>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
-                    <Label>Rate</Label>
-                    <Input type="number" value={editTarget.rate} onChange={(e) => {
-                        const rate = parseFloat(e.target.value) || 0;
-                        const qty = parseFloat(editTarget.qty) || 0;
-                        setEditTarget({...editTarget, rate: e.target.value, amount: rate * qty});
-                    }} className="rounded-xl"/>
+                  <Label className="text-xs font-bold uppercase text-slate-500">Rate ({currencySymbol})</Label>
+                  <Input type="number" value={editTarget.rate || ""} onChange={(e) => {
+                    const rate = parseFloat(e.target.value) || 0;
+                    const qty = parseFloat(editTarget.qty) || 0;
+                    setEditTarget({...editTarget, rate: e.target.value, amount: rate * qty});
+                  }} className="rounded-xl h-11"/>
                 </div>
                 <div className="space-y-1.5">
-                    <Label>Qty</Label>
-                    <Input type="number" value={editTarget.qty} onChange={(e) => {
-                        const rate = parseFloat(editTarget.rate) || 0;
-                        const qty = parseFloat(e.target.value) || 0;
-                        setEditTarget({...editTarget, qty: e.target.value, amount: rate * qty});
-                    }} className="rounded-xl"/>
+                  <Label className="text-xs font-bold uppercase text-slate-500">Quantity</Label>
+                  <Input type="number" value={editTarget.qty || ""} onChange={(e) => {
+                    const rate = parseFloat(editTarget.rate) || 0;
+                    const qty = parseFloat(e.target.value) || 0;
+                    setEditTarget({...editTarget, qty: e.target.value, amount: rate * qty});
+                  }} className="rounded-xl h-11"/>
                 </div>
               </div>
-               <div className="space-y-1.5">
-                <Label>Notes</Label>
-                <Textarea value={editTarget.notes} onChange={(e) => setEditTarget({...editTarget, notes: e.target.value})} className="rounded-xl"/>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Type</Label>
+                  <Select value={editTarget.type} onValueChange={(v) => setEditTarget({...editTarget, type: v as any})}>
+                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="credit">Credit (+)</SelectItem>
+                      <SelectItem value="debit">Debit (-)</SelectItem>
+                      <SelectItem value="nc">NC (Free)</SelectItem>
+                      <SelectItem value="due">Due Pay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Category</Label>
+                  <Select value={editTarget.category} onValueChange={(v) => setEditTarget({...editTarget, category: v})}>
+                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {dynamicCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Unit</Label>
+                  <Select value={editTarget.unit} onValueChange={(v) => setEditTarget({...editTarget, unit: v})}>
+                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {dynamicUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500">Vendor</Label>
+                  <Select value={editTarget.vendorName || "none"} onValueChange={(v) => setEditTarget({...editTarget, vendorName: v === "none" ? "" : v})}>
+                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {vendorsData.map((v: any) => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase text-slate-500">Notes / Remarks</Label>
+                <Textarea value={editTarget.notes || ""} onChange={(e) => setEditTarget({...editTarget, notes: e.target.value})} className="rounded-xl min-h-[80px]"/>
               </div>
             </div>
           )}
-          <DialogFooter className="pt-4">
-            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-xl font-black uppercase tracking-widest">Cancel</Button>
-            <Button onClick={handleUpdate} className="bg-primary hover:bg-primary/90 rounded-xl font-black uppercase tracking-widest">Save Changes</Button>
+          <DialogFooter className="pt-3 sm:pt-4 flex flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-xl font-black uppercase tracking-widest w-full sm:w-auto h-11">Cancel</Button>
+            <Button onClick={handleUpdate} className="bg-primary hover:bg-primary/90 rounded-xl font-black uppercase tracking-widest w-full sm:w-auto h-11">Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isAddVendorOpen} onOpenChange={setIsAddVendorOpen}>
-        <DialogContent className="rounded-2xl border-none shadow-2xl max-w-lg">
+        <DialogContent className="rounded-2xl border-none shadow-2xl max-w-lg w-[95vw] sm:w-full p-5 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-widest text-lg">Register Supplier Node</DialogTitle>
+            <DialogTitle className="font-black uppercase tracking-widest text-base sm:text-lg">Register Supplier Node</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 pt-4">
-            <div className="space-y-1.5"><Label>Full Name *</Label><Input value={newVendorName} onChange={(e) => setNewVendorName(e.target.value)} className="rounded-xl"/></div>
-            <div className="space-y-1.5"><Label>WhatsApp *</Label><Input value={newVendorPhone} onChange={(e) => setNewVendorPhone(e.target.value)} className="rounded-xl"/></div>
-            <div className="space-y-1.5"><Label>Business Identity</Label><Input placeholder="Business Name" className="rounded-xl"/></div>
-            <div className="space-y-1.5"><Label>GSTIN</Label><Input placeholder="GSTIN" className="rounded-xl"/></div>
-            <div className="col-span-2 space-y-1.5"><Label>Billing Address</Label><Textarea placeholder="Address" className="rounded-xl"/></div>
-            <div className="col-span-2 space-y-1.5"><Label>Opening Dues (₹)</Label><Input type="number" defaultValue="0" className="rounded-xl"/></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 sm:pt-4">
+            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Full Name *</Label><Input value={newVendorName || ""} onChange={(e) => setNewVendorName(e.target.value)} className="rounded-xl h-11"/></div>
+            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">WhatsApp *</Label><Input value={newVendorPhone || ""} onChange={(e) => setNewVendorPhone(e.target.value)} className="rounded-xl h-11"/></div>
+            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Business Identity</Label><Input placeholder="Business Name" className="rounded-xl h-11"/></div>
+            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">GSTIN</Label><Input placeholder="GSTIN" className="rounded-xl h-11"/></div>
+            <div className="col-span-1 sm:col-span-2 space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Billing Address</Label><Textarea placeholder="Address" className="rounded-xl"/></div>
+            <div className="col-span-1 sm:col-span-2 space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Opening Dues (₹)</Label><Input type="number" defaultValue="0" className="rounded-xl h-11"/></div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pt-3">
             <Button onClick={() => {
                 if(!businessId || !newVendorName) return;
                 addDocumentNonBlocking(collection(firestore, 'businesses', businessId, 'vendors'), {

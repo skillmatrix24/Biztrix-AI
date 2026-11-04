@@ -522,7 +522,7 @@ export default function CouponManagementPage() {
           </div>
         ) : filteredCoupons.map((c: any) => (
           <div key={c.id} onClick={() => setInspectingCoupon(c)} className="cursor-pointer group animate-in fade-in duration-500">
-             <CouponPreviewCard data={c} business={business} currencySymbol={currencySymbol} isCompact onEdit={(e) => handleEdit(e, c)} onDelete={() => { setCouponToDelete(c); setIsDeleteAlertOpen(true); }} />
+             <CouponPreviewCard data={c} business={business} currencySymbol={currencySymbol} isCompact onEdit={(e: any) => handleEdit(e, c)} onDelete={() => { setCouponToDelete(c); setIsDeleteAlertOpen(true); }} />
           </div>
         ))}
       </div>

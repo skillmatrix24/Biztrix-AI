@@ -309,7 +309,7 @@ function NewSolarInquiryContent() {
             <div className="flex flex-col sm:flex-row gap-6">
                <div className="w-full sm:w-48 space-y-2 text-left">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Source Type</Label>
-                  <Select value={formData.sourceType} onValueChange={(v: any) => { setFormData({...formData, sourceType: v, sourceId: ""}); setSearchTerm(""); }}>
+                  <Select value={formData.sourceType || ""} onValueChange={(v: any) => { setFormData({...formData, sourceType: v, sourceId: ""}); setSearchTerm(""); }}>
                     <SelectTrigger className="h-12 rounded-2xl bg-white border-muted font-black text-[10px] uppercase"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl">
                       <SelectItem value="lead" className="text-[10px] font-bold uppercase">From CRM Leads</SelectItem>
@@ -371,7 +371,7 @@ function NewSolarInquiryContent() {
                   <Plus className="h-2.5 w-2.5" /> Add Dealer
                 </Button>
               </div>
-              <Select value={formData.dealerId} onValueChange={(v) => setFormData({...formData, dealerId: v})}>
+              <Select value={formData.dealerId || ""} onValueChange={(v) => setFormData({...formData, dealerId: v})}>
                 <SelectTrigger className="h-12 rounded-2xl bg-muted/20 border-none shadow-inner font-bold">
                   <SelectValue placeholder="No Dealer (Direct)" />
                 </SelectTrigger>
@@ -413,7 +413,7 @@ function NewSolarInquiryContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Property Classification</Label>
-                <Select value={formData.propertyType} onValueChange={(v) => setFormData({...formData, propertyType: v})}>
+                <Select value={formData.propertyType || ""} onValueChange={(v) => setFormData({...formData, propertyType: v})}>
                   <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     {["Residential", "Commercial", "Industrial", "Agricultural", "Other"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -422,7 +422,7 @@ function NewSolarInquiryContent() {
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Electricity Connection Type</Label>
-                <Select value={formData.electricityConnection} onValueChange={(v) => setFormData({...formData, electricityConnection: v})}>
+                <Select value={formData.electricityConnection || ""} onValueChange={(v) => setFormData({...formData, electricityConnection: v})}>
                   <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl">
                     {["Single Phase", "Three Phase", "High Tension (HT)"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -436,21 +436,21 @@ function NewSolarInquiryContent() {
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Avg. Monthly Units (kWh)</Label>
                 <div className="relative">
                    <LayoutList className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
-                   <Input type="number" value={formData.averageMonthlyUnits} onChange={(e) => setFormData({...formData, averageMonthlyUnits: e.target.value})} className="h-12 pl-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                   <Input type="number" value={formData.averageMonthlyUnits || ""} onChange={(e) => setFormData({...formData, averageMonthlyUnits: e.target.value})} className="h-12 pl-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Avg. Monthly Bill ({currencySymbol})</Label>
                 <div className="relative">
                    <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-400">{currencySymbol}</div>
-                   <Input type="number" value={formData.monthlyBill} onChange={(e) => setFormData({...formData, monthlyBill: e.target.value})} className="h-12 pl-10 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                   <Input type="number" value={formData.monthlyBill || ""} onChange={(e) => setFormData({...formData, monthlyBill: e.target.value})} className="h-12 pl-10 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-primary ml-1">Required Capacity (kW)</Label>
                 <div className="relative">
                    <Zap className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                   <Input type="number" value={formData.requiredCapacity} onChange={(e) => setFormData({...formData, requiredCapacity: e.target.value})} className="h-12 pl-12 rounded-xl bg-primary/5 border-none shadow-inner font-black text-primary text-lg" placeholder="0.0" />
+                   <Input type="number" value={formData.requiredCapacity || ""} onChange={(e) => setFormData({...formData, requiredCapacity: e.target.value})} className="h-12 pl-12 rounded-xl bg-primary/5 border-none shadow-inner font-black text-primary text-lg" placeholder="0.0" />
                 </div>
               </div>
             </div>
@@ -465,7 +465,7 @@ function NewSolarInquiryContent() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Roof Type</Label>
-                    <Select value={formData.roofType} onValueChange={(v) => setFormData({...formData, roofType: v})}>
+                    <Select value={formData.roofType || ""} onValueChange={(v) => setFormData({...formData, roofType: v})}>
                       <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-xl">
                         {["Concrete (RCC)", "Tin Shade", "Asbestos Sheet", "Tile Roof", "Open Ground", "Other"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -476,7 +476,7 @@ function NewSolarInquiryContent() {
                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Approx. Roof Area (sq.ft)</Label>
                     <div className="relative">
                        <Scaling className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-30" />
-                       <Input type="number" value={formData.roofArea} onChange={(e) => setFormData({...formData, roofArea: e.target.value})} className="h-12 pl-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
+                       <Input type="number" value={formData.roofArea || ""} onChange={(e) => setFormData({...formData, roofArea: e.target.value})} className="h-12 pl-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
                     </div>
                  </div>
               </div>
@@ -484,12 +484,12 @@ function NewSolarInquiryContent() {
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Installation Location / Address</Label>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-4 h-4 w-4 text-muted-foreground opacity-30" />
-                  <Textarea value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} className="min-h-[100px] pl-12 rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-sm font-medium" placeholder="Full address of site..." />
+                  <Textarea value={formData.location || ""} onChange={(e) => setFormData({...formData, location: e.target.value})} className="min-h-[100px] pl-12 rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-sm font-medium" placeholder="Full address of site..." />
                 </div>
               </div>
               <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Technical Notes</Label>
-                <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-sm font-medium" placeholder="Orientation, shading concerns, structure height, etc." />
+                <Textarea value={formData.notes || ""} onChange={(e) => setFormData({...formData, notes: e.target.value})} className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-sm font-medium" placeholder="Orientation, shading concerns, structure height, etc." />
               </div>
             </div>
           </CardContent>
@@ -512,18 +512,18 @@ function NewSolarInquiryContent() {
                </div>
             </DialogHeader>
             <div className="p-8 space-y-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Name *</Label><Input value={newLeadData.name} onChange={(e) => setNewLeadData({...newLeadData, name: e.target.value})} className="h-11 rounded-xl" /></div>
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Phone *</Label><Input value={newLeadData.phone} onChange={(e) => setNewLeadData({...newLeadData, phone: e.target.value.replace(/\D/g, '')})} className="h-11 rounded-xl" placeholder="91XXXXXXXX" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Name *</Label><Input value={newLeadData.name || ""} onChange={(e) => setNewLeadData({...newLeadData, name: e.target.value})} className="h-11 rounded-xl" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Phone *</Label><Input value={newLeadData.phone || ""} onChange={(e) => setNewLeadData({...newLeadData, phone: e.target.value.replace(/\D/g, '')})} className="h-11 rounded-xl" placeholder="91XXXXXXXX" /></div>
                <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold uppercase">Source</Label>
-                  <Select value={newLeadData.source} onValueChange={(v) => setNewLeadData({...newLeadData, source: v})}>
+                  <Select value={newLeadData.source || ""} onValueChange={(v) => setNewLeadData({...newLeadData, source: v})}>
                     <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl">
                       {LEAD_SOURCES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                </div>
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Notes</Label><Textarea value={newLeadData.notes} onChange={(e) => setNewLeadData({...newLeadData, notes: e.target.value})} className="h-20 rounded-xl" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase">Notes</Label><Textarea value={newLeadData.notes || ""} onChange={(e) => setNewLeadData({...newLeadData, notes: e.target.value})} className="h-20 rounded-xl" /></div>
             </div>
             <DialogFooter className="p-8 bg-muted/10 border-t">
                <Button onClick={handleQuickAddLead} disabled={!newLeadData.name || !newLeadData.phone} className="w-full h-14 bg-primary font-black uppercase text-xs rounded-2xl shadow-xl">Establish Lead Node</Button>
@@ -550,25 +550,25 @@ function NewSolarInquiryContent() {
           </DialogHeader>
           <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Full Name *</Label><Input value={newVendorData.name} onChange={(e) => setNewVendorData({...newVendorData, name: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none" /></div>
-               <div className="space-y-1.5"><Label className="text-[10px) font-bold uppercase text-muted-foreground">WhatsApp *</Label><Input value={newVendorData.phone} onChange={(e) => setNewVendorData({...newVendorData, phone: e.target.value.replace(/\D/g, '')})} placeholder="91XXXXXXXX" className="h-12 rounded-xl font-bold bg-muted/20 border-none" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Full Name *</Label><Input value={newVendorData.name || ""} onChange={(e) => setNewVendorData({...newVendorData, name: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px) font-bold uppercase text-muted-foreground">WhatsApp *</Label><Input value={newVendorData.phone || ""} onChange={(e) => setNewVendorData({...newVendorData, phone: e.target.value.replace(/\D/g, '')})} placeholder="91XXXXXXXX" className="h-12 rounded-xl font-bold bg-muted/20 border-none" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Business Identity</Label><Input value={newVendorData.businessName} onChange={(e) => setNewVendorData({...newVendorData, businessName: e.target.value})} className="h-12 rounded-xl bg-muted/20 border-none" /></div>
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">GSTIN</Label><Input value={newVendorData.gstin} onChange={(e) => setNewVendorData({...newVendorData, gstin: e.target.value.toUpperCase()})} className="h-12 rounded-xl font-mono uppercase bg-muted/20 border-none" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Business Identity</Label><Input value={newVendorData.businessName || ""} onChange={(e) => setNewVendorData({...newVendorData, businessName: e.target.value})} className="h-12 rounded-xl bg-muted/20 border-none" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">GSTIN</Label><Input value={newVendorData.gstin || ""} onChange={(e) => setNewVendorData({...newVendorData, gstin: e.target.value.toUpperCase()})} className="h-12 rounded-xl font-mono uppercase bg-muted/20 border-none" /></div>
             </div>
             <div className="space-y-1.5 text-left">
               <Label className="text-[10px] font-bold uppercase text-muted-foreground">State Registry</Label>
-              <Select value={newVendorData.state} onValueChange={(v) => setNewVendorData({...newVendorData, state: v})}>
+              <Select value={newVendorData.state || ""} onValueChange={(v) => setNewVendorData({...newVendorData, state: v})}>
                 <SelectTrigger className="h-12 rounded-xl bg-white border-muted shadow-sm font-bold text-xs uppercase"><SelectValue /></SelectTrigger>
                 <SelectContent className="rounded-xl max-h-40 border-none shadow-2xl">
                   {INDIAN_STATES.map(s => <SelectItem key={s} value={s} className="text-xs font-bold uppercase">{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Billing Address</Label><Textarea value={newVendorData.address} onChange={(e) => setNewVendorData({...newVendorData, address: e.target.value})} className="h-20 rounded-xl bg-muted/20 border-none text-xs" /></div>
+            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Billing Address</Label><Textarea value={newVendorData.address || ""} onChange={(e) => setNewVendorData({...newVendorData, address: e.target.value})} className="h-20 rounded-xl bg-muted/20 border-none text-xs" /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Opening Dues ({currencySymbol})</Label><Input type="number" value={newVendorData.openingBalance} onChange={(e) => setNewVendorData({...newVendorData, openingBalance: e.target.value})} className="h-12 rounded-xl bg-red-50 text-red-600 border-none font-bold" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Opening Dues ({currencySymbol})</Label><Input type="number" value={newVendorData.openingBalance || ""} onChange={(e) => setNewVendorData({...newVendorData, openingBalance: e.target.value})} className="h-12 rounded-xl bg-red-50 text-red-600 border-none font-bold" /></div>
             </div>
           </div>
           <DialogFooter className="p-8 bg-muted/10 border-t">

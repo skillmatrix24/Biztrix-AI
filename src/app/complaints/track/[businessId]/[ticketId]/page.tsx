@@ -35,7 +35,8 @@ import {
   PhoneCall, 
   Users,
   LayoutList,
-  Target
+  Target,
+  Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

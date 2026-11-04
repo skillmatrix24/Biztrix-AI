@@ -504,7 +504,7 @@ export default function WhatsAppAutomationPage() {
                            </div>
                         </ScrollArea>
                         <form onSubmit={handleSimulate} className="p-3 bg-white border-t flex gap-2 shrink-0">
-                           <Input value={simInput} onChange={(e) => setSimInput(e.target.value)} placeholder="Type a keyword (e.g. Hi)..." className="h-9 rounded-xl text-[10px] font-bold border-none bg-muted/20 shadow-inner" />
+                           <Input value={simInput || ""} onChange={(e) => setSimInput(e.target.value)} placeholder="Type a keyword (e.g. Hi)..." className="h-9 rounded-xl text-[10px] font-bold border-none bg-muted/20 shadow-inner" />
                            <Button type="submit" size="icon" className="h-9 w-9 rounded-xl shrink-0"><Send className="h-4 w-4" /></Button>
                         </form>
                      </div>
@@ -546,10 +546,10 @@ export default function WhatsAppAutomationPage() {
           <DialogHeader><DialogTitle>Add Stage</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div><Label>Day Offset</Label><Input type="number" value={newStep.day} onChange={(e) => setNewStep({...newStep, day: parseInt(e.target.value)})} /></div>
-              <div><Label>Label</Label><Input value={newStep.label} onChange={(e) => setNewStep({...newStep, label: e.target.value})} /></div>
+              <div><Label>Day Offset</Label><Input type="number" value={newStep.day ?? ""} onChange={(e) => setNewStep({...newStep, day: parseInt(e.target.value)})} /></div>
+              <div><Label>Label</Label><Input value={newStep.label || ""} onChange={(e) => setNewStep({...newStep, label: e.target.value})} /></div>
             </div>
-            <div><Label>Message</Label><Textarea value={newStep.template} onChange={(e) => setNewStep({...newStep, template: e.target.value})} /></div>
+            <div><Label>Message</Label><Textarea value={newStep.template || ""} onChange={(e) => setNewStep({...newStep, template: e.target.value})} /></div>
           </div>
           <DialogFooter><Button onClick={handleAddStep} className="w-full">Initialize Stage</Button></DialogFooter>
         </DialogContent>
@@ -559,8 +559,8 @@ export default function WhatsAppAutomationPage() {
         <DialogContent className="sm:max-w-[450px] rounded-3xl">
           <DialogHeader><DialogTitle>New Keyword Node</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Keywords (Comma separated)</Label><Input value={newKeyword.keywords} onChange={(e) => setNewKeyword({...newKeyword, keywords: e.target.value})} placeholder="e.g. hi, hello, namaste" /></div>
-            <div><Label>Reply Template</Label><Textarea value={newKeyword.template} onChange={(e) => setNewKeyword({...newKeyword, template: e.target.value})} /></div>
+            <div><Label>Keywords (Comma separated)</Label><Input value={newKeyword.keywords || ""} onChange={(e) => setNewKeyword({...newKeyword, keywords: e.target.value})} placeholder="e.g. hi, hello, namaste" /></div>
+            <div><Label>Reply Template</Label><Textarea value={newKeyword.template || ""} onChange={(e) => setNewKeyword({...newKeyword, template: e.target.value})} /></div>
           </div>
           <DialogFooter><Button onClick={handleAddKeyword} className="w-full">Activate Node</Button></DialogFooter>
         </DialogContent>
@@ -587,18 +587,18 @@ function BotflowDialog({ isOpen, onOpenChange, node, onSave, onUpdate, isKeyword
         <ScrollArea className="max-h-[60vh]">
           <div className="p-8 space-y-10">
             {isKeyword && (
-              <div className="space-y-4"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Trigger Keywords</Label><Input value={node.keywords} onChange={(e) => onUpdate({...node, keywords: e.target.value})} className="h-12 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
+              <div className="space-y-4"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Trigger Keywords</Label><Input value={node.keywords || ""} onChange={(e) => onUpdate({...node, keywords: e.target.value})} className="h-12 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
             )}
             <div className="space-y-4">
                <div className="flex items-center justify-between px-1"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Message Content</Label>{onAiSuggest && (<Button variant="ghost" size="sm" disabled={isAiLoading} onClick={onAiSuggest} className="h-6 text-[8px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5">{isAiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bot className="h-3.5 w-3.5" />} AI Draft</Button>)}</div>
-               <Textarea value={node.template} onChange={(e) => onUpdate({...node, template: e.target.value})} className="min-h-[140px] rounded-2xl bg-muted/20 border-none p-5 text-sm font-medium shadow-inner" />
+               <Textarea value={node.template || ""} onChange={(e) => onUpdate({...node, template: e.target.value})} className="min-h-[140px] rounded-2xl bg-muted/20 border-none p-5 text-sm font-medium shadow-inner" />
             </div>
             <div className="space-y-6">
                <div className="flex items-center justify-between px-1"><Label className="text-[10px] font-black uppercase text-primary tracking-widest">Bot Actions (Buttons)</Label><Button variant="ghost" size="sm" className="h-6 text-[8px] font-black uppercase text-primary" onClick={addBtn}>+ Add Button</Button></div>
                <div className="space-y-4">
                   {(node.buttons || []).length === 0 ? <div className="py-10 text-center opacity-30 border-2 border-dashed rounded-2xl text-[9px] font-black uppercase tracking-widest">No buttons defined</div> : (node.buttons || []).map((btn: any) => (
                     <div key={btn.id} className="p-5 bg-muted/20 rounded-2xl border border-transparent space-y-4 relative group">
-                       <div className="grid grid-cols-2 gap-4"><Select value={btn.type} onValueChange={(v) => updateBtn(btn.id, 'type', v)}><SelectTrigger className="h-10 rounded-xl bg-white text-[10px] font-bold uppercase"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-none shadow-2xl"><SelectItem value="QUICK_REPLY" className="text-[10px] font-bold uppercase">Quick Reply</SelectItem><SelectItem value="URL" className="text-[10px] font-bold uppercase">Website Link</SelectItem><SelectItem value="PHONE_NUMBER" className="text-[10px] font-bold uppercase">Call Agent</SelectItem></SelectContent></Select><Input placeholder="Button Label" value={btn.label} onChange={(e) => updateBtn(btn.id, 'label', e.target.value)} className="h-10 rounded-xl bg-white font-black text-[10px] uppercase" /></div>
+                       <div className="grid grid-cols-2 gap-4"><Select value={btn.type} onValueChange={(v) => updateBtn(btn.id, 'type', v)}><SelectTrigger className="h-10 rounded-xl bg-white text-[10px] font-bold uppercase"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-none shadow-2xl"><SelectItem value="QUICK_REPLY" className="text-[10px] font-bold uppercase">Quick Reply</SelectItem><SelectItem value="URL" className="text-[10px] font-bold uppercase">Website Link</SelectItem><SelectItem value="PHONE_NUMBER" className="text-[10px] font-bold uppercase">Call Agent</SelectItem></SelectContent></Select><Input placeholder="Button Label" value={btn.label || ""} onChange={(e) => updateBtn(btn.id, 'label', e.target.value)} className="h-10 rounded-xl bg-white font-black text-[10px] uppercase" /></div>
                        {btn.type !== 'QUICK_REPLY' && <Input placeholder={btn.type === 'URL' ? 'https://...' : '91XXXXXXXX'} value={btn.value || ""} onChange={(e) => updateBtn(btn.id, 'value', e.target.value)} className="h-9 rounded-xl bg-white font-mono text-[10px]" />}
                        <button onClick={() => removeBtn(btn.id)} className="absolute -top-2 -right-2 h-6 w-6 bg-white rounded-full shadow-md text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border"><X className="h-3 w-3" /></button>
                     </div>

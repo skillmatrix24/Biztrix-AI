@@ -193,14 +193,14 @@ function NewSolarServiceContent() {
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
                     <div className="space-y-2 text-left">
                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Service Category</Label>
-                       <Select value={formData.category} onValueChange={(v) => setFormData({...formData, category: v})}>
+                       <Select value={formData.category || ""} onValueChange={(v) => setFormData({...formData, category: v})}>
                           <SelectTrigger className="h-12 rounded-xl bg-white border-muted font-bold text-xs uppercase"><SelectValue /></SelectTrigger>
                           <SelectContent className="rounded-xl">{CATEGORIES.map(cat => <SelectItem key={cat.id} value={cat.id} className="text-xs font-bold uppercase">{cat.label}</SelectItem>)}</SelectContent>
                        </Select>
                     </div>
                     <div className="space-y-2 text-left">
                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Priority Node</Label>
-                       <Select value={formData.priority} onValueChange={(v) => setFormData({...formData, priority: v})}>
+                       <Select value={formData.priority || ""} onValueChange={(v) => setFormData({...formData, priority: v})}>
                           <SelectTrigger className="h-12 rounded-xl bg-white border-muted font-bold text-xs uppercase"><SelectValue /></SelectTrigger>
                           <SelectContent className="rounded-xl"><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high" className="text-red-600 font-bold">Urgent</SelectItem></SelectContent>
                        </Select>
@@ -209,7 +209,7 @@ function NewSolarServiceContent() {
 
                  <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Issue Context / Observation *</Label>
-                    <Textarea required value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Describe the fault node or service requirement..." className="min-h-[140px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 text-sm font-medium" />
+                    <Textarea required value={formData.description || ""} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Describe the fault node or service requirement..." className="min-h-[140px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 text-sm font-medium" />
                  </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/10 border-t flex justify-end">

@@ -179,13 +179,14 @@ export async function sendWhatsAppTemplate(
  */
 export async function sendWhatsAppText(
   businessId: string,
-  config: { phoneId: string },
+  config: { phoneId: string; accessToken?: string },
   recipientPhone: string,
   messageText: string
 ) {
   // Entitlement & Secret Check (Privileged Internal Resolution)
-  const { isEntitled, accessToken } = await verifyEntitlement(businessId);
-  if (!isEntitled || !accessToken) {
+  const { isEntitled, accessToken: resolvedToken } = await verifyEntitlement(businessId);
+  const accessToken = resolvedToken || config?.accessToken || null;
+  if ((!isEntitled && !accessToken) || !accessToken) {
     return { success: false, error: "WHATSAPP_MODULE_NOT_ACTIVE" };
   }
 
@@ -224,16 +225,20 @@ export async function sendWhatsAppText(
  * Fetch all message templates from Meta WABA
  */
 export async function listWhatsAppTemplates(
-  businessId: string,
-  config: { wabaId: string }
+  businessIdOrConfig: string | { wabaId: string; accessToken?: string; businessId?: string },
+  config?: { wabaId: string; accessToken?: string }
 ) {
+  const resolvedBusinessId = typeof businessIdOrConfig === 'string' ? businessIdOrConfig : (businessIdOrConfig?.businessId || '');
+  const resolvedConfig = typeof businessIdOrConfig === 'string' ? (config || { wabaId: '' }) : businessIdOrConfig;
+
   // Entitlement & Secret Check (Privileged Internal Resolution)
-  const { isEntitled, accessToken } = await verifyEntitlement(businessId);
-  if (!isEntitled || !accessToken) {
+  const entitlement = resolvedBusinessId ? await verifyEntitlement(resolvedBusinessId) : { isEntitled: Boolean(resolvedConfig?.accessToken), accessToken: null };
+  const accessToken = entitlement.accessToken || resolvedConfig?.accessToken || null;
+  if (!accessToken) {
     return { success: false, templates: [], error: "WHATSAPP_MODULE_NOT_ACTIVE" };
   }
 
-  const { wabaId } = config;
+  const { wabaId } = resolvedConfig;
   
   if (!wabaId) {
     return { success: false, templates: [], error: "Missing WABA ID." };

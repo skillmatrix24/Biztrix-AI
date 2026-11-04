@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         const gatewayDocId = gatewaySnap.docs[0].id;
         const privateRef = db.doc(`businesses/${businessId}/privateConfig/gateways`);
         const privateSnap = await privateRef.get();
-        const privateData = privateSnap.exists() ? privateSnap.data() : {};
+        const privateData = privateSnap.exists ? (privateSnap.data() || {}) : {};
 
         const secret = process.env.RAZORPAY_KEY_SECRET || privateData?.[gatewayDocId]?.apiSecret || null;
         if (!secret) return NextResponse.json({ success: false, message: "Secret missing" }, { status: 500 });

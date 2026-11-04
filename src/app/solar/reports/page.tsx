@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { toast } from "@/hooks/use-toast";
 import { 
   BarChart3, 
   ArrowLeft, 

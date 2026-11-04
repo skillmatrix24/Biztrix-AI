@@ -401,7 +401,7 @@ function BillingContent() {
     const couponSnap = await getDoc(couponRef);
     
     if (couponSnap.exists()) {
-      const cData = { ...couponSnap.data(), id: couponSnap.id };
+      const cData: any = { ...couponSnap.data(), id: couponSnap.id };
       
       if (cData.status !== 'active') {
         toast({ variant: "destructive", title: "Coupon Expired" });

@@ -280,7 +280,7 @@ export default function LoyaltyCampaignsPage() {
                   )}
                   <div className="space-y-1.5 text-left">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Campaign Goal / Title *</Label>
-                    <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g. Birthday Special Wish" className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+                    <Input value={formData.title || ""} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g. Birthday Special Wish" className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
@@ -319,7 +319,7 @@ export default function LoyaltyCampaignsPage() {
                         AI Suggest Copy
                       </Button>
                     </div>
-                    <Textarea value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} placeholder="Hi {{name}}, we have a special gift for your member card {{card_number}}..." className="min-h-[160px] rounded-2xl bg-muted/20 border-none p-5 text-sm font-medium shadow-inner leading-relaxed" />
+                    <Textarea value={formData.message || ""} onChange={(e) => setFormData({...formData, message: e.target.value})} placeholder="Hi {{name}}, we have a special gift for your member card {{card_number}}..." className="min-h-[160px] rounded-2xl bg-muted/20 border-none p-5 text-sm font-medium shadow-inner leading-relaxed" />
                     <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
                        <span className="text-[8px] font-black uppercase text-primary tracking-widest">Active Mapping: Name, Card, Points, Dates</span>
                        <Info className="h-3 w-3 text-primary opacity-40" />

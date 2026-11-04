@@ -373,7 +373,7 @@ export default function LeadsPage() {
                        </div>
                        <p className="text-xs text-green-700 leading-relaxed font-medium italic">"Deal finalize hote hi is lead ko registered customer list mein move karein taaki billing node active ho jaye."</p>
                        <Button onClick={handleConvertToCustomer} disabled={isConverting} className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl">
-                          {isConverting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><RefreshCcw className="mr-2 h-4 w-4" /> Execute Conversion</>}
+                          {isConverting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Execute Conversion</>}
                        </Button>
                     </section>
                   )}

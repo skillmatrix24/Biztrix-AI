@@ -874,7 +874,7 @@ export default function MembershipsPage() {
 
                   <div className="space-y-2 text-left">
                     <Label className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-2"><IdCard className="h-3 w-3" /> Card Number</Label>
-                    <Input value={formData.manualCardNumber} onChange={(e) => setFormData({...formData, manualCardNumber: e.target.value})} placeholder="e.g. SN-9921-XXXX" className="h-12 rounded-xl font-black text-lg bg-primary/5 border-primary/10 tracking-widest border-none shadow-inner" />
+                    <Input value={formData.manualCardNumber || ""} onChange={(e) => setFormData({...formData, manualCardNumber: e.target.value})} placeholder="e.g. SN-9921-XXXX" className="h-12 rounded-xl font-black text-lg bg-primary/5 border-primary/10 tracking-widest border-none shadow-inner" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-left">
@@ -1064,7 +1064,7 @@ export default function MembershipsPage() {
                         <div className="min-w-0 text-left">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-black text-slate-900 truncate">{m.customerName}</p>
-                            {isNeedInfo && <AlertTriangle className="h-3 w-3 text-orange-500" title="Profile Incomplete" />}
+                            {isNeedInfo && <span title="Profile Incomplete"><AlertTriangle className="h-3 w-3 text-orange-500" /></span>}
                           </div>
                           <p className="text-[8px] font-mono text-primary/60 truncate">{m.cardNumber}</p>
                         </div>

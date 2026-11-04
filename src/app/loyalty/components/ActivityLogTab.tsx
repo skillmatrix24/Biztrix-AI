@@ -339,14 +339,14 @@ export function ActivityLogTab({ activities, currencySymbol, businessId, profile
            </DialogHeader>
            <div className="p-8 space-y-6 text-left">
               <div className="grid grid-cols-2 gap-4 text-left">
-                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase">Reward Points</Label><Input type="number" value={editActivityData.points} onChange={(e) => setEditActivityData({...editActivityData, points: parseInt(e.target.value) || 0})} className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
-                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase">Savings ({currencySymbol})</Label><Input type="number" value={editActivityData.cashback} onChange={(e) => setEditActivityData({...editActivityData, cashback: parseFloat(e.target.value) || 0})} className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
+                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase">Reward Points</Label><Input type="number" value={editActivityData.points ?? ""} onChange={(e) => setEditActivityData({...editActivityData, points: parseInt(e.target.value) || 0})} className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
+                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase">Savings ({currencySymbol})</Label><Input type="number" value={editActivityData.cashback ?? ""} onChange={(e) => setEditActivityData({...editActivityData, cashback: parseFloat(e.target.value) || 0})} className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
               </div>
-              <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase">Activity Description</Label><Input value={editActivityData.description} onChange={(e) => setEditActivityData({...editActivityData, description: e.target.value})} className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" /></div>
+              <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase">Activity Description</Label><Input value={editActivityData.description || ""} onChange={(e) => setEditActivityData({...editActivityData, description: e.target.value})} className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" /></div>
               <Separator className="opacity-40" />
               <div className="space-y-2 text-left">
                  <Label className="text-[10px] font-black uppercase text-primary ml-1">Reason for Modification *</Label>
-                 <Textarea value={activityReason} onChange={(e) => setActivityReason(e.target.value)} placeholder="Explain why this node is being updated..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner p-4 text-xs font-bold" />
+                 <Textarea value={activityReason || ""} onChange={(e) => setActivityReason(e.target.value)} placeholder="Explain why this node is being updated..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner p-4 text-xs font-bold" />
               </div>
            </div>
            <DialogFooter className="p-8 bg-muted/10 border-t">
@@ -369,7 +369,7 @@ export function ActivityLogTab({ activities, currencySymbol, businessId, profile
            </AlertDialogHeader>
            <div className="space-y-4 my-6 text-left">
               <Label className="text-[10px] font-black uppercase text-destructive ml-1">Mandatory Deletion Reason *</Label>
-              <Textarea value={activityReason} onChange={(e) => setActivityReason(e.target.value)} placeholder="e.g. Data entry error / Duplicate record" className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-xs font-bold" />
+              <Textarea value={activityReason || ""} onChange={(e) => setActivityReason(e.target.value)} placeholder="e.g. Data entry error / Duplicate record" className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-xs font-bold" />
            </div>
            <AlertDialogFooter className="gap-4 text-left">
               <AlertDialogCancel asChild><Button variant="outline" className="flex-1 h-14 rounded-2xl font-bold uppercase text-[10px]">Cancel</Button></AlertDialogCancel>

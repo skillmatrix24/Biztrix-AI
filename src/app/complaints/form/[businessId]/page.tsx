@@ -201,13 +201,13 @@ export default function PublicComplaintForm(props: { params: Promise<{ businessI
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-10">
                   <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Full Name *</Label>
-                    <Input required value={formData.customerName} onChange={(e) => setFormData({...formData, customerName: e.target.value})} className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner font-bold text-lg" />
+                    <Input required value={formData.customerName || ""} onChange={(e) => setFormData({...formData, customerName: e.target.value})} className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner font-bold text-lg" />
                   </div>
                   <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Mobile Node *</Label>
                     <div className="relative">
                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 opacity-40" />
-                       <Input required value={formData.customerPhone} onChange={(e) => setFormData({...formData, customerPhone: e.target.value.replace(/\D/g, '')})} placeholder="91XXXXXXXX" className="h-14 pl-12 rounded-2xl bg-slate-50 border-none shadow-inner font-bold text-lg" />
+                       <Input required value={formData.customerPhone || ""} onChange={(e) => setFormData({...formData, customerPhone: e.target.value.replace(/\D/g, '')})} placeholder="91XXXXXXXX" className="h-14 pl-12 rounded-2xl bg-slate-50 border-none shadow-inner font-bold text-lg" />
                     </div>
                   </div>
                </div>
@@ -215,7 +215,7 @@ export default function PublicComplaintForm(props: { params: Promise<{ businessI
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-10">
                   <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Problem Subject *</Label>
-                    <Input required value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} placeholder="e.g. Delayed Delivery / Billing Issue" className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner font-bold" />
+                    <Input required value={formData.subject || ""} onChange={(e) => setFormData({...formData, subject: e.target.value})} placeholder="e.g. Delayed Delivery / Billing Issue" className="h-14 rounded-2xl bg-slate-50 border-none shadow-inner font-bold" />
                   </div>
                   <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-[0.2em]">Department Category</Label>

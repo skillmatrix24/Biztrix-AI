@@ -325,7 +325,7 @@ export function UsersTab({ businessId, business, businessRef, businessUsers, cur
           <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
             {editingUser && (
               <div className="space-y-6">
-                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase opacity-60">Full Name</Label><Input value={editingUser.name} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="h-11 rounded-xl font-bold" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase opacity-60">Full Name</Label><Input value={editingUser.name || ""} onChange={(e) => setEditingUser({...editingUser, name: e.target.value})} className="h-11 rounded-xl font-bold" /></div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase opacity-60">Mobile</Label><Input value={editingUser.phone || ""} onChange={(e) => setEditingUser({...editingUser, phone: e.target.value})} className="h-11 rounded-xl" /></div>
                   <div className="space-y-1.5">

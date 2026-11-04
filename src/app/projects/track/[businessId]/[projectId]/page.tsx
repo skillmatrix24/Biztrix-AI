@@ -40,7 +40,11 @@ import {
   Circle,
   Briefcase,
   Handshake,
-  LayoutList
+  LayoutList,
+  Target,
+  Sparkles,
+  Scale,
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +53,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking, useCollection, addDocumentNonBlocking } from "@/firebase";
 import { doc, serverTimestamp, collection, query, orderBy, where, getDoc } from "firebase/firestore";
 import { cn, getCurrencySymbol } from "@/lib/utils";

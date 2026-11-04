@@ -55,6 +55,15 @@ import {
   Headset,
   X
 } from "lucide-react";
+import { 
+  AreaChart,
+  Area,
+  CartesianGrid,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +76,7 @@ import Link from "next/link";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import { useFirestore, useDoc, useMemoFirebase, useCollection, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, query, where, serverTimestamp, orderBy, limit, Timestamp } from "firebase/firestore";
-import { startOfMonth, format } from "date-fns";
+import { startOfMonth, format, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { getMorningBrief, MorningBriefOutput } from "@/ai/flows/morning-brief-flow";
 
@@ -80,8 +89,8 @@ export default function AICommandDashboard() {
   , [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
   
-  const businessId = userProfile?.businessId;
-  const isProfileValid = !!(userProfile && businessId && !user?.isAnonymous);
+  const businessId = useMemo(() => userProfile?.businessId, [userProfile?.businessId]);
+  const isProfileValid = useMemo(() => !!(userProfile && businessId && !user?.isAnonymous), [userProfile, businessId, user?.isAnonymous]);
 
   // REAL-TIME MODULE INTEGRATION DATA
   const customersQuery = useMemoFirebase(() => 
@@ -96,21 +105,33 @@ export default function AICommandDashboard() {
   const { data: vendorsDataRaw } = useCollection<any>(vendorsQuery);
   const vendorsData = vendorsDataRaw || [];
 
-  const salesCountQuery = useMemoFirebase(() => {
+  const cashbookQuery = useMemoFirebase(() => {
     if (!isProfileValid) return null;
-    const start = startOfMonth(new Date());
     return query(
       collection(firestore, 'businesses', businessId, 'cashbook'),
-      where('category', '==', 'Sales'),
-      where('createdAt', '>=', Timestamp.fromDate(start))
+      orderBy('date', 'desc'),
+      limit(50)
     );
   }, [firestore, businessId, isProfileValid]);
-  const { data: salesThisMonthRaw } = useCollection<any>(salesCountQuery);
-  const salesThisMonth = salesThisMonthRaw || [];
+  const { data: cashbookDataRaw } = useCollection<any>(cashbookQuery);
+  const cashbookData = cashbookDataRaw || [];
 
   const mtdRevenue = useMemo(() => {
-    return (salesThisMonth || []).reduce((sum: number, doc: any) => sum + (parseFloat(doc.amount) || 0), 0);
-  }, [salesThisMonth]);
+    return (cashbookData || [])
+      .filter((t: any) => t.category === 'Sales')
+      .reduce((sum: number, doc: any) => sum + (parseFloat(doc.amount) || 0), 0);
+  }, [cashbookData]);
+
+  const cashflowTrend = useMemo(() => {
+    const trend: Record<string, { name: string, inflow: number, outflow: number }> = {};
+    (cashbookData || []).slice(0, 15).reverse().forEach(t => {
+      const day = format(parseISO(t.date), 'dd MMM');
+      if (!trend[day]) trend[day] = { name: day, inflow: 0, outflow: 0 };
+      if (t.type === 'credit') trend[day].inflow += (parseFloat(t.amount) || 0);
+      else trend[day].outflow += (parseFloat(t.amount) || 0);
+    });
+    return Object.values(trend);
+  }, [cashbookData]);
 
   const totalUdhaar = useMemo(() => {
     return (customersData || []).reduce((sum: number, c: any) => sum + (parseFloat(c.creditBalance) || 0), 0);
@@ -125,6 +146,10 @@ export default function AICommandDashboard() {
   , [firestore, businessId, isProfileValid]);
   const { data: productsDataRaw } = useCollection<any>(productsQuery);
   const productsData = productsDataRaw || [];
+
+  const lowStockItems = useMemo(() => {
+    return (productsData || []).filter((p: any) => p.stock !== undefined && p.minThreshold !== undefined && p.stock <= p.minThreshold);
+  }, [productsData]);
 
   const leadsQuery = useMemoFirebase(() => 
     isProfileValid ? collection(firestore, 'businesses', businessId, 'leads') : null
@@ -249,6 +274,35 @@ export default function AICommandDashboard() {
                </Card>
             </section>
           )}
+
+           {/* ANALYTICS SECTION: TRENDS */}
+           <section className="space-y-4 px-1 text-left">
+             <div className="flex items-center gap-2 mb-2"><Activity className="h-4 w-4 text-primary" /><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Inflow/Outflow Trends</h3></div>
+             <Card className="border-none shadow-md bg-white rounded-3xl p-6 border-border/50 h-[300px]">
+               {cashflowTrend.length === 0 ? (
+                 <div className="h-full flex items-center justify-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                   No data for trends
+                 </div>
+               ) : (
+                 <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={cashflowTrend}>
+                       <defs>
+                          <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient>
+                          <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient>
+                       </defs>
+                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                       <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} tick={{fill: '#94a3b8'}} />
+                       <YAxis hide />
+                       <RechartsTooltip 
+                          contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
+                       />
+                       <Area type="monotone" dataKey="inflow" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorIn)" strokeWidth={3} />
+                       <Area type="monotone" dataKey="outflow" stroke="#ef4444" fillOpacity={1} fill="url(#colorOut)" strokeWidth={3} />
+                    </AreaChart>
+                 </ResponsiveContainer>
+                )}
+              </Card>
+            </section>
 
           {/* REAL-TIME MATRIX PERFORMANCE */}
           <section className="space-y-4 px-1 text-left">

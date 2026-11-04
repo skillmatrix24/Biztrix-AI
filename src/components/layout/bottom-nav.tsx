@@ -199,6 +199,10 @@ export function BottomNav() {
     color: (roleConfig.footerBgType === 'gradient' || (roleConfig.footerSolidColor && !['#ffffff', '#fff', 'white'].includes(roleConfig.footerSolidColor.toLowerCase()))) ? '#ffffff' : '#0f172a'
   } : {};
 
+  if (roleConfig.showFooter === false || business?.mobileLayout?.showFooter === false) {
+    return null;
+  }
+
   return (
     <nav 
       style={customStyle}
@@ -207,7 +211,7 @@ export function BottomNav() {
         styleClasses
       )}
     >
-      {displayNav.map((item, idx) => {
+      {displayNav.map((item: any, idx: number) => {
         const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
         const Icon = item.icon || LayoutDashboard;
         const isFloating = centerFloat && idx === 2;

@@ -233,6 +233,8 @@ export default function CampaignHubPage() {
       const isScheduled = scheduledDate && isAfter(scheduledDate, new Date());
 
       // 2. Perform Bulk Dispatch if not scheduled
+      let successCount = 0;
+      let failCount = 0;
       if (!isScheduled) {
         const waConfig = business?.whatsappApiConfig;
         const template = metaTemplates.find(t => t.name === formData.templateName);
@@ -460,7 +462,7 @@ export default function CampaignHubPage() {
                          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Campaign Title / Internal Note *</Label>
                          <Badge variant="outline" className="text-[7px] font-black uppercase border-green-200 text-green-600 bg-green-50">Secure Sequence</Badge>
                        </div>
-                       <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g. Diwali Premium Blast 2026" className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none shadow-inner" />
+                       <Input value={formData.title || ""} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="e.g. Diwali Premium Blast 2026" className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none shadow-inner" />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-left">
@@ -507,7 +509,7 @@ export default function CampaignHubPage() {
                           <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Message Body (Personalization Context)</Label>
                           <Button variant="ghost" size="sm" onClick={handleAiMessage} disabled={isAiLoading} className="h-7 rounded-xl bg-primary/5 text-primary text-[8px] font-black uppercase border border-primary/10 gap-1.5">{isAiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3 fill-current" />} AI Contextual Draft</Button>
                        </div>
-                       <Textarea value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} placeholder="Hi {{name}}, we have a special reward for you..." className="min-h-[140px] rounded-2xl bg-muted/20 border-none shadow-inner p-5 text-sm font-medium leading-relaxed" />
+                       <Textarea value={formData.message || ""} onChange={(e) => setFormData({...formData, message: e.target.value})} placeholder="Hi {{name}}, we have a special reward for you..." className="min-h-[140px] rounded-2xl bg-muted/20 border-none shadow-inner p-5 text-sm font-medium leading-relaxed" />
                     </div>
                  </div>
               </ScrollArea>

@@ -82,9 +82,9 @@ export function ContactGroups({ businessId, contacts = [] }: any) {
   const { data: groupsRaw, isLoading } = useCollection<any>(groupsQuery);
   const groups = groupsRaw || [];
 
-  const availableTags = useMemo(() => {
+  const availableTags = useMemo<string[]>(() => {
     const list = contacts || [];
-    return Array.from(new Set(list.flatMap((c: any) => c.tags || [])));
+    return Array.from(new Set(list.flatMap((c: any) => (c.tags || []) as string[])));
   }, [contacts]);
 
   const handleCreateGroup = () => {
@@ -178,9 +178,9 @@ export function ContactGroups({ businessId, contacts = [] }: any) {
            </DialogHeader>
            <div className="p-8 space-y-8">
               <div className="space-y-4">
-                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cluster Name</Label><Input value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="e.g. VIP Diwali Targets" className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none shadow-inner" /></div>
+                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Cluster Name</Label><Input value={newGroupName || ""} onChange={(e) => setNewGroupName(e.target.value)} placeholder="e.g. VIP Diwali Targets" className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none shadow-inner" /></div>
                  <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Select Identity Icon</Label><div className="flex flex-wrap gap-2">{GROUP_ICONS.map(i => <button key={i.id} onClick={() => setNewGroupIcon(i.id)} className={cn("h-10 w-10 rounded-xl border-2 flex items-center justify-center transition-all", newGroupIcon === i.id ? "bg-primary text-white border-primary shadow-lg" : "bg-white border-border/50 text-slate-400 hover:border-primary/20")}><i.icon className="h-5 w-5" /></button>)}</div></div>
-                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Description</Label><Textarea value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value)} placeholder="Who is in this group?" className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner p-3 text-xs" /></div>
+                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Description</Label><Textarea value={newGroupDesc || ""} onChange={(e) => setNewGroupDesc(e.target.value)} placeholder="Who is in this group?" className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner p-3 text-xs" /></div>
               </div>
               <Separator />
               <div className="space-y-4">

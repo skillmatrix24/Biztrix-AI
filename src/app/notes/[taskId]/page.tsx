@@ -204,7 +204,7 @@ export default function TaskDetailPage(props: { params: Promise<{ taskId: string
   const handleAiSuggest = async () => {
     setIsAiLoading(true);
     try {
-      const result = await suggestTaskSteps({ taskTitle: task.title });
+      const result = await suggestTaskSteps({ taskTitle: task.title, businessType: 'General Business' });
       const newSteps = result.steps.map(s => ({
         id: Math.random().toString(36).substr(2, 9),
         text: s.text,

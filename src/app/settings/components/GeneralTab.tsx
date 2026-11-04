@@ -110,6 +110,16 @@ export function GeneralTab({ business, isAdmin, isTrialExpired, onUpdate }: Gene
                 />
               </div>
               <div className="space-y-1.5 text-left">
+                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Opening Balance Date</Label>
+                <Input 
+                  type="date"
+                  value={business?.openingBalanceDate || new Date().toISOString().split('T')[0]}
+                  onChange={(e) => onUpdate({ openingBalanceDate: e.target.value })}
+                  disabled={!isAdmin || isTrialExpired}
+                  className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner"
+                />
+              </div>
+              <div className="space-y-1.5 text-left">
                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Contact Phone (Global)</Label>
                 <Input 
                   value={localPhone} 

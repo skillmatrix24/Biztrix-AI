@@ -383,10 +383,10 @@ export default function RealEstateLeadsPage() {
                           isAdmin={isAdmin}
                           teamMembers={teamMembers}
                           currencySymbol={currencySymbol} 
-                          onWhatsApp={(e) => handleWhatsAppAction(e, lead)} 
-                          onUniversalShare={(e) => handleUniversalShare(e, lead)}
-                          onCall={(e) => handleCallAction(e, lead)}
-                          onEdit={(e) => handleOpenEdit(e, lead)} 
+                          onWhatsApp={(e: any) => handleWhatsAppAction(e, lead)} 
+                          onUniversalShare={(e: any) => handleUniversalShare(e, lead)}
+                          onCall={(e: any) => handleCallAction(e, lead)}
+                          onEdit={(e: any) => handleOpenEdit(e, lead)} 
                           onClick={() => handleOpenDetail(lead)} 
                         />
                       ))
@@ -411,10 +411,10 @@ export default function RealEstateLeadsPage() {
                   isAdmin={isAdmin}
                   teamMembers={teamMembers}
                   currencySymbol={currencySymbol} 
-                  onWhatsApp={(e) => handleWhatsAppAction(e, lead)} 
-                  onUniversalShare={(e) => handleUniversalShare(e, lead)}
-                  onCall={(e) => handleCallAction(e, lead)}
-                  onEdit={(e) => handleOpenEdit(e, lead)} 
+                  onWhatsApp={(e: any) => handleWhatsAppAction(e, lead)} 
+                  onUniversalShare={(e: any) => handleUniversalShare(e, lead)}
+                  onCall={(e: any) => handleCallAction(e, lead)}
+                  onEdit={(e: any) => handleOpenEdit(e, lead)} 
                   onClick={() => handleOpenDetail(lead)} 
                   showStage
                 />

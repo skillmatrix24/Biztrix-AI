@@ -77,14 +77,14 @@ export default function NewCustomerEntryPage() {
     return teamMembersRaw.filter((m: any) => allowedRoles.includes(m.role));
   }, [teamMembersRaw, business?.propertyMemberRoles]);
 
-  const facingDirections = business?.facingDirections || ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
-  const socialCategories = business?.socialCategories || ["OBC", "General", "SC", "ST"];
-  const roadTypes = business?.roadTypes || ["Single Road", "Double Road", "Non-Road"];
-  const landTypes = business?.landTypes || ["Khet", "Khar", "Bharri", "FormHouse", "Factory"];
-  const soilTypes = business?.soilTypes || ["Bhura Mitti", "Kala Mitti", "Upjau", "Retili"];
-  const cropTypes = business?.cropTypes || ["Single Crop", "Double Crop", "Triple Crop", "Dalhan", "Tilhan"];
-  const areaUnits = business?.areaUnits || ["sq.ft", "sq.yd", "Acre", "Guntha", "Bigha"];
-  const bhkConfigs = business?.bhkConfigs || ["1 BHK", "2 BHK", "3 BHK", "4 BHK"];
+  const facingDirections: string[] = business?.facingDirections || ["East", "West", "North", "South", "North-East", "North-West", "South-East", "South-West"];
+  const socialCategories: string[] = business?.socialCategories || ["OBC", "General", "SC", "ST"];
+  const roadTypes: string[] = business?.roadTypes || ["Single Road", "Double Road", "Non-Road"];
+  const landTypes: string[] = business?.landTypes || ["Khet", "Khar", "Bharri", "FormHouse", "Factory"];
+  const soilTypes: string[] = business?.soilTypes || ["Bhura Mitti", "Kala Mitti", "Upjau", "Retili"];
+  const cropTypes: string[] = business?.cropTypes || ["Single Crop", "Double Crop", "Triple Crop", "Dalhan", "Tilhan"];
+  const areaUnits: string[] = business?.areaUnits || ["sq.ft", "sq.yd", "Acre", "Guntha", "Bigha"];
+  const bhkConfigs: string[] = business?.bhkConfigs || ["1 BHK", "2 BHK", "3 BHK", "4 BHK"];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   

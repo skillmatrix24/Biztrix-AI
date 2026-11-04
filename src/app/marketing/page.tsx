@@ -544,14 +544,14 @@ export default function MarketingPage() {
              </div>
           </DialogHeader>
           <div className="p-8 space-y-6">
-            <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Universal Code *</Label><Input value={formData.code} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} placeholder="e.g. SAVE20" className="h-12 rounded-xl font-black text-lg tracking-widest shadow-inner border-none bg-muted/20" disabled={isEditing} /></div>
+            <div className="space-y-1.5 text-left"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Universal Code *</Label><Input value={formData.code || ""} onChange={(e) => setFormData({...formData, code: e.target.value.toUpperCase()})} placeholder="e.g. SAVE20" className="h-12 rounded-xl font-black text-lg tracking-widest shadow-inner border-none bg-muted/20" disabled={isEditing} /></div>
             <div className="grid grid-cols-2 gap-4 text-left">
               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Type</Label><Select value={formData.type} onValueChange={(v) => setFormData({...formData, type: v})}><SelectTrigger className="h-11 rounded-xl font-bold uppercase"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl">{OFFER_TYPES.map(t => <SelectItem key={t.id} value={t.id} className="text-xs font-bold uppercase">{t.label}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Value</Label><Input type="number" value={formData.value} onChange={(e) => setFormData({...formData, value: e.target.value})} className="h-11 rounded-xl font-black" /></div>
+              <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Value</Label><Input type="number" value={formData.value || ""} onChange={(e) => setFormData({...formData, value: e.target.value})} className="h-11 rounded-xl font-black" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-left">
-              <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Min Order ({currencySymbol})</Label><Input type="number" value={formData.minOrder} onChange={(e) => setFormData({...formData, minOrder: e.target.value})} className="h-11 rounded-xl bg-muted/10 font-bold" /></div>
-              <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Expiry Date</Label><Input type="date" value={formData.expiry} onChange={(e) => setFormData({...formData, expiry: e.target.value})} className="h-11 rounded-xl font-bold" /></div>
+              <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Min Order ({currencySymbol})</Label><Input type="number" value={formData.minOrder ?? ""} onChange={(e) => setFormData({...formData, minOrder: e.target.value})} className="h-11 rounded-xl bg-muted/10 font-bold" /></div>
+              <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Expiry Date</Label><Input type="date" value={formData.expiry || ""} onChange={(e) => setFormData({...formData, expiry: e.target.value})} className="h-11 rounded-xl font-bold" /></div>
             </div>
             <div className="space-y-3">
               <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Usage Protocol</Label>
@@ -613,10 +613,10 @@ export default function MarketingPage() {
                       </SelectContent>
                     </Select>
                  </div>
-                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase opacity-60 ml-1">Benefit Value</Label><Input type="number" value={formData.value} onChange={(e) => setFormData({...formData, value: e.target.value})} className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
+                 <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase opacity-60 ml-1">Benefit Value</Label><Input type="number" value={formData.value || ""} onChange={(e) => setFormData({...formData, value: e.target.value})} className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner" /></div>
               </div>
 
-              <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase opacity-60 ml-1">Min Order Requirement ({currencySymbol})</Label><Input type="number" value={formData.minOrder} onChange={(e) => setFormData({...formData, minOrder: e.target.value})} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" /></div>
+              <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase opacity-60 ml-1">Min Order Requirement ({currencySymbol})</Label><Input type="number" value={formData.minOrder ?? ""} onChange={(e) => setFormData({...formData, minOrder: e.target.value})} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" /></div>
 
               <div className="space-y-3 text-left">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Usage Protocol</Label>

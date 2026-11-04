@@ -19,7 +19,8 @@ import {
   PackageCheck,
   ScanLine,
   Image as ImageIcon,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";

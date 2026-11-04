@@ -104,18 +104,26 @@ import { cn } from "@/lib/utils";
 // Centralized Data Import from Marketplace Logic Hub
 import { bundles, individuals } from "@/app/marketplace/data";
 
-const rolesList = ["admin", "manager", "staff", "agent", "accountant"];
+const rolesList = ["owner", "admin", "manager", "staff", "agent", "accountant"];
 
 export default function GlobalUserManagementPage() {
   const firestore = useFirestore();
   const { user } = useUser();
 
   const isPlatformOwner = user?.email?.toLowerCase() === 'skillmatrix24@gmail.com'; 
+  
+  // Fetch logged in user profile to check role
+  const myProfileRef = useMemoFirebase(() => user?.uid ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
+  const { data: myProfile } = useDoc<any>(myProfileRef);
+  const myRole = myProfile?.role || 'staff';
+  
+  // Permissions
+  const canManage = isPlatformOwner || myRole === 'owner' || myRole === 'admin';
 
   // Fetch All Users
   const usersQuery = useMemoFirebase(() => 
-    isPlatformOwner ? collection(firestore, 'users') : null
-  , [firestore, isPlatformOwner]);
+    canManage ? collection(firestore, 'users') : null
+  , [firestore, canManage]);
   const { data: users, isLoading: usersLoading } = useCollection<any>(usersQuery);
 
   // Fetch All Businesses
@@ -261,11 +269,11 @@ export default function GlobalUserManagementPage() {
     toast({ title: "Business Status Updated", description: `Tenant is now ${newStatus}.` });
   };
 
-  if (!isPlatformOwner) {
+  if (!canManage) {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-40">
         <ShieldCheck className="h-12 w-12 mb-4 text-muted-foreground" />
-        <p className="text-sm font-bold uppercase tracking-widest text-center px-4 text-slate-900">Authorized Master Node Access Only</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-center px-4 text-slate-900">Access Restricted: Admin Roles Only</p>
       </div>
     );
   }

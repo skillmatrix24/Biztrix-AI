@@ -68,8 +68,9 @@ import {
   Layout,
   Settings as SettingsIcon,
   Trash2,
-  FolderPlus,
-  Grid
+  Grid,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -165,9 +166,9 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
   const layoutConfig = useMemo(() => {
     const base = business?.mobileLayout || {};
     const defaults = {
-      admin: { footer: ["/dashboard", "/billing", "/inventory", "/ai-insights", "/settings"], more: [], fab: ["/billing", "/leads", "/inventory/scanner"], fabPosition: 'right', footerStyle: 'solid', centerFloat: false, fabColorType: 'solid', fabSolidColor: '#0C83B3', fabRingColor: '#ffffff', footerBgType: 'solid', footerSolidColor: '#ffffff' },
-      staff: { footer: ["/dashboard", "/billing", "/inventory", "/my-staff-portal"], more: [], fab: ["/billing"], fabPosition: 'right', footerStyle: 'solid', centerFloat: false, fabColorType: 'solid', fabSolidColor: '#0C83B3', fabRingColor: '#ffffff', footerBgType: 'solid', footerSolidColor: '#ffffff' },
-      agent: { footer: ["/dashboard", "/properties", "/properties/leads", "/profile"], more: [], fab: ["/properties/leads/new", "/properties/new"], fabPosition: 'right', footerStyle: 'solid', centerFloat: false, fabColorType: 'solid', fabSolidColor: '#0C83B3', fabRingColor: '#ffffff', footerBgType: 'solid', footerSolidColor: '#ffffff' }
+      admin: { showFooter: true, footer: ["/dashboard", "/billing", "/inventory", "/ai-insights", "/settings"], more: [], fab: ["/billing", "/leads", "/inventory/scanner"], fabPosition: 'right', footerStyle: 'solid', centerFloat: false, fabColorType: 'solid', fabSolidColor: '#0C83B3', fabRingColor: '#ffffff', footerBgType: 'solid', footerSolidColor: '#ffffff' },
+      staff: { showFooter: true, footer: ["/dashboard", "/billing", "/inventory", "/my-staff-portal"], more: [], fab: ["/billing"], fabPosition: 'right', footerStyle: 'solid', centerFloat: false, fabColorType: 'solid', fabSolidColor: '#0C83B3', fabRingColor: '#ffffff', footerBgType: 'solid', footerSolidColor: '#ffffff' },
+      agent: { showFooter: true, footer: ["/dashboard", "/properties", "/properties/leads", "/profile"], more: [], fab: ["/properties/leads/new", "/properties/new"], fabPosition: 'right', footerStyle: 'solid', centerFloat: false, fabColorType: 'solid', fabSolidColor: '#0C83B3', fabRingColor: '#ffffff', footerBgType: 'solid', footerSolidColor: '#ffffff' }
     };
 
     return {
@@ -180,7 +181,15 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
   const activeRoleLayout = layoutConfig[activeRole];
 
   // Local buffering for color inputs to prevent Firestore bandwidth exhaustion
-  const [localColors, setLocalColors] = useState<any>({});
+  const [localColors, setLocalColors] = useState<any>({
+    footerSolidColor: '#ffffff',
+    footerGradientStart: '#0C83B3',
+    footerGradientEnd: '#2DD4BF',
+    fabSolidColor: '#0C83B3',
+    fabGradientStart: '#0C83B3',
+    fabGradientEnd: '#2DD4BF',
+    fabRingColor: '#ffffff'
+  });
 
   useEffect(() => {
     if (activeRoleLayout) {
@@ -225,6 +234,22 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
         ...layoutConfig, 
         [role]: { ...layoutConfig[role as keyof typeof layoutConfig], [field]: value } 
       }
+    });
+  };
+
+  const handleToggleAllRolesFooter = (checked: boolean) => {
+    if (!isAdmin || !businessRef) return;
+    updateDocumentNonBlocking(businessRef, {
+      mobileLayout: {
+        ...layoutConfig,
+        admin: { ...layoutConfig.admin, showFooter: checked },
+        staff: { ...layoutConfig.staff, showFooter: checked },
+        agent: { ...layoutConfig.agent, showFooter: checked }
+      }
+    });
+    toast({ 
+      title: checked ? "Footer Menu Enabled for All Roles" : "Footer Menu Disabled for All Roles",
+      description: checked ? "Mobile footer menu sabhi roles ke liye ON kar diya gaya hai." : "Mobile footer menu sabhi roles ke liye OFF kar diya gaya hai."
     });
   };
 
@@ -402,6 +427,64 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                 </div>
                 <Badge variant="outline" className="text-[8px] font-black h-5 uppercase border-primary/20 text-primary bg-white">v3.5 Engine</Badge>
              </div>
+
+             {/* FOOTER MENU MASTER ON/OFF TOGGLE */}
+             <div className="p-6 bg-white rounded-3xl border shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1 text-left">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shadow-inner", activeRoleLayout?.showFooter !== false ? "bg-green-100 text-green-700" : "bg-red-50 text-red-600")}>
+                        {activeRoleLayout?.showFooter !== false ? <Eye className="h-5 w-5" /> : <EyeOff className="h-5 w-5" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black uppercase text-slate-900 tracking-wider">Mobile Footer Menu Display</p>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Active Role: <span className="text-primary font-black">{activeRole}</span></p>
+                      </div>
+                      {activeRoleLayout?.showFooter !== false ? (
+                        <Badge className="bg-green-600 text-white text-[8px] font-black h-5 px-2 uppercase shadow-sm">ON / VISIBLE</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-destructive border-red-200 bg-red-50 text-[8px] font-black h-5 px-2 uppercase">OFF / HIDDEN</Badge>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
+                      {activeRoleLayout?.showFooter !== false 
+                        ? `Mobile devices par ${activeRole.toUpperCase()} user ke liye bottom footer navigation bar on rahega.` 
+                        : `Mobile devices par ${activeRole.toUpperCase()} user ke liye bottom footer navigation bar poori tarah hide rahega.`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 self-end sm:self-center">
+                    <Switch 
+                      checked={activeRoleLayout?.showFooter !== false} 
+                      onCheckedChange={(checked) => updateLayout(activeRole, 'showFooter', checked)}
+                      className="scale-95 data-[state=checked]:bg-green-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Bulk Action:</span>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleToggleAllRolesFooter(true)}
+                      className="h-8 text-[9px] font-black uppercase text-green-700 bg-green-50 hover:bg-green-100 rounded-xl px-3"
+                    >
+                      Turn ON for All
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleToggleAllRolesFooter(false)}
+                      className="h-8 text-[9px] font-black uppercase text-destructive bg-red-50 hover:bg-red-100 rounded-xl px-3"
+                    >
+                      Turn OFF for All
+                    </Button>
+                  </div>
+                </div>
+             </div>
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-3">
@@ -469,13 +552,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                         <div className="flex items-center gap-3">
                           <Input 
                             type="color" 
-                            value={localColors.footerSolidColor} 
+                            value={localColors.footerSolidColor || '#ffffff'} 
                             onChange={(e) => updateLocalColor('footerSolidColor', e.target.value)} 
                             onBlur={(e) => updateLayout(activeRole, 'footerSolidColor', e.target.value)}
                             className="h-10 w-16 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                           />
                           <Input 
-                            value={localColors.footerSolidColor} 
+                            value={localColors.footerSolidColor || '#ffffff'} 
                             onChange={(e) => updateLocalColor('footerSolidColor', e.target.value)}
                             onBlur={(e) => updateLayout(activeRole, 'footerSolidColor', e.target.value)}
                             className="h-10 flex-1 rounded-xl text-xs font-mono font-bold bg-white" 
@@ -489,13 +572,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                           <div className="flex items-center gap-3">
                             <Input 
                               type="color" 
-                              value={localColors.footerGradientStart} 
+                              value={localColors.footerGradientStart || '#0C83B3'} 
                               onChange={(e) => updateLocalColor('footerGradientStart', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'footerGradientStart', e.target.value)}
                               className="h-10 w-16 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                             />
                             <Input 
-                              value={localColors.footerGradientStart} 
+                              value={localColors.footerGradientStart || '#0C83B3'} 
                               onChange={(e) => updateLocalColor('footerGradientStart', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'footerGradientStart', e.target.value)}
                               className="h-10 flex-1 rounded-xl text-xs font-mono font-bold bg-white" 
@@ -507,13 +590,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                           <div className="flex items-center gap-3">
                             <Input 
                               type="color" 
-                              value={localColors.footerGradientEnd} 
+                              value={localColors.footerGradientEnd || '#2DD4BF'} 
                               onChange={(e) => updateLocalColor('footerGradientEnd', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'footerGradientEnd', e.target.value)}
                               className="h-10 w-16 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                             />
                             <Input 
-                              value={localColors.footerGradientEnd} 
+                              value={localColors.footerGradientEnd || '#2DD4BF'} 
                               onChange={(e) => updateLocalColor('footerGradientEnd', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'footerGradientEnd', e.target.value)}
                               className="h-10 flex-1 rounded-xl text-xs font-mono font-bold bg-white" 
@@ -556,13 +639,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                         <div className="flex items-center gap-3">
                           <Input 
                             type="color" 
-                            value={localColors.fabSolidColor} 
+                            value={localColors.fabSolidColor || '#0C83B3'} 
                             onChange={(e) => updateLocalColor('fabSolidColor', e.target.value)}
                             onBlur={(e) => updateLayout(activeRole, 'fabSolidColor', e.target.value)}
                             className="h-10 w-12 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                           />
                           <Input 
-                            value={localColors.fabSolidColor} 
+                            value={localColors.fabSolidColor || '#0C83B3'} 
                             onChange={(e) => updateLocalColor('fabSolidColor', e.target.value)}
                             onBlur={(e) => updateLayout(activeRole, 'fabSolidColor', e.target.value)}
                             className="h-10 flex-1 rounded-xl text-[10px] font-mono font-bold bg-white" 
@@ -576,13 +659,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                           <div className="flex items-center gap-3">
                             <Input 
                               type="color" 
-                              value={localColors.fabGradientStart} 
+                              value={localColors.fabGradientStart || '#0C83B3'} 
                               onChange={(e) => updateLocalColor('fabGradientStart', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'fabGradientStart', e.target.value)}
                               className="h-10 w-12 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                             />
                             <Input 
-                              value={localColors.fabGradientStart} 
+                              value={localColors.fabGradientStart || '#0C83B3'} 
                               onChange={(e) => updateLocalColor('fabGradientStart', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'fabGradientStart', e.target.value)}
                               className="h-10 flex-1 rounded-xl text-[10px] font-mono font-bold bg-white" 
@@ -594,13 +677,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                           <div className="flex items-center gap-3">
                             <Input 
                               type="color" 
-                              value={localColors.fabGradientEnd} 
+                              value={localColors.fabGradientEnd || '#2DD4BF'} 
                               onChange={(e) => updateLocalColor('fabGradientEnd', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'fabGradientEnd', e.target.value)}
                               className="h-10 w-12 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                             />
                             <Input 
-                              value={localColors.fabGradientEnd} 
+                              value={localColors.fabGradientEnd || '#2DD4BF'} 
                               onChange={(e) => updateLocalColor('fabGradientEnd', e.target.value)}
                               onBlur={(e) => updateLayout(activeRole, 'fabGradientEnd', e.target.value)}
                               className="h-10 flex-1 rounded-xl text-[10px] font-mono font-bold bg-white" 
@@ -615,13 +698,13 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                       <div className="flex items-center gap-3">
                         <Input 
                           type="color" 
-                          value={localColors.fabRingColor} 
+                          value={localColors.fabRingColor || '#ffffff'} 
                           onChange={(e) => updateLocalColor('fabRingColor', e.target.value)}
                           onBlur={(e) => updateLayout(activeRole, 'fabRingColor', e.target.value)}
                           className="h-10 w-12 p-1 rounded-xl cursor-pointer border-none bg-white shadow-sm" 
                         />
                         <Input 
-                          value={localColors.fabRingColor} 
+                          value={localColors.fabRingColor || '#ffffff'} 
                           onChange={(e) => updateLocalColor('fabRingColor', e.target.value)}
                           onBlur={(e) => updateLayout(activeRole, 'fabRingColor', e.target.value)}
                           className="h-10 flex-1 rounded-xl text-[10px] font-mono font-bold bg-white" 
@@ -769,28 +852,34 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                   </div>
 
                   {/* SIMULATED FOOTER PREVIEW */}
-                  <div 
-                    style={(() => {
-                      if (activeRoleLayout?.footerStyle !== 'custom') return {};
-                      if (activeRoleLayout?.footerBgType === 'gradient') return {
-                        background: `linear-gradient(to bottom, ${localColors.footerGradientStart}, ${localColors.footerGradientEnd})`
-                      };
-                      return { background: localColors.footerSolidColor };
-                    })()}
-                    className={cn(
-                      "h-16 border-t flex items-center justify-around px-2 relative z-10 shrink-0 transition-all duration-500 rounded-b-[1.8rem] overflow-visible",
-                      activeRoleLayout?.footerStyle === 'solid' && "bg-white",
-                      activeRoleLayout?.footerStyle === 'glass' && "bg-white/80 backdrop-blur-lg",
-                      activeRoleLayout?.footerStyle === 'dark' && "bg-slate-900 text-white",
-                      (activeRoleLayout?.footerStyle === 'custom' && activeRoleLayout?.footerBgType === 'gradient' || activeRoleLayout?.footerStyle === 'dark') ? "text-white" : "text-slate-900"
-                    )}
-                  >
+                  {activeRoleLayout?.showFooter === false ? (
+                    <div className="h-16 border-t flex items-center justify-center gap-2.5 px-4 relative z-10 shrink-0 bg-slate-100 text-slate-500 font-black text-[9px] uppercase tracking-wider rounded-b-[1.8rem]">
+                      <EyeOff className="h-4 w-4 text-slate-400" />
+                      <span>Footer Menu Disabled (OFF)</span>
+                    </div>
+                  ) : (
+                    <div 
+                      style={(() => {
+                        if (activeRoleLayout?.footerStyle !== 'custom') return {};
+                        if (activeRoleLayout?.footerBgType === 'gradient') return {
+                          background: `linear-gradient(to bottom, ${localColors.footerGradientStart}, ${localColors.footerGradientEnd})`
+                        };
+                        return { background: localColors.footerSolidColor };
+                      })()}
+                      className={cn(
+                        "h-16 border-t flex items-center justify-around px-2 relative z-10 shrink-0 transition-all duration-500 rounded-b-[1.8rem] overflow-visible",
+                        activeRoleLayout?.footerStyle === 'solid' && "bg-white",
+                        activeRoleLayout?.footerStyle === 'glass' && "bg-white/80 backdrop-blur-lg",
+                        activeRoleLayout?.footerStyle === 'dark' && "bg-slate-900 text-white",
+                        (activeRoleLayout?.footerStyle === 'custom' && activeRoleLayout?.footerBgType === 'gradient' || activeRoleLayout?.footerStyle === 'dark') ? "text-white" : "text-slate-900"
+                      )}
+                    >
                     {(() => {
                       const footer = activeRoleLayout?.footer || [];
                       const more = activeRoleLayout?.more || [];
                       const centerFloat = activeRoleLayout?.centerFloat;
                       
-                      const activeFooter = footer.filter(id => fullNavRegistry.find(x => x.id === id));
+                      const activeFooter = footer.filter((id: string) => fullNavRegistry.find(x => x.id === id));
                       const hasMore = more.length > 0 || activeFooter.length > 5;
                       const displayIds = activeFooter.slice(0, hasMore ? 4 : 5);
                       
@@ -846,6 +935,7 @@ export function MobileUiTab({ business, businessRef, isAdmin }: any) {
                       );
                     })()}
                   </div>
+                  )}
                 </div>
 
                 <div className="mt-12 p-8 bg-white/5 rounded-[2.5rem] border border-white/10 flex items-start gap-4 shadow-inner w-full">
