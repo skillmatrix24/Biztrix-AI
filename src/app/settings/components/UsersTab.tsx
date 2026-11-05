@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Users, 
   Plus, 
@@ -184,20 +184,58 @@ export function UsersTab({ businessId, business, businessRef, businessUsers, cur
     toast({ title: "Role Added" });
   };
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const processedUsers = useMemo(() => {
+    let filtered = businessUsers.filter(u => 
+      (u.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    
+    filtered.sort((a, b) => {
+      const nameA = (a.name || "").toLowerCase();
+      const nameB = (b.name || "").toLowerCase();
+      return sortOrder === "asc" 
+        ? nameA.localeCompare(nameB) 
+        : nameB.localeCompare(nameA);
+    });
+    
+    return filtered;
+  }, [businessUsers, searchTerm, sortOrder]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <Card className="border-none shadow-md bg-white rounded-2xl border">
-        <CardHeader className="bg-primary/5 border-b py-5 px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-            <Users className="h-4 w-4" /> Team Directory
-          </CardTitle>
+        <CardHeader className="bg-primary/5 border-b py-5 px-6 space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+              <Users className="h-4 w-4" /> Team Directory
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsManageRolesOpen(true)} className="h-9 rounded-xl text-[10px] font-bold uppercase">Roles</Button>
+              <Button disabled={isTrialExpired} onClick={() => setIsAddUserOpen(true)} className="h-9 rounded-xl px-6 text-[10px] font-bold uppercase bg-primary text-white">Invite Member</Button>
+            </div>
+          </div>
+          
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsManageRolesOpen(true)} className="h-9 rounded-xl text-[10px] font-bold uppercase">Roles</Button>
-            <Button disabled={isTrialExpired} onClick={() => setIsAddUserOpen(true)} className="h-9 rounded-xl px-6 text-[10px] font-bold uppercase bg-primary text-white">Invite Member</Button>
+            <Input 
+              placeholder="Search team members..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-9 rounded-xl text-xs"
+            />
+            <Button 
+              variant="outline" 
+              onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+              className="h-9 rounded-xl text-[10px] font-bold uppercase px-3"
+            >
+              {sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
           </div>
         </CardHeader>
         <div className="divide-y">
-          {(businessUsers || []).map((u: any) => (
+          {(processedUsers || []).map((u: any) => (
             <div key={u.id} className="p-6 flex items-center justify-between hover:bg-muted/5 group transition-colors cursor-pointer" onClick={() => router.push(`/staff/${u.id}`)}>
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center font-black text-primary text-sm shadow-inner">{u.name?.charAt(0)}</div>
