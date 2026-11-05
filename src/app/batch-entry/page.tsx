@@ -460,8 +460,75 @@ export default function BatchEntryPage() {
                     typeMeta.accentBorder
                   )}
                 >
-                  {/* ... Card Header ... */}
-                  {/* ... */}
+                  {/* Card Header */}
+                  <div className="p-3 sm:p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono text-xs font-bold text-slate-700 bg-white">
+                        #{idx + 1}
+                      </Badge>
+
+                      {/* Type Selector (Pills) */}
+                      <div className="flex items-center bg-slate-200/60 p-0.5 rounded-xl">
+                        {(['credit', 'debit', 'nc', 'due'] as EntryType[]).map((t) => {
+                          const isActive = entry.type === t;
+                          let activeBg = "bg-primary text-white";
+                          if (t === 'credit') activeBg = "bg-emerald-600 text-white";
+                          if (t === 'debit') activeBg = "bg-rose-600 text-white";
+                          if (t === 'nc') activeBg = "bg-amber-600 text-white";
+                          if (t === 'due') activeBg = "bg-blue-600 text-white";
+
+                          return (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => updateRow(entry.id, 'type', t)}
+                              className={cn(
+                                "px-2 py-1 text-[10px] sm:text-xs font-bold uppercase rounded-lg transition-all",
+                                isActive ? `${activeBg} shadow-sm` : "text-slate-600 hover:text-slate-900"
+                              )}
+                            >
+                              {t === 'credit' ? 'Credit (+)' : t === 'debit' ? 'Debit (-)' : t === 'nc' ? 'NC' : 'Due'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Amount preview & row actions */}
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block leading-none">Row Total</span>
+                        <span className={cn(
+                          "text-base sm:text-lg font-black tracking-tight",
+                          entry.type === 'credit' ? "text-emerald-600" : entry.type === 'debit' ? "text-rose-600" : entry.type === 'nc' ? "text-amber-600" : "text-blue-600"
+                        )}>
+                          {currencySymbol}{entry.amount.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => duplicateRow(entry)}
+                          className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                          title="Duplicate row"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeRow(entry.id)}
+                          disabled={draftEntries.length <= 1}
+                          className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg disabled:opacity-30"
+                          title="Delete row"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                   {/* Card Body: Responsive form fields */}
                   <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                     {/* Row 1: Particulars & Vendor */}
