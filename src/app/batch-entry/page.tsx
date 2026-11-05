@@ -603,7 +603,7 @@ export default function BatchEntryPage() {
                         <Input 
                           type="number" 
                           step="any"
-                          placeholder="1" 
+                          placeholder="0" 
                           value={entry.qty} 
                           onChange={(e) => updateRow(entry.id, 'qty', e.target.value)} 
                           className="h-10 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white text-right"
