@@ -1,7 +1,8 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import Papa from "papaparse";
 import { 
   Plus, 
   X, 
@@ -64,6 +65,37 @@ interface MasterDataTabProps {
 }
 
 export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }: MasterDataTabProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !businessRef) return;
+    
+    Papa.parse(file, {
+      header: true,
+      complete: async (results) => {
+        const data = results.data as any[];
+        const items = data.map(row => row.name || row.particular).filter(Boolean);
+        
+        const current = business?.commonParticulars || [];
+        updateDocumentNonBlocking(businessRef, { commonParticulars: [...new Set([...current, ...items])] });
+        
+        toast({ title: "Import Successful", description: `Added ${items.length} items.` });
+      }
+    });
+  };
+
+  const downloadSampleCSV = () => {
+    const csvContent = "name\nTea & Snacks\nStationery Purchase\nOffice Cleaning";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'particulars_sample.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const [newCustType, setNewCustType] = useState("");
   const [newCashType, setNewCashType] = useState("");
   const [newUnitType, setNewUnitType] = useState("");
@@ -219,6 +251,20 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
 
   return (
     <div className="space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      
+      <Card className="border-none shadow-md bg-white rounded-2xl p-6 border">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+            <Layers className="h-4 w-4" /> Bulk Master Data Import
+          </CardTitle>
+          <div className="flex gap-4 items-center">
+            <p className="text-[10px] text-muted-foreground">Upload CSV (columns: name or particular)</p>
+            <Button onClick={downloadSampleCSV} variant="outline" className="h-9 rounded-xl text-[10px] font-bold uppercase">Download Sample</Button>
+            <input type="file" accept=".csv" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
+            <Button onClick={() => fileInputRef.current?.click()} className="h-9 rounded-xl text-[10px] font-bold uppercase bg-slate-900 text-white">Import Particulars</Button>
+          </div>
+        </div>
+      </Card>
       
       {/* SECTION 0: UNIVERSAL MEMBERSHIP CARD CONFIG */}
       <div className="space-y-6">
