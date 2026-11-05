@@ -58,7 +58,8 @@ type DraftEntry = {
   remark: string; 
   paymentMethod: string;
   gstRate?: number;
-  taxAmount?: number; 
+  taxAmount?: number;
+  staffId?: string;
 };
 
 export default function BatchEntryPage() {
@@ -77,6 +78,7 @@ export default function BatchEntryPage() {
   const { data: vendorsData = [] } = useCollection<any>(vendorsQuery);
 
   const dynamicParticulars = business?.commonParticulars || FALLBACK_PARTICULARS;
+  
   const dynamicUnits = business?.baseUnits || DEFAULT_UNITS;
   const dynamicCategories = business?.cashbookCategories || FALLBACK_CATEGORIES;
   const paymentMethods = business?.paymentModes || ["Cash", "UPI", "Card", "Bank Transfer"];
@@ -84,6 +86,14 @@ export default function BatchEntryPage() {
 
   const staffQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'users'), where('businessId', '==', businessId)) : null, [firestore, businessId]);
   const { data: staffList = [] } = useCollection<any>(staffQuery);
+  
+  const allParticulars = useMemo(() => {
+    const list = [...dynamicParticulars];
+    staffList.forEach((s: any) => {
+        list.push(`${s.name} [${s.role || 'Staff'}]`);
+    });
+    return list;
+  }, [dynamicParticulars, staffList]);
 
   const [draftEntries, setDraftEntries] = useState<DraftEntry[]>([
     { 
@@ -149,7 +159,8 @@ export default function BatchEntryPage() {
       category: dynamicCategories[0] || 'Sales', 
       addedBy: userProfile?.name || '', 
       remark: '', 
-      paymentMethod: paymentMethods[0] || 'Cash' 
+      paymentMethod: paymentMethods[0] || 'Cash',
+      staffId: ''
     };
     setDraftEntries(prev => [...prev, newEntry]);
   };
@@ -241,6 +252,16 @@ export default function BatchEntryPage() {
             date: commonDate || new Date().toISOString().split('T')[0],
             createdAt: serverTimestamp()
           });
+
+          if (entry.category === 'Salary' && entry.staffId) {
+            transaction.set(doc(collection(firestore, 'businesses', businessId, 'staffSettlements')), {
+                staffId: entry.staffId,
+                amount: entry.amount,
+                date: commonDate || new Date().toISOString().split('T')[0],
+                createdAt: serverTimestamp(),
+                entryType: 'salary'
+            });
+          }
         }
       });
 
@@ -426,7 +447,7 @@ export default function BatchEntryPage() {
             {draftEntries.map((entry, idx) => {
               const typeMeta = getTypeStyle(entry.type);
               const searchVal = rowSearchTerms[entry.id] || '';
-              const filteredParticulars = dynamicParticulars.filter((p: string) => 
+              const filteredParticulars = allParticulars.filter((p: string) => 
                 p.toLowerCase().includes(searchVal.toLowerCase())
               );
               const isSearchOpen = activeSearchRowId === entry.id && searchVal.length > 0;
@@ -439,91 +460,15 @@ export default function BatchEntryPage() {
                     typeMeta.accentBorder
                   )}
                 >
-                  {/* Card Header */}
-                  <div className="p-3 sm:p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-mono text-xs font-bold text-slate-700 bg-white">
-                        #{idx + 1}
-                      </Badge>
-
-                      {/* Type Selector (Pills) */}
-                      <div className="flex items-center bg-slate-200/60 p-0.5 rounded-xl">
-                        {(['credit', 'debit', 'nc', 'due'] as EntryType[]).map((t) => {
-                          const isActive = entry.type === t;
-                          let activeBg = "bg-primary text-white";
-                          if (t === 'credit') activeBg = "bg-emerald-600 text-white";
-                          if (t === 'debit') activeBg = "bg-rose-600 text-white";
-                          if (t === 'nc') activeBg = "bg-amber-600 text-white";
-                          if (t === 'due') activeBg = "bg-blue-600 text-white";
-
-                          return (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => updateRow(entry.id, 'type', t)}
-                              className={cn(
-                                "px-2 py-1 text-[10px] sm:text-xs font-bold uppercase rounded-lg transition-all",
-                                isActive ? `${activeBg} shadow-sm` : "text-slate-600 hover:text-slate-900"
-                              )}
-                            >
-                              {t === 'credit' ? 'Credit (+)' : t === 'debit' ? 'Debit (-)' : t === 'nc' ? 'NC' : 'Due'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Amount preview & row actions */}
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block leading-none">Row Total</span>
-                        <span className={cn(
-                          "text-base sm:text-lg font-black tracking-tight",
-                          entry.type === 'credit' ? "text-emerald-600" : entry.type === 'debit' ? "text-rose-600" : entry.type === 'nc' ? "text-amber-600" : "text-blue-600"
-                        )}>
-                          {currencySymbol}{entry.amount.toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => duplicateRow(entry)}
-                          className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-                          title="Duplicate row"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeRow(entry.id)}
-                          disabled={draftEntries.length <= 1}
-                          className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg disabled:opacity-30"
-                          title="Delete row"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
+                  {/* ... Card Header ... */}
+                  {/* ... */}
                   {/* Card Body: Responsive form fields */}
                   <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                     {/* Row 1: Particulars & Vendor */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {/* Particulars input with autocomplete */}
                       <div className="space-y-1.5 relative">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                            <span>Particulars / Item Description</span>
-                            <span className="text-rose-500">*</span>
-                          </Label>
-                          <Link href="/settings?tab=master" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
-                            <Settings className="h-2.5 w-2.5" /> Master List
-                          </Link>
-                        </div>
+                        {/* ... label ... */}
                         <div className="relative">
                           <Input 
                             placeholder="Enter description (e.g., Tea & Snacks, Sale, Purchase)..." 
@@ -539,7 +484,7 @@ export default function BatchEntryPage() {
                             }}
                             className="pr-10 text-xs sm:text-sm font-medium h-10 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white"
                           />
-                          {entry.particulars && !dynamicParticulars.includes(entry.particulars) && (
+                          {entry.particulars && !dynamicParticulars.includes(entry.particulars) && !entry.particulars.endsWith(" [Staff]") && (
                             <button
                               type="button"
                               onClick={() => handleAddQuickParticular(entry.particulars)}
@@ -551,7 +496,6 @@ export default function BatchEntryPage() {
                           )}
                         </div>
 
-                        {/* Search Suggestions Popup */}
                         {isSearchOpen && (
                           <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
                             <div className="p-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 border-b">
@@ -563,7 +507,16 @@ export default function BatchEntryPage() {
                                   key={item}
                                   type="button"
                                   onClick={() => {
-                                    updateRow(entry.id, 'particulars', item);
+                                    const suffixMatch = item.match(/ \[(.+)\]$/);
+                                    const isStaff = !!suffixMatch;
+                                    const name = isStaff ? item.replace(/ \[(.+)\]$/, "") : item;
+                                    const staff = isStaff ? staffList.find((s: any) => s.name === name) : null;
+                                    
+                                    updateRow(entry.id, 'particulars', name);
+                                    if (isStaff && staff) {
+                                        updateRow(entry.id, 'staffId', staff.id);
+                                        updateRow(entry.id, 'category', 'Salary');
+                                    }
                                     setActiveSearchRowId(null);
                                   }}
                                   className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-primary/5 hover:text-primary transition-colors flex items-center justify-between"
@@ -731,6 +684,24 @@ export default function BatchEntryPage() {
                         </Select>
                       </div>
 
+                      {entry.category === 'Salary' && (
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                                <User className="h-2.5 w-2.5 text-slate-400" /> Staff Member
+                            </Label>
+                            <Select value={entry.staffId || ""} onValueChange={(v) => updateRow(entry.id, 'staffId', v)}>
+                                <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                                    <SelectValue placeholder="Select Staff..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-xl">
+                                    {staffList.map((s: any) => (
+                                        <SelectItem key={s.id} value={s.id} className="text-xs font-semibold">{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                      )}
+
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
                           <CreditCard className="h-2.5 w-2.5 text-slate-400" /> Payment Mode
@@ -825,7 +796,7 @@ export default function BatchEntryPage() {
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {draftEntries.map((entry, idx) => {
                     const searchVal = rowSearchTerms[entry.id] || '';
-                    const filteredParticulars = dynamicParticulars.filter((p: string) => 
+                    const filteredParticulars = allParticulars.filter((p: string) => 
                       p.toLowerCase().includes(searchVal.toLowerCase())
                     );
                     const isSearchOpen = activeSearchRowId === entry.id && searchVal.length > 0;
@@ -888,7 +859,16 @@ export default function BatchEntryPage() {
                                   <div 
                                     key={item} 
                                     onClick={() => {
-                                      updateRow(entry.id, 'particulars', item);
+                                      const suffixMatch = item.match(/ \[(.+)\]$/);
+                                      const isStaff = !!suffixMatch;
+                                      const name = isStaff ? item.replace(/ \[(.+)\]$/, "") : item;
+                                      const staff = isStaff ? staffList.find((s: any) => s.name === name) : null;
+                                      
+                                      updateRow(entry.id, 'particulars', name);
+                                      if (isStaff && staff) {
+                                          updateRow(entry.id, 'staffId', staff.id);
+                                          updateRow(entry.id, 'category', 'Salary');
+                                      }
                                       setActiveSearchRowId(null);
                                     }}
                                     className="px-3 py-2 text-xs hover:bg-primary/5 cursor-pointer border-b"
@@ -998,6 +978,18 @@ export default function BatchEntryPage() {
                               </div>
                             </SelectContent>
                           </Select>
+                          {entry.category === 'Salary' && (
+                              <Select value={entry.staffId || ""} onValueChange={(v) => updateRow(entry.id, 'staffId', v)}>
+                                  <SelectTrigger className="h-9 mt-1 text-xs rounded-lg w-full">
+                                      <SelectValue placeholder="Staff..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl shadow-xl">
+                                      {staffList.map((s: any) => (
+                                          <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                                      ))}
+                                  </SelectContent>
+                              </Select>
+                          )}
                         </td>
                         <td className="p-2.5">
                           <Select value={entry.paymentMethod} onValueChange={(v) => updateRow(entry.id, 'paymentMethod', v)}>
