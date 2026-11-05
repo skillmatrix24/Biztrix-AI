@@ -535,7 +535,15 @@ export default function BatchEntryPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {/* Particulars input with autocomplete */}
                       <div className="space-y-1.5 relative">
-                        {/* ... label ... */}
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                            <span>Particulars / Vendor</span>
+                            <span className="text-rose-500">*</span>
+                          </Label>
+                          <Link href="/settings?tab=master" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
+                            <Settings className="h-2.5 w-2.5" /> Master List
+                          </Link>
+                        </div>
                         <div className="relative">
                           <Input 
                             placeholder="Particulars (e.g., Tea & Snacks) or Member Name (e.g., Khoman Sahu)..." 
