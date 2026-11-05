@@ -386,7 +386,7 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
         </div>
       </div>
 
-      {/* SECTION 3: WHATSAPP STRATEGY BY PROPERTY TYPE */}
+      {/* SECTION 3: WHATSAPP STRATEGY BY PROPRTY TYPE */}
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1 text-left">
           <div className="flex items-center gap-2">
