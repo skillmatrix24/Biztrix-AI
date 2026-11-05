@@ -4,8 +4,9 @@
  * Generates a strategic start-of-day summary based on all active business modules.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { ai } from '@/lib/gemini';
+import { Type } from '@google/genai';
+import { z } from 'zod';
 
 const MorningBriefInputSchema = z.object({
   businessName: z.string().optional(),
@@ -44,48 +45,25 @@ function getGreetingByTime(name: string): string {
 
 export async function getMorningBrief(input: MorningBriefInput): Promise<MorningBriefOutput> {
   const timeOfDay = new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 16 ? 'afternoon' : 'evening';
-  return morningBriefFlow({ ...input, context: { ...input.context, timeOfDay } });
-}
+  const data = { ...input, context: { ...input.context, timeOfDay } };
 
-export async function getMorningBriefLegacy(input: MorningBriefInput): Promise<MorningBriefOutput> {
-  return morningBriefFlow(input);
-}
-
-const morningBriefPrompt = ai.definePrompt({
-  name: 'morningBriefPrompt',
-  input: { schema: MorningBriefInputSchema.extend({ context: MorningBriefInputSchema.shape.context.extend({ timeOfDay: z.string().optional() }) }) },
-  output: { schema: MorningBriefOutputSchema },
-  prompt: `You are the "Biztrix Strategy Advisor". Your goal is to give {{{userName}}} a sateek (precise) brief for their business "{{{businessName}}}".
+  const prompt = `You are the "Biztrix Strategy Advisor". Your goal is to give ${data.userName} a sateek (precise) brief for their business "${data.businessName}".
 
 **GREETING PROTOCOL:**
-Use time-aware Hinglish greeting based on {{{context.timeOfDay}}}:
+Use time-aware Hinglish greeting based on ${data.context.timeOfDay}:
 - morning: Suprabhat!
 - afternoon: Namaste!
 - evening: Shubh Sandhya!
 
 **LOGIC PROTOCOL:**
-Only comment on areas where data is provided and relevant modules are active in 'activeAddonIds'.
+Only comment on areas where data is provided and relevant modules are active in ${JSON.stringify(data.activeAddonIds)}.
 
 **CURRENT DATA NODES:**
-{{#if context.tasks}}
-- URGENT TASKS: {{#each context.tasks}}{{{title}}} (Assignee: {{{assignedName}}}) | {{/each}}
-{{/if}}
-
-{{#if context.lowStockItems}}
-- CRITICAL STOCK: {{#each context.lowStockItems}}{{{name}}} (Stock: {{{stock}}} {{{unit}}}) | {{/each}}
-{{/if}}
-
-{{#if context.hotLeads}}
-- HOT LEADS: {{#each context.hotLeads}}{{{name}}} (Score: {{{intentScore}}}%) | {{/each}}
-{{/if}}
-
-{{#if context.pendingPayments}}
-- PENDING COLLECTIONS: ₹{{{context.pendingPayments}}}
-{{/if}}
-
-{{#if context.ongoingProjects}}
-- PROJECTS: {{#each context.ongoingProjects}}{{{title}}} (Progress: {{{progress}}}%) | {{/each}}
-{{/if}}
+${data.context.tasks ? `- URGENT TASKS: ${data.context.tasks.map(t => `${t.title} (Assignee: ${t.assignedName})`).join(' | ')}` : ''}
+${data.context.lowStockItems ? `- CRITICAL STOCK: ${data.context.lowStockItems.map(p => `${p.name} (Stock: ${p.stock} ${p.unit})`).join(' | ')}` : ''}
+${data.context.hotLeads ? `- HOT LEADS: ${data.context.hotLeads.map(l => `${l.name} (Score: ${l.intentScore}%)`).join(' | ')}` : ''}
+${data.context.pendingPayments ? `- PENDING COLLECTIONS: ₹${data.context.pendingPayments}` : ''}
+${data.context.ongoingProjects ? `- PROJECTS: ${data.context.ongoingProjects.map(p => `${p.title} (Progress: ${p.progress}%)`).join(' | ')}` : ''}
 
 **INSTRUCTIONS:**
 1. Write in friendly, professional Hinglish.
@@ -95,52 +73,73 @@ Only comment on areas where data is provided and relevant modules are active in 
 5. Provide 3 specific actions with 'high', 'medium', or 'low' impact.
 6. Set statusNode to 'critical' if stockouts or high payment risks are detected.
 
-Return valid JSON matching the MorningBriefOutputSchema.`,
-});
+Return ONLY valid JSON matching the schema structure.`;
 
-const morningBriefFlow = ai.defineFlow(
-  {
-    name: 'morningBriefFlow',
-    inputSchema: MorningBriefInputSchema.extend({ context: MorningBriefInputSchema.shape.context.extend({ timeOfDay: z.string().optional() }) }),
-    outputSchema: MorningBriefOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { output } = await morningBriefPrompt(input);
-      if (output) return output;
-    } catch (error) {
-      console.error('Morning brief AI prompt failed, falling back to context:', error);
-    }
-
-    const taskCount = input.context.tasks?.length || 0;
-    const lowStockCount = input.context.lowStockItems?.length || 0;
-    const hotLeadsCount = input.context.hotLeads?.length || 0;
-    const pendingUdhaar = input.context.pendingPayments || 0;
-
-    const isCritical = lowStockCount > 0 || pendingUdhaar > 50000;
-    const isAttention = taskCount > 0 || hotLeadsCount > 0;
-
-    return {
-      greeting: getGreetingByTime(input.userName || 'Ji'),
-      summary: `${input.businessName || 'Business'} operational status: ${taskCount} urgent tasks, ${lowStockCount} items low on stock, aur ${hotLeadsCount} hot leads active hain.${pendingUdhaar > 0 ? ` Pending udhaar: ₹${pendingUdhaar.toLocaleString('en-IN')}.` : ''}`,
-      priorityActions: [
-        {
-          label: taskCount > 0 ? `Complete ${taskCount} critical tasks today` : 'Review pending team workflows',
-          type: 'tasks',
-          impact: 'high' as const,
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            greeting: { type: Type.STRING },
+            summary: { type: Type.STRING },
+            priorityActions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  type: { type: Type.STRING },
+                  impact: { type: Type.STRING }, // Simplified for schema
+                },
+              },
+            },
+            statusNode: { type: Type.STRING },
+          },
         },
-        {
-          label: hotLeadsCount > 0 ? `Follow up with ${hotLeadsCount} high-intent leads` : 'Analyze conversion funnel',
-          type: 'leads',
-          impact: 'high' as const,
-        },
-        {
-          label: lowStockCount > 0 ? `Reorder ${lowStockCount} low stock items` : 'Audit inventory levels',
-          type: 'inventory',
-          impact: 'medium' as const,
-        },
-      ],
-      statusNode: isCritical ? ('critical' as const) : isAttention ? ('attention-needed' as const) : ('optimal' as const),
-    };
+      },
+    });
+    
+    if (response.text) return JSON.parse(response.text);
+  } catch (error) {
+    console.error('Morning brief AI prompt failed, falling back to context:', error);
   }
-);
+
+  const taskCount = input.context.tasks?.length || 0;
+  const lowStockCount = input.context.lowStockItems?.length || 0;
+  const hotLeadsCount = input.context.hotLeads?.length || 0;
+  const pendingUdhaar = input.context.pendingPayments || 0;
+
+  const isCritical = lowStockCount > 0 || pendingUdhaar > 50000;
+  const isAttention = taskCount > 0 || hotLeadsCount > 0;
+
+  return {
+    greeting: getGreetingByTime(input.userName || 'Ji'),
+    summary: `${input.businessName || 'Business'} operational status: ${taskCount} urgent tasks, ${lowStockCount} items low on stock, aur ${hotLeadsCount} hot leads active hain.${pendingUdhaar > 0 ? ` Pending udhaar: ₹${pendingUdhaar.toLocaleString('en-IN')}.` : ''}`,
+    priorityActions: [
+      {
+        label: taskCount > 0 ? `Complete ${taskCount} critical tasks today` : 'Review pending team workflows',
+        type: 'tasks',
+        impact: 'high',
+      },
+      {
+        label: hotLeadsCount > 0 ? `Follow up with ${hotLeadsCount} high-intent leads` : 'Analyze conversion funnel',
+        type: 'leads',
+        impact: 'high',
+      },
+      {
+        label: lowStockCount > 0 ? `Reorder ${lowStockCount} low stock items` : 'Audit inventory levels',
+        type: 'inventory',
+        impact: 'medium',
+      },
+    ],
+    statusNode: isCritical ? 'critical' : isAttention ? 'attention-needed' : 'optimal',
+  };
+}
+
+export async function getMorningBriefLegacy(input: MorningBriefInput): Promise<MorningBriefOutput> {
+  return getMorningBrief(input);
+}

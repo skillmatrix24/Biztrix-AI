@@ -110,6 +110,7 @@ import {
 import { collection, doc, serverTimestamp, query, where, orderBy, increment } from "firebase/firestore";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -126,6 +127,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 export default function VendorsPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
 
   const userProfileRef = useMemoFirebase(() => 
     !isUserLoading && user?.uid && !user.isAnonymous ? doc(firestore, 'users', user.uid) : null
@@ -433,12 +435,8 @@ export default function VendorsPage() {
                   <TableRow
                     key={v.id}
                     className="cursor-pointer hover:bg-muted/10 transition-colors"
-                    onClick={() => {
-                      setSelectedVendor(v);
-                      setIsDrawerOpen(true);
-                    }}
                   >
-                    <TableCell className="pl-6 py-4">
+                    <TableCell className="pl-6 py-4" onClick={() => router.push(`/vendors/${v.id}`)}>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-9 w-9 rounded-xl bg-primary/10 text-primary font-black">
                           <AvatarFallback className="rounded-xl bg-primary/10 text-primary font-black text-xs">
@@ -611,16 +609,23 @@ export default function VendorsPage() {
           </DialogHeader>
           <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Full Name *</Label><Input value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl font-bold bg-muted/20 border-none" /></div>
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">WhatsApp *</Label><Input value={formData.phone || ""} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="91XXXXXXXX" className="h-12 rounded-xl font-bold bg-muted/20 border-none" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Full Name *</Label><Input value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl font-bold bg-white border" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">WhatsApp *</Label><Input value={formData.phone || ""} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="91XXXXXXXX" className="h-12 rounded-xl font-bold bg-white border" /></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Business Identity</Label><Input value={formData.businessName || ""} onChange={(e) => setFormData({...formData, businessName: e.target.value})} className="h-12 rounded-xl bg-muted/20 border-none" /></div>
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">GSTIN</Label><Input value={formData.gstin || ""} onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} className="h-12 rounded-xl font-mono uppercase bg-muted/20 border-none" /></div>
-            </div>
-            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Billing Address</Label><Textarea value={formData.address || ""} onChange={(e) => setFormData({...formData, address: e.target.value})} className="h-20 rounded-xl bg-muted/20 border-none text-xs" /></div>
+                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">State *</Label>
+                  <Select value={formData.state || ""} onValueChange={(v) => setFormData({...formData, state: v})}>
+                    <SelectTrigger className="h-12 rounded-xl bg-white border"><SelectValue placeholder="Select State" /></SelectTrigger>
+                    <SelectContent className="max-h-60 rounded-xl">
+                      {INDIAN_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">GSTIN</Label><Input value={formData.gstin || ""} onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} className="h-12 rounded-xl font-mono uppercase bg-white border" /></div>
+             </div>
+            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Billing Address</Label><Textarea value={formData.address || ""} onChange={(e) => setFormData({...formData, address: e.target.value})} className="h-20 rounded-xl bg-white border text-xs" /></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Opening Dues ({currencySymbol})</Label><Input type="number" value={formData.openingBalance ?? ""} onChange={(e) => setFormData({...formData, openingBalance: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl bg-red-50 text-red-600 border-none font-bold" /></div>
+               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Opening Dues ({currencySymbol})</Label><Input type="number" value={formData.openingBalance ?? ""} onChange={(e) => setFormData({...formData, openingBalance: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl bg-white border text-red-600 font-bold" /></div>
             </div>
           </div>
           <DialogFooter className="p-8 bg-muted/10 border-t">

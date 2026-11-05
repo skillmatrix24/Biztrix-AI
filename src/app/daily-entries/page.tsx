@@ -93,6 +93,7 @@ import { toast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useUser, useDoc } from "@/firebase";
 import { collection, query, orderBy, serverTimestamp, doc, where, limit, runTransaction, increment, getDocs, DocumentReference } from "firebase/firestore";
 import { Separator } from "@/components/ui/separator";
+import { calculateGst } from "@/lib/gst-logic";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { subDays, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDay, endOfDay, subMonths } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -471,9 +472,27 @@ export default function DailyEntriesPage() {
                 }
             }
 
+            // Fetch vendor info to determine state for tax calc
+            const vendorNames = validEntries.map(e => e.vendorName).filter(Boolean) as string[];
+            const vendorDocs = await getDocs(query(collection(firestore, 'businesses', businessId, 'vendors'), where('name', 'in', vendorNames)));
+            const vendorMap = new Map();
+            vendorDocs.forEach(doc => vendorMap.set(doc.data().name, doc.data()));
+
             validEntries.forEach(entry => {
+                const vendor = vendorMap.get(entry.vendorName);
+                const partyState = vendor?.state || business?.state || "Maharashtra";
+
+                const gstResult = calculateGst(
+                    entry.amount,
+                    entry.gstRate || 0,
+                    business?.gstMode || 'exclusive',
+                    business?.state || "Maharashtra",
+                    partyState
+                );
+
                 transaction.set(doc(entriesRef), {
                     ...entry,
+                    ...gstResult,
                     businessId,
                     entryBy: 'Owner',
                     notes: "",
@@ -753,6 +772,7 @@ export default function DailyEntriesPage() {
                 <TableHead className="text-[10px] font-black uppercase h-12 text-right">Rate</TableHead>
                 <TableHead className="text-[10px] font-black uppercase h-12 text-right">Qty</TableHead>
                 <TableHead className="text-[10px] font-black uppercase h-12">Unit</TableHead>
+                <TableHead className="text-[10px] font-black uppercase h-12 text-right">GST %</TableHead>
                 <TableHead className="text-[10px] font-black uppercase h-12 text-right">Total</TableHead>
                 <TableHead className="text-[10px] font-black uppercase h-12">Category</TableHead>
                 <TableHead className="text-[10px] font-black uppercase h-12">Payment</TableHead>
@@ -763,9 +783,9 @@ export default function DailyEntriesPage() {
             </TableHeader>
             <TableBody>
               {isEntriesLoading ? (
-                <TableRow><TableCell colSpan={13} className="h-40 text-center opacity-40"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={14} className="h-40 text-center opacity-40"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
               ) : filteredEntries.length === 0 ? (
-                <TableRow><TableCell colSpan={13} className="h-40 text-center opacity-40 uppercase text-[10px] font-black italic tracking-widest">No entries found for this window.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={14} className="h-40 text-center opacity-40 uppercase text-[10px] font-black italic tracking-widest">No entries found for this window.</TableCell></TableRow>
               ) : (
                 filteredEntries.map((entry) => (
                   <React.Fragment key={entry.id}>
@@ -782,6 +802,7 @@ export default function DailyEntriesPage() {
                       <TableCell className="text-right text-xs font-medium text-slate-500">{entry.rate}</TableCell>
                       <TableCell className="text-right text-xs font-medium text-slate-500">{entry.qty}</TableCell>
                       <TableCell className="text-xs font-bold text-slate-600">{entry.unit || '-'}</TableCell>
+                      <TableCell className="text-right text-xs font-medium text-slate-500">{entry.gstRate || 0}%</TableCell>
                       <TableCell className="text-right font-black text-sm">{currencySymbol}{entry.amount.toLocaleString()}</TableCell>
                       <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1.5 border-primary/10 text-primary bg-primary/5">{entry.category}</Badge></TableCell>
                       <TableCell className="text-xs font-bold text-slate-600">{entry.paymentMethod || '-'}</TableCell>
@@ -926,6 +947,11 @@ export default function DailyEntriesPage() {
                       {entry.paymentMethod && (
                         <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[9px] font-bold">
                           <span className="text-slate-400 font-medium">Pay:</span> {entry.paymentMethod}
+                        </div>
+                      )}
+                      {(entry.gstRate || 0) > 0 && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[9px] font-bold">
+                          <span className="text-primary/70 font-medium">GST:</span> {entry.gstRate}%
                         </div>
                       )}
                     </div>

@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking, useCollection } from "@/firebase";
 import { collection, query, serverTimestamp, doc, runTransaction, increment, where, limit, getDocs } from "firebase/firestore";
+import { calculateGst } from "@/lib/gst-logic";
 
 const FALLBACK_CATEGORIES = ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
 const DEFAULT_UNITS = ["pcs", "kg", "box", "packet", "unit", "litre", "meter"];
@@ -55,7 +56,9 @@ type DraftEntry = {
   addedBy: string; 
   vendorName?: string; 
   remark: string; 
-  paymentMethod: string; 
+  paymentMethod: string;
+  gstRate?: number;
+  taxAmount?: number; 
 };
 
 export default function BatchEntryPage() {
@@ -202,6 +205,17 @@ export default function BatchEntryPage() {
         };
 
         for (const entry of validEntries) {
+          const vendor = vendorsData.find(v => v.name === entry.vendorName);
+          const partyState = vendor?.state || business?.state || "Maharashtra";
+          
+          const gstResult = calculateGst(
+            entry.amount,
+            entry.gstRate || 0,
+            business?.gstMode || 'exclusive',
+            business?.state || "Maharashtra",
+            partyState
+          );
+
           if (entry.type === 'credit' || entry.type === 'debit') {
             const productDoc = await findProduct(entry.particulars);
             if (productDoc) {
@@ -222,6 +236,7 @@ export default function BatchEntryPage() {
 
           transaction.set(doc(entriesRef), {
             ...entry,
+            ...gstResult,
             businessId,
             date: commonDate || new Date().toISOString().split('T')[0],
             createdAt: serverTimestamp()
@@ -612,8 +627,8 @@ export default function BatchEntryPage() {
                       </div>
                     </div>
 
-                    {/* Row 2: Rate, Quantity, Unit, and Calculated Total */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    {/* Row 2: Rate, Quantity, Unit, GST, and Calculated Total */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
                           Rate ({currencySymbol})
@@ -661,6 +676,22 @@ export default function BatchEntryPage() {
                             >
                               <Settings className="h-3 w-3" /> Manage Units
                             </div>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                          GST %
+                        </Label>
+                        <Select value={(entry.gstRate || 0).toString()} onValueChange={(v) => updateRow(entry.id, 'gstRate', parseFloat(v))}>
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                            <SelectValue placeholder="0%" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl shadow-xl">
+                            {(business?.gstSlabs || [0, 5, 12, 18, 28]).map((slab: number) => (
+                              <SelectItem key={slab} value={slab.toString()} className="text-xs font-semibold">{slab}%</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -782,6 +813,7 @@ export default function BatchEntryPage() {
                     <th className="p-3 w-24 text-right">Rate ({currencySymbol})</th>
                     <th className="p-3 w-20 text-right">Qty</th>
                     <th className="p-3 w-24">Unit</th>
+                    <th className="p-3 w-24 text-right">GST %</th>
                     <th className="p-3 w-28 text-right">Total ({currencySymbol})</th>
                     <th className="p-3 w-32">Category</th>
                     <th className="p-3 w-32">Payment</th>
@@ -931,6 +963,18 @@ export default function BatchEntryPage() {
                                 <Settings className="h-3 w-3" /> Manage Units
                               </div>
                             </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-2.5">
+                          <Select value={(entry.gstRate || 0).toString()} onValueChange={(v) => updateRow(entry.id, 'gstRate', parseFloat(v))}>
+                             <SelectTrigger className="h-9 w-20 text-xs font-semibold rounded-lg">
+                               <SelectValue placeholder="0%" />
+                             </SelectTrigger>
+                             <SelectContent className="max-h-60 rounded-xl shadow-xl">
+                                {(business?.gstSlabs || [0, 5, 12, 18, 28]).map((slab: number) => (
+                                  <SelectItem key={slab} value={slab.toString()} className="text-xs font-semibold">{slab}%</SelectItem>
+                                ))}
+                             </SelectContent>
                           </Select>
                         </td>
                         <td className="p-2.5 text-right font-black text-slate-800">
