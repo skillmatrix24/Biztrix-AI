@@ -471,7 +471,7 @@ export default function BatchEntryPage() {
                         {/* ... label ... */}
                         <div className="relative">
                           <Input 
-                            placeholder="Enter description (e.g., Tea & Snacks, Sale, Purchase)..." 
+                            placeholder="Particulars (e.g., Tea & Snacks) or Member Name (e.g., Khoman Sahu)..." 
                             value={entry.particulars} 
                             onChange={(e) => {
                               updateRow(entry.id, 'particulars', e.target.value);
