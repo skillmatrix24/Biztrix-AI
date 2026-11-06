@@ -42,7 +42,7 @@ const FALLBACK_CATEGORIES = ["Sales", "Expense", "Rent", "Salary", "Purchase", "
 const DEFAULT_UNITS = ["pcs", "kg", "box", "packet", "unit", "litre", "meter"];
 const FALLBACK_PARTICULARS = ["Tea & Snacks", "Conveyance", "Office Cleaning", "Stationery Purchase", "Customer Refund"];
 
-type EntryType = 'credit' | 'debit' | 'nc' | 'due';
+type EntryType = string;
 
 type DraftEntry = { 
   id: string; 
@@ -81,6 +81,7 @@ export default function BatchEntryPage() {
   
   const dynamicUnits = business?.baseUnits || DEFAULT_UNITS;
   const dynamicCategories = business?.cashbookCategories || FALLBACK_CATEGORIES;
+  const cashbookTypes = business?.cashbookTypes || ["Credit", "Debit"];
   const paymentMethods = business?.paymentModes || ["Cash", "UPI", "Card", "Bank Transfer"];
   const currencySymbol = business?.currencySymbol || business?.currency || '₹';
 
@@ -297,36 +298,28 @@ export default function BatchEntryPage() {
   };
 
   const getTypeStyle = (type: EntryType) => {
-    switch (type) {
-      case 'credit':
-        return {
-          badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-          dot: 'bg-emerald-500',
-          label: 'Credit (+)',
-          accentBorder: 'border-l-emerald-500'
-        };
-      case 'debit':
-        return {
-          badge: 'bg-rose-50 text-rose-700 border-rose-200',
-          dot: 'bg-rose-500',
-          label: 'Debit (-)',
-          accentBorder: 'border-l-rose-500'
-        };
-      case 'nc':
-        return {
-          badge: 'bg-amber-50 text-amber-700 border-amber-200',
-          dot: 'bg-amber-500',
-          label: 'NC (Free)',
-          accentBorder: 'border-l-amber-500'
-        };
-      case 'due':
-        return {
-          badge: 'bg-blue-50 text-blue-700 border-blue-200',
-          dot: 'bg-blue-500',
-          label: 'Due Pay',
-          accentBorder: 'border-l-blue-500'
-        };
-    }
+    const t = type.toLowerCase();
+    
+    // Hardcoded mappings
+    if (t === 'credit') return { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Credit (+)', accentBorder: 'border-l-emerald-500' };
+    if (t === 'debit') return { badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Debit (-)', accentBorder: 'border-l-rose-500' };
+    if (t === 'nc') return { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: 'NC (Free)', accentBorder: 'border-l-amber-500' };
+    if (t === 'due') return { badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', label: 'Due Pay', accentBorder: 'border-l-blue-500' };
+    
+    // Dynamic color pool for other types
+    const colorPool = [
+        { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', accentBorder: 'border-l-indigo-500' },
+        { badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', accentBorder: 'border-l-violet-500' },
+        { badge: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', accentBorder: 'border-l-pink-500' },
+        { badge: 'bg-teal-50 text-teal-700 border-teal-200', dot: 'bg-teal-500', accentBorder: 'border-l-teal-500' },
+        { badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500', accentBorder: 'border-l-orange-500' }
+    ];
+    
+    // Use string length to pick a color to be deterministic
+    const colorIndex = t.length % colorPool.length;
+    const style = colorPool[colorIndex];
+    
+    return { ...style, label: type };
   };
 
   return (
@@ -469,25 +462,22 @@ export default function BatchEntryPage() {
 
                       {/* Type Selector (Pills) */}
                       <div className="flex items-center bg-slate-200/60 p-0.5 rounded-xl">
-                        {(['credit', 'debit', 'nc', 'due'] as EntryType[]).map((t) => {
-                          const isActive = entry.type === t;
-                          let activeBg = "bg-primary text-white";
-                          if (t === 'credit') activeBg = "bg-emerald-600 text-white";
-                          if (t === 'debit') activeBg = "bg-rose-600 text-white";
-                          if (t === 'nc') activeBg = "bg-amber-600 text-white";
-                          if (t === 'due') activeBg = "bg-blue-600 text-white";
+                        {cashbookTypes.map((t) => {
+                          const lcType = t.toLowerCase();
+                          const isActive = entry.type === lcType;
+                          const typeStyle = getTypeStyle(lcType);
 
                           return (
                             <button
                               key={t}
                               type="button"
-                              onClick={() => updateRow(entry.id, 'type', t)}
+                              onClick={() => updateRow(entry.id, 'type', lcType)}
                               className={cn(
                                 "px-2 py-1 text-[10px] sm:text-xs font-bold uppercase rounded-lg transition-all",
-                                isActive ? `${activeBg} shadow-sm` : "text-slate-600 hover:text-slate-900"
+                                isActive ? `${typeStyle.badge} shadow-sm` : "text-slate-600 hover:text-slate-900"
                               )}
                             >
-                              {t === 'credit' ? 'Credit (+)' : t === 'debit' ? 'Debit (-)' : t === 'nc' ? 'NC' : 'Due'}
+                              {t}
                             </button>
                           );
                         })}
@@ -537,7 +527,7 @@ export default function BatchEntryPage() {
                       <div className="space-y-1.5 relative">
                         <div className="flex items-center justify-between">
                           <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                            <span>Particulars / Vendor</span>
+                            <span>Particulars / Member</span>
                             <span className="text-rose-500">*</span>
                           </Label>
                           <Link href="/settings?tab=master" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
@@ -882,21 +872,17 @@ export default function BatchEntryPage() {
                           {idx + 1}
                         </td>
                         <td className="p-2.5">
-                          <Select value={entry.type} onValueChange={(v: any) => updateRow(entry.id, 'type', v)}>
+                          <Select value={entry.type} onValueChange={(v) => updateRow(entry.id, 'type', v)}>
                             <SelectTrigger className={cn(
                               "h-9 text-xs font-bold rounded-lg border-none shadow-none",
-                              entry.type === 'credit' ? "bg-emerald-50 text-emerald-700" :
-                              entry.type === 'debit' ? "bg-rose-50 text-rose-700" :
-                              entry.type === 'nc' ? "bg-amber-50 text-amber-700" :
-                              "bg-blue-50 text-blue-700"
+                              getTypeStyle(entry.type).badge
                             )}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl shadow-xl">
-                              <SelectItem value="credit" className="text-emerald-700 font-bold">Credit (+)</SelectItem>
-                              <SelectItem value="debit" className="text-rose-700 font-bold">Debit (-)</SelectItem>
-                              <SelectItem value="nc" className="text-amber-700 font-bold">NC (Free)</SelectItem>
-                              <SelectItem value="due" className="text-blue-700 font-bold">Due Pay</SelectItem>
+                              {cashbookTypes.map((t) => (
+                                <SelectItem key={t} value={t.toLowerCase()} className="font-bold">{t}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </td>
