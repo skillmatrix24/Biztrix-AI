@@ -126,6 +126,7 @@ import {
   updateMerchantProduct, 
   archiveMerchantProduct, 
   restoreMerchantProduct, 
+  deleteMerchantProduct,
   adjustProductStock, 
   fetchStockHistory 
 } from "@/app/actions/product-actions";
@@ -158,6 +159,8 @@ export default function InventoryPage() {
   const { data: globalLimits } = useDoc<any>(limitsRef);
 
   const currencySymbol = getCurrencySymbol(business?.currency);
+  const dynamicCategories = business?.cashbookCategories || ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
+
 
   // Safe bounded query (limit 200) to prevent unbounded memory reads
   const productsQuery = useMemoFirebase(() => 
@@ -208,6 +211,8 @@ export default function InventoryPage() {
   const [isArchiveAlertOpen, setIsArchiveAlertOpen] = useState(false);
   const [productToArchive, setProductToArchive] = useState<Product | null>(null);
   const [archiveReason, setArchiveReason] = useState("");
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   // Stock Adjustment Dialog State
   const [isStockAdjustOpen, setIsStockAdjustOpen] = useState(false);
@@ -462,7 +467,17 @@ export default function InventoryPage() {
     }
 
     startFormTransition(async () => {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
+      
+      if (isProfileLoading) {
+        toast({ variant: "destructive", title: "Loading Profile", description: "Please wait while your profile loads." });
+        return;
+      }
+      
+      if (!businessId) {
+        toast({ variant: "destructive", title: "Business Context Missing", description: "Business ID not found in profile." });
+        return;
+      }
 
       if (selectedProduct) {
         // UPDATE EXISTING PRODUCT
@@ -555,7 +570,7 @@ export default function InventoryPage() {
   const handleConfirmArchive = () => {
     if (!businessId || !productToArchive || !user?.uid) return;
     startFormTransition(async () => {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
       const res = await archiveMerchantProduct({
         userId: user.uid,
         businessId,
@@ -578,7 +593,7 @@ export default function InventoryPage() {
   const handleRestoreProduct = (p: Product) => {
     if (!businessId || !user?.uid) return;
     startFormTransition(async () => {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
       const res = await restoreMerchantProduct({
         userId: user.uid,
         businessId,
@@ -594,6 +609,38 @@ export default function InventoryPage() {
         }
       } else {
         toast({ variant: "destructive", title: "Restore Failed", description: res.error });
+      }
+    });
+  };
+
+  // Permanent Delete Handler
+  const openDeleteDialog = (e: React.MouseEvent, p: Product) => {
+    e.stopPropagation();
+    setProductToDelete(p);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!businessId || !productToDelete || !user?.uid) return;
+    startFormTransition(async () => {
+      const idToken = await user.getIdToken(true);
+      const res = await deleteMerchantProduct({
+        userId: user.uid,
+        businessId,
+        productId: productToDelete.id,
+        idToken
+      });
+
+      if (res.success) {
+        toast({ title: "Product Deleted", description: res.message });
+        if (selectedProduct?.id === productToDelete.id) {
+          setIsDrawerOpen(false);
+          setSelectedProduct(null);
+        }
+        setIsDeleteAlertOpen(false);
+        setProductToDelete(null);
+      } else {
+        toast({ variant: "destructive", title: "Delete Failed", description: res.error });
       }
     });
   };
@@ -617,7 +664,7 @@ export default function InventoryPage() {
     }
 
     startStockAdjustTransition(async () => {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
       const res = await adjustProductStock({
         userId: user.uid,
         businessId,
@@ -647,7 +694,8 @@ export default function InventoryPage() {
     if (!businessId) return;
     setIsLoadingAuditLogs(true);
     try {
-      const res = await fetchStockHistory({ businessId, productId, limitCount: 20 });
+      const idToken = user ? await user.getIdToken() : undefined;
+      const res = await fetchStockHistory({ businessId, productId, limitCount: 20, idToken });
       if (res.success) {
         setStockAuditLogs(res.history);
       }
@@ -865,7 +913,7 @@ export default function InventoryPage() {
                 <TableHead className="text-right text-[10px] font-black uppercase h-12">Pricing (MRP / Online)</TableHead>
                 <TableHead className="text-center text-[10px] font-black uppercase h-12">Stock Level</TableHead>
                 <TableHead className="text-center text-[10px] font-black uppercase h-12">Storefront</TableHead>
-                <TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12 w-48">Actions</TableHead>
+                <TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12 w-56">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1038,13 +1086,23 @@ export default function InventoryPage() {
                             <Button 
                               variant="ghost" 
                               size="icon" 
-                              className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-50" 
+                              className="h-8 w-8 rounded-lg text-amber-600 hover:bg-amber-50" 
                               title="Archive Product"
                               onClick={(e) => openArchiveDialog(e, product)}
                             >
                               <Archive className="h-3.5 w-3.5" />
                             </Button>
                           )}
+
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-50" 
+                            title="Delete Product Permanently"
+                            onClick={(e) => openDeleteDialog(e, product)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1291,6 +1349,41 @@ export default function InventoryPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* PERMANENT DELETE CONFIRMATION ALERT */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={(o) => { setIsDeleteAlertOpen(o); if (!o) setProductToDelete(null); }}>
+        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-8 text-left">
+          <AlertDialogHeader>
+            <div className="h-12 w-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-600 mb-2">
+              <Trash2 className="h-6 w-6" />
+            </div>
+            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900">
+              Delete Product: {productToDelete?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              This will permanently remove <span className="font-bold text-slate-900">{productToDelete?.name}</span> (SKU: <span className="font-mono font-bold">{productToDelete?.sku}</span>) from Master Inventory and your Online Storefront. This action cannot be undone. Use Archive instead if you want to preserve it as inactive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter className="mt-4 flex gap-3">
+            <AlertDialogCancel asChild>
+              <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold uppercase text-[10px]">
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button 
+                onClick={handleConfirmDelete} 
+                disabled={isSubmittingForm}
+                className="flex-1 h-11 rounded-xl font-black uppercase bg-rose-600 hover:bg-rose-700 text-white border-none shadow-lg text-[10px]"
+              >
+                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                Delete Permanently
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* PRODUCT DETAIL & AUDIT SLIDE-OVER SHEET */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-none shadow-2xl overflow-y-auto bg-slate-50 text-left">
@@ -1440,6 +1533,13 @@ export default function InventoryPage() {
               <div className="p-4 border-t bg-white flex gap-2 shrink-0">
                 <Button 
                   variant="outline" 
+                  className="h-11 px-4 rounded-xl font-black uppercase text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700" 
+                  onClick={(e) => openDeleteDialog(e, selectedProduct)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                </Button>
+                <Button 
+                  variant="outline" 
                   className="flex-1 h-11 rounded-xl font-black uppercase text-[10px]" 
                   onClick={() => setIsDrawerOpen(false)}
                 >
@@ -1488,7 +1588,7 @@ export default function InventoryPage() {
               value={formName} 
               onChange={(e) => setFormName(e.target.value)} 
               placeholder="e.g. 550W Mono PERC Solar Panel or Wireless Mouse" 
-              className="h-12 rounded-xl font-black text-base border-none bg-muted/20 shadow-inner" 
+              className="h-12 rounded-xl font-black text-base border border-slate-200 bg-muted/20 shadow-inner" 
             />
           </div>
 
@@ -1499,24 +1599,28 @@ export default function InventoryPage() {
                 value={formSku} 
                 onChange={(e) => setFormSku(e.target.value.toUpperCase())} 
                 placeholder="Auto-generated if empty" 
-                className="h-11 rounded-xl bg-muted/20 border-none font-mono text-xs font-bold" 
+                className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-mono text-xs font-bold" 
               />
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Category</Label>
-              <Input 
-                value={formCategory} 
-                onChange={(e) => setFormCategory(e.target.value)} 
-                placeholder="e.g. Solar, Hardware" 
-                className="h-11 rounded-xl bg-muted/20 border-none text-xs font-bold" 
-              />
+              <Select value={formCategory} onValueChange={setFormCategory}>
+                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold uppercase text-[10px]">
+                    <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                    {dynamicCategories.map((c: string) => (
+                        <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Unit</Label>
               <Select value={formUnit} onValueChange={setFormUnit}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold uppercase text-[10px]">
+                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold uppercase text-[10px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -1530,7 +1634,7 @@ export default function InventoryPage() {
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">GST Slab</Label>
               <Select value={formGst} onValueChange={setFormGst}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold text-[10px] uppercase">
+                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold text-[10px] uppercase">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -1558,7 +1662,7 @@ export default function InventoryPage() {
                 type="number" 
                 value={formPrice} 
                 onChange={(e) => setFormPrice(e.target.value)} 
-                className="h-12 rounded-xl bg-slate-50 border-none font-black text-lg" 
+                className="h-12 rounded-xl bg-slate-50 border border-slate-200 font-black text-lg" 
                 placeholder="0.00" 
               />
             </div>
@@ -1569,7 +1673,7 @@ export default function InventoryPage() {
                 type="number" 
                 value={formOnlinePrice} 
                 onChange={(e) => setFormOnlinePrice(e.target.value)} 
-                className="h-12 rounded-xl bg-primary/5 text-primary border-none font-black text-lg" 
+                className="h-12 rounded-xl bg-primary/5 text-primary border border-slate-200 font-black text-lg" 
                 placeholder="Defaults to MRP" 
               />
             </div>
@@ -1580,7 +1684,7 @@ export default function InventoryPage() {
                 type="number" 
                 value={formCost} 
                 onChange={(e) => setFormCost(e.target.value)} 
-                className="h-12 rounded-xl bg-red-50 text-red-700 border-none font-black text-lg" 
+                className="h-12 rounded-xl bg-red-50 text-red-700 border border-slate-200 font-black text-lg" 
                 placeholder="0.00" 
               />
             </div>
@@ -1591,7 +1695,7 @@ export default function InventoryPage() {
                 type="number" 
                 value={formMinThreshold} 
                 onChange={(e) => setFormMinThreshold(e.target.value)} 
-                className="h-12 rounded-xl bg-muted/20 border-none font-bold" 
+                className="h-12 rounded-xl bg-muted/20 border border-slate-200 font-bold" 
               />
             </div>
           </div>
@@ -1687,7 +1791,7 @@ export default function InventoryPage() {
                   type="number" 
                   value={formStock} 
                   onChange={(e) => setFormStock(e.target.value)} 
-                  className="h-11 rounded-xl bg-muted/20 border-none font-bold text-base" 
+                  className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold text-base" 
                   placeholder="0"
                 />
               </div>
@@ -1696,7 +1800,7 @@ export default function InventoryPage() {
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Primary Vendor</Label>
               <Select value={formVendorId} onValueChange={setFormVendorId}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold uppercase text-[10px]">
+                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold uppercase text-[10px]">
                   <SelectValue placeholder="Pick Supplier" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -1714,7 +1818,7 @@ export default function InventoryPage() {
                 value={formBatchNumber} 
                 onChange={(e) => setFormBatchNumber(e.target.value.toUpperCase())} 
                 placeholder="e.g. B-8821" 
-                className="h-11 rounded-xl bg-muted/20 border-none font-mono text-xs" 
+                className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-mono text-xs" 
               />
             </div>
           </div>

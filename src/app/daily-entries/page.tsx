@@ -459,13 +459,15 @@ export default function DailyEntriesPage() {
                 const prodInfo = productSnapshots.get(entry.particulars);
                 if (prodInfo) {
                     const qty = Number(entry.qty);
-                    if (entry.type === 'credit') { // Sale
+                    const impact = getStockImpact(entry.type);
+                    
+                    if (impact === 'decrease') { // Sale or NC
                         if (prodInfo.stock < qty) {
                             throw new Error(`Insufficient stock for ${entry.particulars}`);
                         }
                         prodInfo.stock -= qty;
                         transaction.update(prodInfo.ref, { stock: increment(-qty) });
-                    } else { // Purchase
+                    } else if (impact === 'increase') { // Purchase
                         prodInfo.stock += qty;
                         transaction.update(prodInfo.ref, { stock: increment(qty) });
                     }

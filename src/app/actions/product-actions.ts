@@ -1,19 +1,28 @@
 "use server";
 
 import { initializeAdmin } from "@/firebase/admin";
+import {
+  isPermissionDeniedError,
+  restCommit,
+  restDeleteDoc,
+  restGetDoc,
+  restQueryCollection,
+  restUpdateDoc,
+  SERVER_TIMESTAMP_SENTINEL,
+} from "@/firebase/firestore-rest";
 import { FieldValue } from "firebase-admin/firestore";
 import { revalidatePath } from "next/cache";
 
 /**
  * PHASE 6: PRODUCTION-GRADE PRODUCT & INVENTORY MANAGEMENT SERVER ACTIONS
- * 
+ *
  * Enforces:
  * 1. User authentication & tenant isolation
  * 2. Role-based authorization (owner / admin / manager / staff)
  * 3. Atomic stock mutations with non-negative validation
  * 4. Audit trail logging for inventory adjustments
  * 5. Safe archiving/soft-deletion (preserves historical order documents)
- * 6. Privileged writes via Firebase Admin SDK
+ * 6. Privileged writes via Firebase Admin SDK with authenticated Firestore REST fallback
  */
 
 interface AuthTenantResult {
@@ -21,6 +30,7 @@ interface AuthTenantResult {
   uid?: string;
   businessId?: string;
   role?: string;
+  useRestFallback?: boolean;
   error?: string;
 }
 
@@ -40,36 +50,58 @@ async function authenticateMerchant(
   }
 
   // 1. Verify Firebase Auth Token if provided
+  let verifiedUid = userId;
   if (idToken) {
     try {
       const decoded = await admin.auth().verifyIdToken(idToken);
       if (decoded.uid !== userId) {
         return { authorized: false, error: "TOKEN_UID_MISMATCH" };
       }
-    } catch {
-      return { authorized: false, error: "INVALID_AUTH_TOKEN" };
+      verifiedUid = decoded.uid;
+    } catch (e: any) {
+      return { authorized: false, error: `INVALID_AUTH_TOKEN: ${e.message}` };
     }
   }
 
   // 2. Fetch User Profile to confirm business mapping & role
-  const userSnap = await db.doc(`users/${userId}`).get();
-  if (!userSnap.exists) {
-    return { authorized: false, error: "USER_PROFILE_NOT_FOUND" };
+  let userData: Record<string, any> | undefined;
+  let useRestFallback = false;
+
+  try {
+    const userSnap = await db.doc(`users/${verifiedUid}`).get();
+    if (!userSnap.exists) {
+      return { authorized: false, error: "USER_PROFILE_NOT_FOUND" };
+    }
+    userData = userSnap.data();
+  } catch (err: any) {
+    if (isPermissionDeniedError(err)) {
+      try {
+        const restSnap = await restGetDoc(`users/${verifiedUid}`, idToken);
+        if (!restSnap.exists) {
+          return { authorized: false, error: "USER_PROFILE_NOT_FOUND" };
+        }
+        userData = restSnap.data();
+        useRestFallback = true;
+      } catch (restErr: any) {
+        return { authorized: false, error: `FIRESTORE_ACCESS_ERROR: ${restErr.message}` };
+      }
+    } else {
+      return { authorized: false, error: `FIRESTORE_ACCESS_ERROR: ${err.message}` };
+    }
   }
 
-  const userData = userSnap.data();
   const userBusinessId = userData?.businessId || userData?.tenantId;
 
   if (userBusinessId !== requestedBusinessId) {
     return { authorized: false, error: "TENANT_MISMATCH_SECURITY_VIOLATION" };
   }
 
-  const role = userData?.role || 'staff';
+  const role = String(userData?.role || 'staff').toLowerCase();
   if (!allowedRoles.includes(role)) {
     return { authorized: false, error: "INSUFFICIENT_ROLE_PERMISSIONS" };
   }
 
-  return { authorized: true, uid: userId, businessId: userBusinessId, role };
+  return { authorized: true, uid: verifiedUid, businessId: userBusinessId, role, useRestFallback };
 }
 
 export interface CreateProductInput {
@@ -110,9 +142,9 @@ export interface CreateProductInput {
 export async function createMerchantProduct(input: CreateProductInput) {
   try {
     const auth = await authenticateMerchant(
-      input.userId, 
-      input.businessId, 
-      input.idToken, 
+      input.userId,
+      input.businessId,
+      input.idToken,
       ['owner', 'admin', 'manager']
     );
 
@@ -129,8 +161,8 @@ export async function createMerchantProduct(input: CreateProductInput) {
     }
 
     const price = Math.max(0, parseFloat(String(input.price)) || 0);
-    const onlinePrice = input.onlinePrice !== undefined 
-      ? Math.max(0, parseFloat(String(input.onlinePrice)) || 0) 
+    const onlinePrice = input.onlinePrice !== undefined
+      ? Math.max(0, parseFloat(String(input.onlinePrice)) || 0)
       : price;
     const cost = Math.max(0, parseFloat(String(input.cost)) || 0);
     const stock = Math.max(0, parseInt(String(input.stock || 0), 10));
@@ -148,11 +180,10 @@ export async function createMerchantProduct(input: CreateProductInput) {
     }
 
     const productId = `prod_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-    const productRef = db.doc(`businesses/${input.businessId}/products/${productId}`);
-
+    const productPath = `businesses/${input.businessId}/products/${productId}`;
     const nowIso = new Date().toISOString();
 
-    const productPayload = {
+    const basePayload = {
       id: productId,
       tenantId: input.businessId,
       name: trimmedName,
@@ -182,46 +213,95 @@ export async function createMerchantProduct(input: CreateProductInput) {
       expiryDate: input.expiryDate || "",
       videoUrl: input.videoUrl || "",
       isArchived: false,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      createdBy: input.userId
+      createdBy: input.userId,
     };
 
-    await productRef.set(productPayload);
+    const historyId = `hist_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    const baseHistoryPayload = stock > 0 ? {
+      id: historyId,
+      productId,
+      productName: trimmedName,
+      sku: generatedSku,
+      adjustmentType: 'initial_stock',
+      previousStock: 0,
+      newStock: stock,
+      delta: stock,
+      reason: "Initial stock upon product creation",
+      adjustedBy: input.userId,
+      adjustedAt: nowIso,
+    } : null;
 
-    // Initial stock history record if stock > 0
-    if (stock > 0) {
-      const historyId = `hist_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-      const historyPayload = {
-        id: historyId,
-        productId,
-        productName: trimmedName,
-        sku: generatedSku,
-        adjustmentType: 'initial_stock',
-        previousStock: 0,
-        newStock: stock,
-        delta: stock,
-        reason: "Initial stock upon product creation",
-        adjustedBy: input.userId,
-        adjustedAt: nowIso,
-        createdAt: FieldValue.serverTimestamp()
-      };
+    const writeViaRest = async () => {
+      const ops: Parameters<typeof restCommit>[0] = [
+        {
+          type: 'set',
+          path: productPath,
+          data: {
+            ...basePayload,
+            createdAt: SERVER_TIMESTAMP_SENTINEL,
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          },
+        },
+      ];
+      if (baseHistoryPayload) {
+        ops.push(
+          {
+            type: 'set',
+            path: `businesses/${input.businessId}/products/${productId}/stockHistory/${historyId}`,
+            data: { ...baseHistoryPayload, createdAt: SERVER_TIMESTAMP_SENTINEL },
+          },
+          {
+            type: 'set',
+            path: `businesses/${input.businessId}/inventoryHistory/${historyId}`,
+            data: { ...baseHistoryPayload, createdAt: SERVER_TIMESTAMP_SENTINEL },
+          }
+        );
+      }
+      await restCommit(ops, input.idToken);
+    };
 
-      await Promise.all([
-        db.doc(`businesses/${input.businessId}/products/${productId}/stockHistory/${historyId}`).set(historyPayload),
-        db.doc(`businesses/${input.businessId}/inventoryHistory/${historyId}`).set(historyPayload)
-      ]);
+    if (auth.useRestFallback) {
+      await writeViaRest();
+    } else {
+      try {
+        await db.doc(productPath).set({
+          ...basePayload,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        if (baseHistoryPayload) {
+          const adminHistory = {
+            ...baseHistoryPayload,
+            createdAt: FieldValue.serverTimestamp(),
+          };
+          await Promise.all([
+            db.doc(`businesses/${input.businessId}/products/${productId}/stockHistory/${historyId}`).set(adminHistory),
+            db.doc(`businesses/${input.businessId}/inventoryHistory/${historyId}`).set(adminHistory),
+          ]);
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await writeViaRest();
+        } else {
+          throw err;
+        }
+      }
     }
 
     revalidatePath("/inventory");
     revalidatePath("/website");
     revalidatePath("/shop");
 
-    return { 
-      success: true, 
-      productId, 
-      product: productPayload, 
-      message: `Product "${trimmedName}" created successfully.` 
+    return {
+      success: true,
+      productId,
+      product: {
+        ...basePayload,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      },
+      message: `Product "${trimmedName}" created successfully.`
     };
   } catch (err: any) {
     console.error("[createMerchantProduct] error:", err);
@@ -267,9 +347,9 @@ export interface UpdateProductInput {
 export async function updateMerchantProduct(input: UpdateProductInput) {
   try {
     const auth = await authenticateMerchant(
-      input.userId, 
-      input.businessId, 
-      input.idToken, 
+      input.userId,
+      input.businessId,
+      input.idToken,
       ['owner', 'admin', 'manager']
     );
 
@@ -278,16 +358,37 @@ export async function updateMerchantProduct(input: UpdateProductInput) {
     }
 
     const { db } = initializeAdmin();
-    const productRef = db.doc(`businesses/${input.businessId}/products/${input.productId}`);
-    const snap = await productRef.get();
+    const productPath = `businesses/${input.businessId}/products/${input.productId}`;
+    const productRef = db.doc(productPath);
 
-    if (!snap.exists) {
-      return { success: false, error: "Product not found in business catalog." };
+    let existing: Record<string, any> | undefined;
+    let useRest = Boolean(auth.useRestFallback);
+
+    if (!useRest) {
+      try {
+        const snap = await productRef.get();
+        if (!snap.exists) {
+          return { success: false, error: "Product not found in business catalog." };
+        }
+        existing = snap.data() || {};
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    const existing = snap.data() || {};
+    if (useRest) {
+      const restSnap = await restGetDoc(productPath, input.idToken);
+      if (!restSnap.exists) {
+        return { success: false, error: "Product not found in business catalog." };
+      }
+      existing = restSnap.data() || {};
+    }
+
     const updates: Record<string, any> = {
-      updatedAt: FieldValue.serverTimestamp(),
       updatedBy: input.userId
     };
 
@@ -300,14 +401,14 @@ export async function updateMerchantProduct(input: UpdateProductInput) {
     if (input.sku !== undefined) updates.sku = input.sku.trim();
     if (input.barcode !== undefined) updates.barcode = input.barcode.trim();
     if (input.hsnCode !== undefined) updates.hsnCode = input.hsnCode.trim();
-    
-    let currentPrice = existing.price || 0;
+
+    let currentPrice = existing?.price || 0;
     if (input.price !== undefined) {
       currentPrice = Math.max(0, parseFloat(String(input.price)) || 0);
       updates.price = currentPrice;
     }
 
-    let currentOnlinePrice = existing.onlinePrice !== undefined ? existing.onlinePrice : currentPrice;
+    let currentOnlinePrice = existing?.onlinePrice !== undefined ? existing.onlinePrice : currentPrice;
     if (input.onlinePrice !== undefined) {
       currentOnlinePrice = Math.max(0, parseFloat(String(input.onlinePrice)) || 0);
       updates.onlinePrice = currentOnlinePrice;
@@ -339,13 +440,25 @@ export async function updateMerchantProduct(input: UpdateProductInput) {
     if (input.expiryDate !== undefined) updates.expiryDate = input.expiryDate;
     if (input.videoUrl !== undefined) updates.videoUrl = input.videoUrl;
 
-    await productRef.update(updates);
+    if (useRest) {
+      await restUpdateDoc(productPath, { ...updates, updatedAt: SERVER_TIMESTAMP_SENTINEL }, input.idToken);
+    } else {
+      try {
+        await productRef.update({ ...updates, updatedAt: FieldValue.serverTimestamp() });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restUpdateDoc(productPath, { ...updates, updatedAt: SERVER_TIMESTAMP_SENTINEL }, input.idToken);
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/inventory");
     revalidatePath("/website");
     revalidatePath("/shop");
 
-    return { success: true, message: `Product "${existing.name}" updated successfully.` };
+    return { success: true, message: `Product "${existing?.name || input.name || ''}" updated successfully.` };
   } catch (err: any) {
     console.error("[updateMerchantProduct] error:", err);
     return { success: false, error: err.message || "Failed to update product." };
@@ -364,9 +477,9 @@ export async function archiveMerchantProduct(input: {
 }) {
   try {
     const auth = await authenticateMerchant(
-      input.userId, 
-      input.businessId, 
-      input.idToken, 
+      input.userId,
+      input.businessId,
+      input.idToken,
       ['owner', 'admin', 'manager']
     );
 
@@ -375,33 +488,66 @@ export async function archiveMerchantProduct(input: {
     }
 
     const { db } = initializeAdmin();
-    const productRef = db.doc(`businesses/${input.businessId}/products/${input.productId}`);
-    const snap = await productRef.get();
+    const productPath = `businesses/${input.businessId}/products/${input.productId}`;
+    const productRef = db.doc(productPath);
 
-    if (!snap.exists) {
-      return { success: false, error: "Product node not found." };
+    let pData: Record<string, any> | undefined;
+    let useRest = Boolean(auth.useRestFallback);
+
+    if (!useRest) {
+      try {
+        const snap = await productRef.get();
+        if (!snap.exists) {
+          return { success: false, error: "Product node not found." };
+        }
+        pData = snap.data() || {};
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    const pData = snap.data() || {};
+    if (useRest) {
+      const restSnap = await restGetDoc(productPath, input.idToken);
+      if (!restSnap.exists) {
+        return { success: false, error: "Product node not found." };
+      }
+      pData = restSnap.data() || {};
+    }
 
-    // Soft-archive: Mark inactive and hidden from storefront while preserving document for orders
-    await productRef.update({
+    const archivePayload = {
       isArchived: true,
       isActive: false,
       showOnWebsite: false,
       archiveReason: input.reason || "Archived by merchant",
       archivedAt: new Date().toISOString(),
       archivedBy: input.userId,
-      updatedAt: FieldValue.serverTimestamp()
-    });
+    };
+
+    if (useRest) {
+      await restUpdateDoc(productPath, { ...archivePayload, updatedAt: SERVER_TIMESTAMP_SENTINEL }, input.idToken);
+    } else {
+      try {
+        await productRef.update({ ...archivePayload, updatedAt: FieldValue.serverTimestamp() });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restUpdateDoc(productPath, { ...archivePayload, updatedAt: SERVER_TIMESTAMP_SENTINEL }, input.idToken);
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/inventory");
     revalidatePath("/website");
     revalidatePath("/shop");
 
-    return { 
-      success: true, 
-      message: `Product "${pData.name}" has been safely archived. Historical order references remain preserved.` 
+    return {
+      success: true,
+      message: `Product "${pData?.name}" has been safely archived. Historical order references remain preserved.`
     };
   } catch (err: any) {
     console.error("[archiveMerchantProduct] error:", err);
@@ -420,9 +566,9 @@ export async function restoreMerchantProduct(input: {
 }) {
   try {
     const auth = await authenticateMerchant(
-      input.userId, 
-      input.businessId, 
-      input.idToken, 
+      input.userId,
+      input.businessId,
+      input.idToken,
       ['owner', 'admin', 'manager']
     );
 
@@ -431,33 +577,144 @@ export async function restoreMerchantProduct(input: {
     }
 
     const { db } = initializeAdmin();
-    const productRef = db.doc(`businesses/${input.businessId}/products/${input.productId}`);
-    const snap = await productRef.get();
+    const productPath = `businesses/${input.businessId}/products/${input.productId}`;
+    const productRef = db.doc(productPath);
 
-    if (!snap.exists) {
-      return { success: false, error: "Product node not found." };
+    let pData: Record<string, any> | undefined;
+    let useRest = Boolean(auth.useRestFallback);
+
+    if (!useRest) {
+      try {
+        const snap = await productRef.get();
+        if (!snap.exists) {
+          return { success: false, error: "Product node not found." };
+        }
+        pData = snap.data() || {};
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    const pData = snap.data() || {};
+    if (useRest) {
+      const restSnap = await restGetDoc(productPath, input.idToken);
+      if (!restSnap.exists) {
+        return { success: false, error: "Product node not found." };
+      }
+      pData = restSnap.data() || {};
+    }
 
-    await productRef.update({
+    const restorePayload = {
       isArchived: false,
       isActive: true,
       restoredAt: new Date().toISOString(),
       restoredBy: input.userId,
-      updatedAt: FieldValue.serverTimestamp()
-    });
+    };
+
+    if (useRest) {
+      await restUpdateDoc(productPath, { ...restorePayload, updatedAt: SERVER_TIMESTAMP_SENTINEL }, input.idToken);
+    } else {
+      try {
+        await productRef.update({ ...restorePayload, updatedAt: FieldValue.serverTimestamp() });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restUpdateDoc(productPath, { ...restorePayload, updatedAt: SERVER_TIMESTAMP_SENTINEL }, input.idToken);
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/inventory");
     revalidatePath("/website");
 
-    return { 
-      success: true, 
-      message: `Product "${pData.name}" restored to active inventory.` 
+    return {
+      success: true,
+      message: `Product "${pData?.name}" restored to active inventory.`
     };
   } catch (err: any) {
     console.error("[restoreMerchantProduct] error:", err);
     return { success: false, error: err.message || "Failed to restore product." };
+  }
+}
+
+/**
+ * Permanently deletes a product document from the business catalog.
+ */
+export async function deleteMerchantProduct(input: {
+  userId: string;
+  businessId: string;
+  productId: string;
+  idToken?: string;
+}) {
+  try {
+    const auth = await authenticateMerchant(
+      input.userId,
+      input.businessId,
+      input.idToken,
+      ['owner', 'admin', 'manager']
+    );
+
+    if (!auth.authorized) {
+      return { success: false, error: auth.error };
+    }
+
+    const { db } = initializeAdmin();
+    const productPath = `businesses/${input.businessId}/products/${input.productId}`;
+    const productRef = db.doc(productPath);
+
+    let pData: Record<string, any> | undefined;
+    let useRest = Boolean(auth.useRestFallback);
+
+    if (!useRest) {
+      try {
+        const snap = await productRef.get();
+        if (!snap.exists) {
+          return { success: false, error: "Product node not found." };
+        }
+        pData = snap.data() || {};
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    if (useRest) {
+      const restSnap = await restGetDoc(productPath, input.idToken);
+      if (!restSnap.exists) {
+        return { success: false, error: "Product node not found." };
+      }
+      pData = restSnap.data() || {};
+      await restDeleteDoc(productPath, input.idToken);
+    } else {
+      try {
+        await productRef.delete();
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restDeleteDoc(productPath, input.idToken);
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    revalidatePath("/inventory");
+    revalidatePath("/website");
+    revalidatePath("/shop");
+
+    return {
+      success: true,
+      message: `Product "${pData?.name || input.productId}" permanently deleted from catalog.`
+    };
+  } catch (err: any) {
+    console.error("[deleteMerchantProduct] error:", err);
+    return { success: false, error: err.message || "Failed to delete product." };
   }
 }
 
@@ -477,9 +734,9 @@ export interface AdjustStockInput {
 export async function adjustProductStock(input: AdjustStockInput) {
   try {
     const auth = await authenticateMerchant(
-      input.userId, 
-      input.businessId, 
-      input.idToken, 
+      input.userId,
+      input.businessId,
+      input.idToken,
       ['owner', 'admin', 'manager', 'staff']
     );
 
@@ -488,7 +745,8 @@ export async function adjustProductStock(input: AdjustStockInput) {
     }
 
     const { db } = initializeAdmin();
-    const productRef = db.doc(`businesses/${input.businessId}/products/${input.productId}`);
+    const productPath = `businesses/${input.businessId}/products/${input.productId}`;
+    const productRef = db.doc(productPath);
 
     const qty = Math.abs(parseInt(String(input.quantity), 10));
     if (isNaN(qty) || qty < 0) {
@@ -499,15 +757,13 @@ export async function adjustProductStock(input: AdjustStockInput) {
     const nowIso = new Date().toISOString();
     const historyId = `hist_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Execute atomic transaction to prevent race conditions & negative stock
-    const transactionResult = await db.runTransaction(async (transaction) => {
-      const snap = await transaction.get(productRef);
-      if (!snap.exists) {
+    const executeRestStockAdjust = async () => {
+      const restSnap = await restGetDoc(productPath, input.idToken);
+      if (!restSnap.exists) {
         throw new Error("PRODUCT_NOT_FOUND");
       }
-
-      const pData = snap.data()!;
-      const currentStock = pData.stock !== undefined ? pData.stock : 0;
+      const pData = restSnap.data()!;
+      const currentStock = pData.stock !== undefined ? Number(pData.stock) : 0;
       let newStock = currentStock;
 
       if (input.adjustmentType === 'add') {
@@ -518,27 +774,11 @@ export async function adjustProductStock(input: AdjustStockInput) {
         newStock = qty;
       }
 
-      // Strict non-negative inventory rule
       if (newStock < 0) {
         throw new Error(`NEGATIVE_STOCK_PREVENTED: Cannot adjust stock below 0. Current: ${currentStock}, Requested adjustment: -${qty}`);
       }
 
-      // Update product document
-      transaction.update(productRef, {
-        stock: newStock,
-        updatedAt: FieldValue.serverTimestamp(),
-        lastStockAdjustment: {
-          previousStock: currentStock,
-          newStock,
-          type: input.adjustmentType,
-          delta: newStock - currentStock,
-          reason: trimmedReason,
-          adjustedBy: input.userId,
-          adjustedAt: nowIso
-        }
-      });
-
-      // Write audit log entry
+      const delta = newStock - currentStock;
       const auditPayload = {
         id: historyId,
         productId: input.productId,
@@ -547,26 +787,133 @@ export async function adjustProductStock(input: AdjustStockInput) {
         adjustmentType: input.adjustmentType,
         previousStock: currentStock,
         newStock,
-        delta: newStock - currentStock,
+        delta,
         reason: trimmedReason,
         adjustedBy: input.userId,
         adjustedAt: nowIso,
-        createdAt: FieldValue.serverTimestamp()
+        createdAt: SERVER_TIMESTAMP_SENTINEL,
       };
 
-      const productHistRef = db.doc(`businesses/${input.businessId}/products/${input.productId}/stockHistory/${historyId}`);
-      const businessHistRef = db.doc(`businesses/${input.businessId}/inventoryHistory/${historyId}`);
-
-      transaction.set(productHistRef, auditPayload);
-      transaction.set(businessHistRef, auditPayload);
+      await restCommit(
+        [
+          {
+            type: 'update',
+            path: productPath,
+            currentDocument: restSnap.updateTime ? { updateTime: restSnap.updateTime } : { exists: true },
+            data: {
+              stock: newStock,
+              updatedAt: SERVER_TIMESTAMP_SENTINEL,
+              lastStockAdjustment: {
+                previousStock: currentStock,
+                newStock,
+                type: input.adjustmentType,
+                delta,
+                reason: trimmedReason,
+                adjustedBy: input.userId,
+                adjustedAt: nowIso,
+              },
+            },
+          },
+          {
+            type: 'set',
+            path: `businesses/${input.businessId}/products/${input.productId}/stockHistory/${historyId}`,
+            data: auditPayload,
+          },
+          {
+            type: 'set',
+            path: `businesses/${input.businessId}/inventoryHistory/${historyId}`,
+            data: auditPayload,
+          },
+        ],
+        input.idToken
+      );
 
       return {
         productName: pData.name,
         previousStock: currentStock,
         newStock,
-        delta: newStock - currentStock
+        delta,
       };
-    });
+    };
+
+    let transactionResult;
+
+    if (auth.useRestFallback) {
+      transactionResult = await executeRestStockAdjust();
+    } else {
+      try {
+        transactionResult = await db.runTransaction(async (transaction) => {
+          const snap = await transaction.get(productRef);
+          if (!snap.exists) {
+            throw new Error("PRODUCT_NOT_FOUND");
+          }
+
+          const pData = snap.data()!;
+          const currentStock = pData.stock !== undefined ? pData.stock : 0;
+          let newStock = currentStock;
+
+          if (input.adjustmentType === 'add') {
+            newStock = currentStock + qty;
+          } else if (input.adjustmentType === 'subtract') {
+            newStock = currentStock - qty;
+          } else if (input.adjustmentType === 'set') {
+            newStock = qty;
+          }
+
+          if (newStock < 0) {
+            throw new Error(`NEGATIVE_STOCK_PREVENTED: Cannot adjust stock below 0. Current: ${currentStock}, Requested adjustment: -${qty}`);
+          }
+
+          transaction.update(productRef, {
+            stock: newStock,
+            updatedAt: FieldValue.serverTimestamp(),
+            lastStockAdjustment: {
+              previousStock: currentStock,
+              newStock,
+              type: input.adjustmentType,
+              delta: newStock - currentStock,
+              reason: trimmedReason,
+              adjustedBy: input.userId,
+              adjustedAt: nowIso
+            }
+          });
+
+          const auditPayload = {
+            id: historyId,
+            productId: input.productId,
+            productName: pData.name,
+            sku: pData.sku || "",
+            adjustmentType: input.adjustmentType,
+            previousStock: currentStock,
+            newStock,
+            delta: newStock - currentStock,
+            reason: trimmedReason,
+            adjustedBy: input.userId,
+            adjustedAt: nowIso,
+            createdAt: FieldValue.serverTimestamp()
+          };
+
+          const productHistRef = db.doc(`businesses/${input.businessId}/products/${input.productId}/stockHistory/${historyId}`);
+          const businessHistRef = db.doc(`businesses/${input.businessId}/inventoryHistory/${historyId}`);
+
+          transaction.set(productHistRef, auditPayload);
+          transaction.set(businessHistRef, auditPayload);
+
+          return {
+            productName: pData.name,
+            previousStock: currentStock,
+            newStock,
+            delta: newStock - currentStock
+          };
+        });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          transactionResult = await executeRestStockAdjust();
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/inventory");
     revalidatePath("/website");
@@ -591,26 +938,46 @@ export async function fetchStockHistory(input: {
   businessId: string;
   productId?: string;
   limitCount?: number;
+  idToken?: string;
 }) {
   try {
     const { db } = initializeAdmin();
     const count = Math.min(100, Math.max(1, input.limitCount || 30));
 
-    let queryRef;
-    if (input.productId) {
-      queryRef = db.collection(`businesses/${input.businessId}/products/${input.productId}/stockHistory`)
-        .orderBy("adjustedAt", "desc")
-        .limit(count);
-    } else {
-      queryRef = db.collection(`businesses/${input.businessId}/inventoryHistory`)
-        .orderBy("adjustedAt", "desc")
-        .limit(count);
+    try {
+      let queryRef;
+      if (input.productId) {
+        queryRef = db.collection(`businesses/${input.businessId}/products/${input.productId}/stockHistory`)
+          .orderBy("adjustedAt", "desc")
+          .limit(count);
+      } else {
+        queryRef = db.collection(`businesses/${input.businessId}/inventoryHistory`)
+          .orderBy("adjustedAt", "desc")
+          .limit(count);
+      }
+
+      const snap = await queryRef.get();
+      const history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return { success: true, history };
+    } catch (err: any) {
+      if (isPermissionDeniedError(err)) {
+        const history = input.productId
+          ? await restQueryCollection(
+              `businesses/${input.businessId}/products/${input.productId}`,
+              'stockHistory',
+              { orderByField: 'adjustedAt', direction: 'DESCENDING', limit: count },
+              input.idToken
+            )
+          : await restQueryCollection(
+              `businesses/${input.businessId}`,
+              'inventoryHistory',
+              { orderByField: 'adjustedAt', direction: 'DESCENDING', limit: count },
+              input.idToken
+            );
+        return { success: true, history };
+      }
+      throw err;
     }
-
-    const snap = await queryRef.get();
-    const history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    return { success: true, history };
   } catch (err: any) {
     console.error("[fetchStockHistory] error:", err);
     return { success: false, history: [], error: err.message };

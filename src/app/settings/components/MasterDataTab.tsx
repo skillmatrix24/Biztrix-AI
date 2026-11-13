@@ -46,9 +46,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { updateDocumentNonBlocking } from "@/firebase";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { updateDocumentNonBlocking, useMemoFirebase, useCollection, useFirestore, useUser } from "@/firebase";
+import { collection } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { createMerchantProduct } from "@/app/actions/product-actions";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -65,6 +75,8 @@ interface MasterDataTabProps {
 }
 
 export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }: MasterDataTabProps) {
+  const firestore = useFirestore();
+  const businessId = business?.id;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,8 +108,16 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
     window.URL.revokeObjectURL(url);
   };
 
+  const { user } = useUser();
+  const [isPromoteOpen, setIsPromoteOpen] = useState(false);
+  const [promoteItem, setPromoteItem] = useState<string | null>(null);
+  const [newProductPrice, setNewProductPrice] = useState("");
+  const [newProductStock, setNewProductStock] = useState("");
+  const [newProductCategory, setNewProductCategory] = useState("General");
   const [newCustType, setNewCustType] = useState("");
   const [newCashType, setNewCashType] = useState("");
+  const [newCashTypeImpact, setNewCashTypeImpact] = useState("none");
+  const [newCashTypeColor, setNewCashTypeColor] = useState(JSON.stringify({ name: 'Indigo', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', border: 'border-l-indigo-500' }));
   const [newUnitType, setNewUnitType] = useState("");
   const [newCashCategory, setNewCashCategory] = useState("");
   const [newParticular, setNewParticular] = useState("");
@@ -193,7 +213,16 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
   const cashbookTypes = business?.cashbookTypes || ["Credit", "Debit"];
   const baseUnits = business?.baseUnits || ["pcs", "kg", "box", "packet", "unit", "litre", "meter"];
   const cashbookCategories = business?.cashbookCategories || ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
-  const commonParticulars = business?.commonParticulars || ["Tea & Snacks", "Conveyance", "Office Cleaning", "Stationery Purchase"];
+  const productsQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'products') : null, [firestore, businessId]);
+  const { data: products } = useCollection<any>(productsQuery);
+  const inventoryProductNames = (products || []).map((p: any) => p.name);
+
+  const dynamicCommonParticulars = [
+    ...(business?.commonParticulars || ["Tea & Snacks", "Conveyance", "Office Cleaning", "Stationery Purchase"]),
+    ...inventoryProductNames
+  ];
+
+  const commonParticulars = dynamicCommonParticulars;
   
   const assetCategories = business?.assetCategories || ["Khet", "Plot", "Building", "Farmhouse", "Chukta"];
   const bhkConfigs = business?.bhkConfigs || ["1 BHK", "2 BHK", "3 BHK", "4 BHK"];
@@ -249,8 +278,69 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
     return common;
   };
 
+  const handlePromote = async () => {
+    if (!businessId || !user || !promoteItem) return;
+    const idToken = await user.getIdToken(true);
+    const res = await createMerchantProduct({
+        userId: user.uid,
+        businessId,
+        idToken,
+        name: promoteItem,
+        price: parseFloat(newProductPrice),
+        stock: parseInt(newProductStock || "0"),
+        category: newProductCategory,
+        unit: "pcs"
+    });
+    if (res.success) {
+        const filtered = commonParticulars.filter((p: string) => p !== promoteItem);
+        updateDocumentNonBlocking(businessRef, { commonParticulars: filtered });
+        setIsPromoteOpen(false);
+        setPromoteItem(null);
+        setNewProductCategory("General");
+        toast({ title: "Product Created", description: "Item promoted to inventory." });
+    } else {
+        toast({ variant: "destructive", title: "Error", description: res.error });
+    }
+  };
+
   return (
     <div className="space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      
+      <Dialog open={isPromoteOpen} onOpenChange={setIsPromoteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Promote {promoteItem} to Product</DialogTitle>
+            <DialogDescription>Set initial details for this new inventory product.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Sale Price</Label>
+              <Input type="number" placeholder="0.00" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Opening Stock</Label>
+              <Input type="number" placeholder="0" value={newProductStock} onChange={(e) => setNewProductStock(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={newProductCategory} onValueChange={setNewProductCategory}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Select Category" />
+                </SelectTrigger>
+                <SelectContent>
+                    {cashbookCategories.map((c: string) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsPromoteOpen(false)}>Cancel</Button>
+            <Button onClick={handlePromote}>Promote to Product</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Card className="border-none shadow-md bg-white rounded-2xl p-6 border">
         <div className="flex items-center justify-between">
@@ -359,10 +449,45 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MasterCard title="Customer Types" icon={Users} items={customerTypes} field="customerTypes" onAdd={(v: string) => handleAddValue('customerTypes', customerTypes, v, setNewCustType)} onRemove={(v: string) => removeValue('customerTypes', customerTypes, v)} inputValue={newCustType} onInputChange={setNewCustType} />
-          <MasterCard title="Cashbook Types" icon={Wallet} items={cashbookTypes} field="cashbookTypes" onAdd={(v: string) => handleAddValue('cashbookTypes', cashbookTypes, v, setNewCashType)} onRemove={(v: string) => removeValue('cashbookTypes', cashbookTypes, v)} inputValue={newCashType} onInputChange={setNewCashType} />
+          <MasterCard 
+            title="Cashbook Types" 
+            icon={Wallet} 
+            items={cashbookTypes} 
+            field="cashbookTypes" 
+            isComplex={true}
+            onAdd={(v: {name: string, impact: string}) => {
+                if (!businessRef) return;
+                const existing = business?.cashbookTypes || [];
+                updateDocumentNonBlocking(businessRef, { cashbookTypes: [...existing, v] });
+                toast({ title: "Updated" });
+            }}
+            onRemove={(val: {name: string, impact: string}) => {
+                if (!businessRef || !isAdmin) return;
+                const filtered = (business?.cashbookTypes || []).filter((v: any) => v.name !== val.name);
+                updateDocumentNonBlocking(businessRef, { cashbookTypes: filtered });
+                toast({ title: "Removed" });
+            }}
+            inputValue={newCashType} 
+            onInputChange={setNewCashType} 
+            impactValue={newCashTypeImpact}
+            onImpactChange={setNewCashTypeImpact}
+            colorValue={newCashTypeColor}
+            onColorChange={setNewCashTypeColor}
+          />
           <MasterCard title="Base Units" icon={Scale} items={baseUnits} field="baseUnits" onAdd={(v: string) => handleAddValue('baseUnits', baseUnits, v, setNewUnitType)} onRemove={(v: string) => removeValue('baseUnits', baseUnits, v)} inputValue={newUnitType} onInputChange={setNewUnitType} />
           <MasterCard title="Cashbook Categories" icon={Wallet} items={cashbookCategories} field="cashbookCategories" onAdd={(v: string) => handleAddValue('cashbookCategories', cashbookCategories, v, setNewCashCategory)} onRemove={(v: string) => removeValue('cashbookCategories', cashbookCategories, v)} inputValue={newCashCategory} onInputChange={setNewCashCategory} />
-          <MasterCard title="Common Particulars" icon={NotebookPen} items={commonParticulars} field="commonParticulars" onAdd={(v: string) => handleAddValue('commonParticulars', commonParticulars, v, setNewParticular)} onRemove={(v: string) => removeValue('commonParticulars', commonParticulars, v)} inputValue={newParticular} onInputChange={setNewParticular} />
+          <MasterCard 
+            title="Common Particulars" 
+            icon={NotebookPen} 
+            items={commonParticulars} 
+            field="commonParticulars" 
+            onAdd={(v: string) => handleAddValue('commonParticulars', commonParticulars, v, setNewParticular)} 
+            onRemove={(v: string) => removeValue('commonParticulars', commonParticulars, v)} 
+            onPromote={(item: string) => { setPromoteItem(item); setIsPromoteOpen(true); }}
+            inputValue={newParticular} 
+            onInputChange={setNewParticular} 
+            helperNote="Click ⚡ to convert to inventory product"
+          />
           <MasterCard title="Staff Roles" icon={Users2} items={staffRoles} field="staffRoles" onAdd={(v: string) => handleAddValue('staffRoles', staffRoles, v, setNewStaffRole)} onRemove={(v: string) => removeValue('staffRoles', staffRoles, v)} inputValue={newStaffRole} onInputChange={setNewStaffRole} />
         </div>
       </div>
@@ -464,35 +589,85 @@ export function MasterDataTab({ business, businessRef, isAdmin, isTrialExpired }
   );
 }
 
-function MasterCard({ title, icon: Icon, items, onAdd, onRemove, inputValue, onInputChange }: any) {
+function MasterCard({ title, icon: Icon, items, onAdd, onRemove, inputValue, onInputChange, isComplex, impactValue, onImpactChange, colorValue, onColorChange, onPromote, helperNote }: any) {
+  const colorOptions = [
+    { name: 'Indigo', badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', border: 'border-l-indigo-500' },
+    { name: 'Rose', badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', border: 'border-l-rose-500' },
+    { name: 'Emerald', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', border: 'border-l-emerald-500' },
+    { name: 'Amber', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', border: 'border-l-amber-500' },
+    { name: 'Violet', badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', border: 'border-l-violet-500' },
+  ];
+
   return (
     <Card className="border-none shadow-md bg-white rounded-2xl border p-5 flex flex-col h-full hover:shadow-lg transition-all group text-left">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] font-black uppercase text-slate-500 flex items-center gap-2">
           <Icon className="h-3.5 w-3.5 text-primary" /> {title}
         </p>
         <Badge variant="secondary" className="h-4 text-[8px] bg-primary/5 text-primary border-none">{items?.length || 0}</Badge>
       </div>
-      <div className="flex gap-2 mb-4">
-        <Input 
-          value={inputValue} 
-          onChange={(e) => onInputChange(e.target.value)} 
-          onKeyDown={(e) => e.key === 'Enter' && onAdd(inputValue)}
-          placeholder="New..." 
-          className="h-9 text-xs rounded-xl bg-muted/20 border-none shadow-inner" 
-        />
-        <Button size="icon" className="h-9 w-9 rounded-xl shadow-md shrink-0" onClick={() => onAdd(inputValue)}><Plus className="h-4 w-4" /></Button>
+      {helperNote && <p className="text-[9px] text-muted-foreground mb-4">{helperNote}</p>}
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex gap-2">
+            <Input 
+              value={inputValue} 
+              onChange={(e) => onInputChange(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && onAdd(isComplex ? {name: inputValue, impact: impactValue, color: colorValue} : inputValue)}
+              placeholder="New..." 
+              className="h-9 text-xs rounded-xl bg-muted/20 border-none shadow-inner" 
+            />
+            <Button size="icon" className="h-9 w-9 rounded-xl shadow-md shrink-0" onClick={() => onAdd(isComplex ? {name: inputValue, impact: impactValue, color: colorValue} : inputValue)}><Plus className="h-4 w-4" /></Button>
+        </div>
+        {isComplex && (
+            <div className="grid grid-cols-2 gap-2">
+                <Select value={impactValue} onValueChange={onImpactChange}>
+                    <SelectTrigger className="h-9 text-xs rounded-xl bg-muted/20 border-none">
+                        <SelectValue placeholder="Impact" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="increase">Increase (In)</SelectItem>
+                        <SelectItem value="decrease">Decrease (Out)</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Select value={colorValue} onValueChange={onColorChange}>
+                    <SelectTrigger className="h-9 text-xs rounded-xl bg-muted/20 border-none">
+                        <SelectValue placeholder="Color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {colorOptions.map((c) => (
+                            <SelectItem key={c.name} value={JSON.stringify(c)}>
+                                <div className="flex items-center gap-2">
+                                    <div className={cn("w-3 h-3 rounded-full", c.dot)} />
+                                    {c.name}
+                                </div>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        )}
       </div>
       <ScrollArea className="flex-1 max-h-[150px]">
         <div className="flex flex-wrap gap-2 pr-2">
-          {(items || []).map((t: string) => (
-            <Badge key={t} variant="secondary" className="h-7 px-3 rounded-lg text-[9px] uppercase font-bold bg-slate-50 border-slate-100 gap-2 group/item">
-              {t}
-              <button onClick={() => onRemove(t)} className="text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover/item:opacity-100">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </Badge>
-          ))}
+          {(items || []).map((t: any, idx: number) => {
+            const item = typeof t === 'string' ? {name: t, impact: 'none'} : t;
+            return (
+                <Badge key={idx} variant="secondary" className="h-7 px-3 rounded-lg text-[9px] uppercase font-bold bg-slate-50 border-slate-100 gap-2 group/item">
+                  {item.name} {isComplex && <span className="opacity-50">({item.impact})</span>}
+                  <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                    {onPromote && !isComplex && (
+                        <button onClick={() => onPromote(item.name)} className="text-primary hover:text-primary/80 transition-colors">
+                            <Zap className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    <button onClick={() => onRemove(t)} className="text-muted-foreground hover:text-destructive transition-colors">
+                        <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </Badge>
+            );
+          })}
         </div>
       </ScrollArea>
     </Card>

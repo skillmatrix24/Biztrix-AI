@@ -1,5 +1,6 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
+import fs from 'fs';
 
 function resolveApiKey(): string {
   const envCandidates = [
@@ -19,8 +20,6 @@ function resolveApiKey(): string {
   }
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('fs');
     if (fs.existsSync('/app/.dev.env.json')) {
       const devEnv = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
       for (const k of [devEnv.GEMINI_API_KEY, devEnv.GOOGLE_GENAI_API_KEY]) {
@@ -40,6 +39,6 @@ const apiKey = resolveApiKey();
 
 export const ai = genkit({
   plugins: [googleAI({ apiKey })],
-  model: googleAI.model('gemini-3.8-flash'),
+  model: googleAI.model('gemini-2.5-flash'),
 });
 

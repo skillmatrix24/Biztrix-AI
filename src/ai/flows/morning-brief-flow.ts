@@ -4,7 +4,7 @@
  * Generates a strategic start-of-day summary based on all active business modules.
  */
 
-import { ai } from '@/lib/gemini';
+import { ai, hasValidGeminiKey } from '@/lib/gemini';
 import { Type } from '@google/genai';
 import { z } from 'zod';
 
@@ -75,37 +75,39 @@ ${data.context.ongoingProjects ? `- PROJECTS: ${data.context.ongoingProjects.map
 
 Return ONLY valid JSON matching the schema structure.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            greeting: { type: Type.STRING },
-            summary: { type: Type.STRING },
-            priorityActions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  label: { type: Type.STRING },
-                  type: { type: Type.STRING },
-                  impact: { type: Type.STRING }, // Simplified for schema
+  if (hasValidGeminiKey()) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              greeting: { type: Type.STRING },
+              summary: { type: Type.STRING },
+              priorityActions: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    label: { type: Type.STRING },
+                    type: { type: Type.STRING },
+                    impact: { type: Type.STRING },
+                  },
                 },
               },
+              statusNode: { type: Type.STRING },
             },
-            statusNode: { type: Type.STRING },
           },
         },
-      },
-    });
-    
-    if (response.text) return JSON.parse(response.text);
-  } catch (error) {
-    console.error('Morning brief AI prompt failed, falling back to context:', error);
+      });
+
+      if (response.text) return JSON.parse(response.text);
+    } catch (error: any) {
+      console.warn('Morning brief AI prompt unavailable, using context summary:', error?.message || 'API fallback');
+    }
   }
 
   const taskCount = input.context.tasks?.length || 0;

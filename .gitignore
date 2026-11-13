@@ -41,5 +41,21 @@ next-env.d.ts
 .env*
 
 # firebase
-firebase-debug.log
-firestore-debug.log
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+.firebase/
+
+# build & runtime logs / temp markers
+*.log
+build.log
+/dist/
+.modified
+.dev.env.json
+
+# IDE & AI Studio session / chat artifacts
+.vscode/
+.aistudio/
+.agents/
+skills-lock.json
+public/assets/aistudio/

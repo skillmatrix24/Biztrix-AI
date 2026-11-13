@@ -228,18 +228,28 @@ export default function BatchEntryPage() {
             partyState
           );
 
-          if (entry.type === 'credit' || entry.type === 'debit') {
+          // Determine stock impact dynamically
+          const typeObj = cashbookTypes.find((ct: any) => (typeof ct === 'string' ? ct.toLowerCase() : ct.name.toLowerCase()) === entry.type.toLowerCase());
+          let impact = 'none';
+          if (typeObj && typeof typeObj !== 'string' && typeObj.impact) {
+              impact = typeObj.impact;
+          } else {
+              // Legacy fallback
+              impact = entry.type.toLowerCase() === 'credit' ? 'decrease' : entry.type.toLowerCase() === 'debit' ? 'increase' : 'none';
+          }
+
+          if (impact !== 'none') {
             const productDoc = await findProduct(entry.particulars);
             if (productDoc) {
               const productData = productDoc.data();
               const qty = Number(entry.qty) || 0;
               if (qty > 0) {
-                if (entry.type === 'credit') {
+                if (impact === 'decrease') {
                   if ((productData.stock || 0) < qty) {
                     throw new Error(`Insufficient stock for ${entry.particulars}. Available: ${productData.stock || 0}`);
                   }
                   transaction.update(productDoc.ref, { stock: increment(-qty) });
-                } else {
+                } else if (impact === 'increase') {
                   transaction.update(productDoc.ref, { stock: increment(qty) });
                 }
               }
@@ -300,23 +310,37 @@ export default function BatchEntryPage() {
   const getTypeStyle = (type: EntryType) => {
     const t = type.toLowerCase();
     
-    // Hardcoded mappings
-    if (t === 'credit') return { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Credit (+)', accentBorder: 'border-l-emerald-500' };
-    if (t === 'debit') return { badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Debit (-)', accentBorder: 'border-l-rose-500' };
-    if (t === 'nc') return { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: 'NC (Free)', accentBorder: 'border-l-amber-500' };
-    if (t === 'due') return { badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', label: 'Due Pay', accentBorder: 'border-l-blue-500' };
+    // Find the cashbook type object if it exists
+    const cashbookType = (cashbookTypes as any[]).find(ct => (typeof ct === 'string' ? ct.toLowerCase() : ct.name.toLowerCase()) === t);
     
-    // Dynamic color pool for other types
+    // If a custom color is defined, use it
+    if (cashbookType && typeof cashbookType !== 'string' && cashbookType.color) {
+        const colorConfig = JSON.parse(cashbookType.color);
+        return { badge: colorConfig.badge, dot: colorConfig.dot, label: type, accentBorder: colorConfig.border };
+    }
+
+    // Hardcoded mappings for defaults
+    if (!cashbookType) {
+        if (t === 'credit') return { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: 'Credit (+)', accentBorder: 'border-l-emerald-500' };
+        if (t === 'debit') return { badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500', label: 'Debit (-)', accentBorder: 'border-l-rose-500' };
+        if (t === 'nc') return { badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500', label: 'NC (Free)', accentBorder: 'border-l-amber-500' };
+        if (t === 'due') return { badge: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500', label: 'Due Pay', accentBorder: 'border-l-blue-500' };
+    }
+
+    // Color pool for everything else
     const colorPool = [
         { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', dot: 'bg-indigo-500', accentBorder: 'border-l-indigo-500' },
         { badge: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500', accentBorder: 'border-l-violet-500' },
         { badge: 'bg-pink-50 text-pink-700 border-pink-200', dot: 'bg-pink-500', accentBorder: 'border-l-pink-500' },
         { badge: 'bg-teal-50 text-teal-700 border-teal-200', dot: 'bg-teal-500', accentBorder: 'border-l-teal-500' },
-        { badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500', accentBorder: 'border-l-orange-500' }
+        { badge: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500', accentBorder: 'border-l-orange-500' },
+        { badge: 'bg-cyan-50 text-cyan-700 border-cyan-200', dot: 'bg-cyan-500', accentBorder: 'border-l-cyan-500' },
+        { badge: 'bg-lime-50 text-lime-700 border-lime-200', dot: 'bg-lime-500', accentBorder: 'border-l-lime-500' }
     ];
     
-    // Use string length to pick a color to be deterministic
-    const colorIndex = t.length % colorPool.length;
+    // Fallback deterministic styling
+    const index = (cashbookTypes as any[]).findIndex(ct => (typeof ct === 'string' ? ct.toLowerCase() : ct.name.toLowerCase()) === t);
+    const colorIndex = index >= 0 ? index % colorPool.length : t.length % colorPool.length;
     const style = colorPool[colorIndex];
     
     return { ...style, label: type };
@@ -463,13 +487,14 @@ export default function BatchEntryPage() {
                       {/* Type Selector (Pills) */}
                       <div className="flex items-center bg-slate-200/60 p-0.5 rounded-xl">
                         {cashbookTypes.map((t) => {
-                          const lcType = t.toLowerCase();
+                          const name = typeof t === 'string' ? t : t.name;
+                          const lcType = name.toLowerCase();
                           const isActive = entry.type === lcType;
                           const typeStyle = getTypeStyle(lcType);
 
                           return (
                             <button
-                              key={t}
+                              key={name}
                               type="button"
                               onClick={() => updateRow(entry.id, 'type', lcType)}
                               className={cn(
@@ -477,7 +502,7 @@ export default function BatchEntryPage() {
                                 isActive ? `${typeStyle.badge} shadow-sm` : "text-slate-600 hover:text-slate-900"
                               )}
                             >
-                              {t}
+                              {name}
                             </button>
                           );
                         })}
