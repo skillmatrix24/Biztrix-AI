@@ -40,6 +40,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota, isCreatedInCurrentMonth } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const STATUS_CONFIG: any = {
   'draft': { label: 'Draft', color: 'text-slate-500', bg: 'bg-slate-100' },
@@ -64,10 +67,21 @@ export default function QuotationRegistryPage() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
+  const { limits } = useMarketplaceCatalog();
   const quotesQuery = useMemoFirebase(() => 
     businessId ? query(collection(firestore, 'businesses', businessId, 'quotations'), orderBy('createdAt', 'desc')) : null
   , [firestore, businessId]);
   const { data: quotations, isLoading: isQuotesLoading } = useCollection<any>(quotesQuery);
+
+  const monthlyQuotesCount = useMemo(
+    () => (quotations || []).filter((q: any) => isCreatedInCurrentMonth(q.createdAt)).length,
+    [quotations]
+  );
+
+  const quoteQuota = useMemo(
+    () => evaluateCoreQuota("quotations", monthlyQuotesCount, { limits, business }),
+    [monthlyQuotesCount, limits, business]
+  );
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -101,6 +115,7 @@ export default function QuotationRegistryPage() {
 
   return (
     <div className="space-y-6 md:space-y-10 pb-20 text-left">
+      <CoreQuotaBanner quota={quoteQuota} />
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between px-1">
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-2xl bg-orange-50 flex items-center justify-center shrink-0 border border-orange-100 shadow-inner">
@@ -111,9 +126,15 @@ export default function QuotationRegistryPage() {
             <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">Sales Offer Registry</p>
           </div>
         </div>
-        <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
-          <Link href="/billing"><Plus className="mr-2 h-4 w-4" /> New Quote</Link>
-        </Button>
+        {quoteQuota.isReached ? (
+          <Button asChild className="bg-slate-900 hover:bg-slate-800 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
+            <Link href={`/marketplace/features/${quoteQuota.menu.addonId}`}>Unlock Unlimited Quotes</Link>
+          </Button>
+        ) : (
+          <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
+            <Link href="/billing"><Plus className="mr-2 h-4 w-4" /> New Quote</Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

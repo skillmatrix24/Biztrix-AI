@@ -74,6 +74,8 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { resolveCoreMenuState } from "@/lib/marketplace-catalog";
 import { doc } from "firebase/firestore";
 import { differenceInDays, parseISO } from "date-fns";
 
@@ -123,14 +125,13 @@ const engagementItems = [
 const ownerItems = [
   { label: "Overview", href: "/owner", icon: ShieldCheck },
   { label: "Platform Blueprint", href: "/owner/blueprint", icon: Layers },
-  { label: "System Limits", href: "/owner/limits", icon: Activity },
-  { label: "Modules", href: "/owner/marketplace", icon: ShoppingBasket },
+  { label: "Plans & Limits", href: "/owner/limits", icon: Activity },
   { label: "Gateways", href: "/owner/gateways", icon: KeyRound },
   { label: "Global Users", href: "/owner/users", icon: UserCog },
 ];
 
 const propertyItems = [
-  { label: "Property Catalog", href: "/properties", icon: Building, suiteId: 'suite_property', addonId: 'feat_realestate_catalog' },
+  { label: "Property Catalog", href: "/properties", icon: Building, suiteId: 'suite_property', addonId: 'feat_re_catalog', altAddonId: 'feat_realestate_catalog' },
   { label: "Real Estate Customers", href: "/properties/leads", icon: Target, suiteId: 'suite_property' },
   { label: "Agent Performance", href: "/properties/rewards", icon: Trophy, suiteId: 'suite_property' },
 ];
@@ -139,10 +140,10 @@ const growthItems = [
   { label: "Chat Hub", href: "/whatsapp-automation/chat", icon: MessageSquare, suiteId: 'suite_growth' },
   { label: "Contact Hub", href: "/whatsapp-automation/contacts", icon: UsersIcon, suiteId: 'suite_growth' },
   { label: "API Configuration", href: "/whatsapp-automation/config", icon: SettingsIcon, suiteId: 'suite_growth' },
-  { label: "Campaigns", href: "/whatsapp-automation/campaigns", icon: Zap, suiteId: 'suite_growth' },
+  { label: "Campaigns", href: "/whatsapp-automation/campaigns", icon: Zap, suiteId: 'suite_growth', addonId: 'feat_meta' },
   { label: "WhatsApp Flows", href: "/whatsapp-automation", icon: SmartphoneNfc, suiteId: 'suite_growth', addonId: 'feat_whatsapp' },
   { label: "Template Hub", href: "/settings/whatsapp-templates", icon: MessageSquare, suiteId: 'suite_growth' },
-  { label: "Analytics & ROI", href: "/marketing", icon: LineChart, suiteId: 'suite_growth' },
+  { label: "Analytics & ROI", href: "/marketing", icon: LineChart, suiteId: 'suite_growth', addonId: 'feat_marketing_roi' },
 ];
 
 const intelligenceItems = [
@@ -152,10 +153,10 @@ const intelligenceItems = [
 const backOfficeItems = [
   { label: "Accounting Pro", href: "/accounting", icon: Wallet, suiteId: 'suite_backoffice', addonId: 'feat_accounting' },
   { label: "Fixed Expenses", href: "/fixed-expenses", icon: Coins },
-  { label: "Payment Requests", href: "/payment-requests", icon: Handshake, addonId: 'feat_payments' },
+  { label: "Payment Requests", href: "/payment-requests", icon: Handshake, suiteId: 'suite_backoffice', addonId: 'feat_payments' },
   { label: "Projects", href: "/projects", icon: Briefcase, suiteId: 'suite_backoffice', addonId: 'feat_projects' },
   { label: "Staff & Payroll", href: "/staff", icon: Users2, suiteId: 'suite_backoffice', addonId: 'feat_staff' },
-  { label: "Task Manager", href: "/notes", icon: ListTodo, suiteId: 'suite_backoffice' },
+  { label: "Task Manager", href: "/notes", icon: ListTodo, suiteId: 'suite_backoffice', addonId: 'feat_tasks' },
 ];
 
 const storeItems = [
@@ -188,6 +189,7 @@ export function SidebarNav() {
   , [firestore, user?.uid, user?.isAnonymous]);
   const { data: globalBranding } = useDoc<any>(globalBrandingRef);
 
+  const { limits } = useMarketplaceCatalog();
   const isPlatformOwner = user?.email?.toLowerCase() === 'skillmatrix24@gmail.com'; 
   const activeAddonIds = useMemo(() => business?.activeAddonIds || [], [business]);
   
@@ -244,11 +246,21 @@ export function SidebarNav() {
     if (isMobile) setOpenMobile(false);
   };
 
-  const getModuleState = (suiteId?: string, addonId?: string) => {
-    if (!suiteId && !addonId) return isTrialExpired ? 'expired' : 'active';
+  const getModuleState = (
+    suiteId?: string,
+    addonId?: string,
+    altAddonId?: string,
+    itemHref?: string
+  ) => {
+    if (!suiteId && !addonId && !altAddonId) {
+      if (itemHref) {
+        return resolveCoreMenuState(itemHref, { limits, business });
+      }
+      return isTrialExpired ? 'expired' : 'active';
+    }
     const isSuiteActive = suiteId && activeAddonIds.includes(suiteId);
-    const isAddonActive = addonId && activeAddonIds.includes(addonId);
-    if (isSuiteActive || isAddonActive) {
+    const isAddonActive = (addonId && activeAddonIds.includes(addonId)) || (altAddonId && activeAddonIds.includes(altAddonId));
+    if (isSuiteActive || isAddonActive || (business?.status || '').toLowerCase() === 'pro') {
       return isTrialExpired ? 'expired' : 'active';
     }
     return 'locked';
@@ -258,8 +270,8 @@ export function SidebarNav() {
     if (isAgent && hideForAgent) return null;
     
     const activatedItems = items.filter(item => {
-      const state = getModuleState(item.suiteId, item.addonId);
-      return state !== 'locked';
+      const state = getModuleState(item.suiteId, item.addonId, item.altAddonId, item.href);
+      return state !== 'locked' && state !== 'hidden';
     });
 
     const roleFilteredItems = isAgent 
@@ -275,7 +287,7 @@ export function SidebarNav() {
         </SidebarGroupLabel>
         <SidebarMenu className="px-2">
           {roleFilteredItems.map((item) => {
-            const state = getModuleState(item.suiteId, item.addonId);
+            const state = getModuleState(item.suiteId, item.addonId, item.altAddonId, item.href);
             const isExpired = state === 'expired';
             
             const isExactMatch = pathname === item.href;

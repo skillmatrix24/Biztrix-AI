@@ -63,6 +63,9 @@ import { cn, getCurrencySymbol } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, addDocumentNonBlocking, useUser, useDoc, useMemoFirebase } from "@/firebase";
 import { collection, serverTimestamp, doc } from "firebase/firestore";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const EXPENSE_CATEGORIES = ["Rent", "Electricity", "Internet", "Salary", "Subscription", "Insurance", "EMI", "Other"];
 
@@ -82,11 +85,17 @@ export default function FixedExpensesPage() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
+  const { limits } = useMarketplaceCatalog();
   const currencySymbol = getCurrencySymbol(business?.currency);
 
   const [expenses, setExpenses] = useState<FixedExpense[]>(initialExpenses);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+
+  const fixedExpenseQuota = useMemo(
+    () => evaluateCoreQuota("fixed_expenses", expenses.length, { limits, business }),
+    [expenses.length, limits, business]
+  );
 
   // Form State
   const [name, setName] = useState("");
@@ -118,6 +127,14 @@ export default function FixedExpensesPage() {
   }, [expenses]);
 
   const handleAddExpense = () => {
+    if (fixedExpenseQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Fixed Expense Quota Reached",
+        description: `Your plan allows up to ${fixedExpenseQuota.limit} recurring overheads. Activate ${fixedExpenseQuota.menu.addonLabel} in Marketplace for unlimited entries.`,
+      });
+      return;
+    }
     if (!name || !amount || !businessId) {
       toast({ variant: "destructive", title: "Error", description: "Please fill all required fields and ensure business context." });
       return;
@@ -171,6 +188,7 @@ export default function FixedExpensesPage() {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
+      <CoreQuotaBanner quota={fixedExpenseQuota} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
@@ -183,7 +201,7 @@ export default function FixedExpensesPage() {
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 shadow-lg h-10 px-6 font-bold uppercase text-xs tracking-widest">
+            <Button disabled={fixedExpenseQuota.isReached} className="bg-primary hover:bg-primary/90 shadow-lg h-10 px-6 font-bold uppercase text-xs tracking-widest">
               <Plus className="mr-2 h-4 w-4" /> Add Recurring
             </Button>
           </DialogTrigger>

@@ -29,4 +29,8 @@ export type MarketplaceItem = {
   isTrialAvailable: boolean;
   inclusions: string;
   isActive?: boolean;
+  usageLimit?: string;
+  annualDiscountPercent?: number;
+  trialDays?: number;
+  sortOrder?: number;
 };

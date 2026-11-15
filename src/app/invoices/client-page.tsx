@@ -65,6 +65,9 @@ import {
   buildPaymentRecoveryAllocation,
   getInvoiceDueSummary,
 } from "@/lib/invoice-recovery";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota, isCreatedInCurrentMonth } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 type FilterTab = "all" | "due" | "pending" | "generated";
 
@@ -85,6 +88,7 @@ export default function InvoicesAndEWayPage() {
   );
   const { data: business } = useDoc<any>(businessRef);
 
+  const { limits } = useMarketplaceCatalog();
   const invoicesQuery = useMemoFirebase(
     () =>
       businessId
@@ -97,6 +101,22 @@ export default function InvoicesAndEWayPage() {
   );
   const { data: rawInvoices, isLoading: isInvoicesLoading } = useCollection<any>(invoicesQuery);
   const invoices = useMemo(() => rawInvoices || [], [rawInvoices]);
+
+  const monthlyEwbCount = useMemo(
+    () =>
+      invoices.filter(
+        (inv) =>
+          Boolean(inv?.ewayBill?.ewbNumber) &&
+          inv?.ewayBill?.ewbStatus !== "CANCELLED" &&
+          isCreatedInCurrentMonth(inv?.ewayBill?.ewbDate || inv?.createdAt)
+      ).length,
+    [invoices]
+  );
+
+  const ewayQuota = useMemo(
+    () => evaluateCoreQuota("invoices", monthlyEwbCount, { limits, business }),
+    [monthlyEwbCount, limits, business]
+  );
 
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -216,6 +236,14 @@ export default function InvoicesAndEWayPage() {
 
   const handleDownloadJsonForInvoices = (targetInvoices: any[], label: string) => {
     if (targetInvoices.length === 0) return;
+    if (ewayQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Monthly E-Way Bill Quota Reached",
+        description: `Your plan allows up to ${ewayQuota.limit} E-Way bills/month. Activate ${ewayQuota.menu.addonLabel} in Marketplace for higher volume.`,
+      });
+      return;
+    }
     const payload = buildNicEWayBillJson(targetInvoices, business);
     downloadNicJsonFile(payload, label);
     toast({
@@ -226,6 +254,16 @@ export default function InvoicesAndEWayPage() {
 
   const handleSaveEWayModal = async (nextDetails: EWayBillDetails) => {
     if (!businessId || !editingInvoice) return;
+    const isNewEwb =
+      Boolean(nextDetails.ewbNumber) && !editingInvoice?.ewayBill?.ewbNumber;
+    if (isNewEwb && ewayQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Monthly E-Way Bill Quota Reached",
+        description: `Your plan allows up to ${ewayQuota.limit} E-Way bills/month. Activate ${ewayQuota.menu.addonLabel} in Marketplace.`,
+      });
+      return;
+    }
     const docId = editingInvoice.id || editingInvoice.invoiceId;
     setIsSavingEWay(true);
     try {
@@ -261,6 +299,14 @@ export default function InvoicesAndEWayPage() {
     overrideDetails?: EWayBillDetails
   ) => {
     if (!businessId || !user || !targetInvoice) return;
+    if (ewayQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Monthly E-Way Bill Quota Reached",
+        description: `Your plan allows up to ${ewayQuota.limit} E-Way bills/month. Activate ${ewayQuota.menu.addonLabel} in Marketplace.`,
+      });
+      return;
+    }
     const invoiceId = targetInvoice.id || targetInvoice.invoiceId;
     setLiveBusyInvoiceId(invoiceId);
     try {
@@ -580,6 +626,7 @@ export default function InvoicesAndEWayPage() {
       </div>
 
       <div className="print:hidden space-y-6">
+        <CoreQuotaBanner quota={ewayQuota} />
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between border-b border-slate-200 pb-5">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs text-slate-500">

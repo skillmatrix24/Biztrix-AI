@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
@@ -42,6 +42,9 @@ import {
   type GstPeriodFilter,
   type GstPeriodMode,
 } from "@/lib/gst-reports";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 type GstTab = "gstr3b" | "b2b" | "b2c" | "hsn" | "cdnr";
 
@@ -159,16 +162,49 @@ export default function GstReportsPage() {
     });
   }, [rawInvoices, rawCreditNotes, rawCashbook, business, periodFilter]);
 
+  const { limits } = useMarketplaceCatalog();
+  const currentMonthKey = getCurrentMonthKey();
+  const exportStorageKey = `biztrix_gst_exports_${businessId || "guest"}_${currentMonthKey}`;
+  const [monthlyExportsUsed, setMonthlyExportsUsed] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = parseInt(window.localStorage.getItem(exportStorageKey) || "0", 10);
+    setMonthlyExportsUsed(Number.isFinite(saved) && saved > 0 ? saved : 0);
+  }, [exportStorageKey]);
+
+  const gstQuota = useMemo(
+    () => evaluateCoreQuota("gst", monthlyExportsUsed, { limits, business }),
+    [monthlyExportsUsed, limits, business]
+  );
+
+  const recordGstExport = () => {
+    const next = monthlyExportsUsed + 1;
+    setMonthlyExportsUsed(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(exportStorageKey, String(next));
+    }
+  };
+
   const hasValidBusinessGstin = isValidGstin(business?.gstin);
   const isDataLoading = isInvoicesLoading || isCreditNotesLoading || isCashbookLoading;
 
   const handleDownloadGstr1Json = () => {
+    if (gstQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Monthly GST Export Quota Reached",
+        description: `Your plan allows ${gstQuota.limit} GST return exports/month. Activate ${gstQuota.menu.addonLabel} in Marketplace for unlimited GSTR-1/3B filings.`,
+      });
+      return;
+    }
     const payload = buildGstr1Json(report);
     downloadTextFile(
       JSON.stringify(payload, null, 2),
       `GSTR1_${report.supplierGstin || "URP"}_${report.filingPeriodCode}.json`,
       "application/json"
     );
+    recordGstExport();
     toast({
       title: `GSTR-1 JSON Exported (${report.filingPeriodCode})`,
       description: "Ready to import in the GST Offline Utility or upload to gst.gov.in.",
@@ -176,12 +212,21 @@ export default function GstReportsPage() {
   };
 
   const handleDownloadCsv = () => {
+    if (gstQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Monthly GST Export Quota Reached",
+        description: `Your plan allows ${gstQuota.limit} GST return exports/month. Activate ${gstQuota.menu.addonLabel} in Marketplace for unlimited CA CSV exports.`,
+      });
+      return;
+    }
     const csv = buildGstr1SummaryCsv(report);
     downloadTextFile(
       csv,
       `GSTR1_Summary_${report.filingPeriodCode}.csv`,
       "text/csv;charset=utf-8;"
     );
+    recordGstExport();
     toast({
       title: "GST Return Summary CSV Exported",
       description: "Includes B2B, B2CS, HSN Table 12, and Credit Notes for your CA.",
@@ -200,6 +245,7 @@ export default function GstReportsPage() {
 
   return (
     <div className="space-y-6 pb-20 text-left">
+      <CoreQuotaBanner quota={gstQuota} />
       {/* HEADER */}
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between border-b border-slate-200 pb-5">
         <div className="space-y-1.5">

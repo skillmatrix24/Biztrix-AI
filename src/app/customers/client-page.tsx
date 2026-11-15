@@ -118,6 +118,9 @@ import {
   deleteCustomer, 
   fetchCustomerDetailsAndOrders
 } from "@/app/actions/customer-actions";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -143,6 +146,7 @@ export default function CustomersPage() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
+  const { limits } = useMarketplaceCatalog();
   const currencySymbol = getCurrencySymbol(business?.currency);
 
   // Safe bounded collection read for Customers (limit 200)
@@ -155,6 +159,11 @@ export default function CustomersPage() {
   );
   const { data: rawCustomers, isLoading: isCustomersLoading } = useCollection<Customer>(customersQuery);
   const customerList = useMemo(() => (Array.isArray(rawCustomers) ? rawCustomers : []), [rawCustomers]);
+
+  const customerQuota = useMemo(
+    () => evaluateCoreQuota("customers", customerList.length, { limits, business }),
+    [customerList.length, limits, business]
+  );
 
   // Safe bounded collection read for Orders to compute live customer statistics (limit 250)
   const ordersQuery = useMemoFirebase(() => 
@@ -432,6 +441,14 @@ export default function CustomersPage() {
   // Save Customer (Create or Edit) via Server Action
   const handleSaveCustomer = () => {
     if (!businessId || !user?.uid) return;
+    if (!customerFormData.id && customerQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Customer Quota Reached",
+        description: `Your plan allows up to ${customerQuota.limit} customer profiles. Activate ${customerQuota.menu.addonLabel} in Marketplace for unlimited profiles.`,
+      });
+      return;
+    }
     if (!customerFormData.name.trim() || !customerFormData.phone.trim()) {
       toast({ variant: "destructive", title: "Form Incomplete", description: "Customer name and mobile phone number are required." });
       return;
@@ -556,6 +573,7 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10 text-left">
+      <CoreQuotaBanner quota={customerQuota} />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
         <div className="flex items-center gap-4 text-left">
@@ -575,7 +593,7 @@ export default function CustomersPage() {
         <div className="flex items-center gap-3">
           <Dialog open={isAddCustomerOpen} onOpenChange={(o) => { setIsAddCustomerOpen(o); if(!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
+              <Button disabled={customerQuota.isReached} className="w-full sm:w-auto bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
                 <UserPlus className="mr-1.5 h-4 w-4" /> Add Customer
               </Button>
             </DialogTrigger>

@@ -49,6 +49,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { resolveCoreMenuState } from "@/lib/marketplace-catalog";
 import { doc } from "firebase/firestore";
 import { 
   DropdownMenu, 
@@ -110,6 +112,7 @@ export function BottomNav() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
+  const { limits } = useMarketplaceCatalog();
   const activeAddonIds = useMemo(() => business?.activeAddonIds || [], [business]);
   const customNavLinks = useMemo(() => business?.customNavLinks || [], [business]);
 
@@ -138,11 +141,18 @@ export function BottomNav() {
   const checkIsLocked = useCallback((item: any) => {
     if (!item) return true;
     if (item.isCustom) return false;
-    if (!item.suiteId && !item.addonId) return false;
+    if (!item.suiteId && !item.addonId) {
+      if (item.href) {
+        const coreState = resolveCoreMenuState(item.href, { limits, business });
+        return coreState === "locked" || coreState === "hidden";
+      }
+      return false;
+    }
+    if ((business?.status || "").toLowerCase() === "pro") return false;
     const isSuiteActive = item.suiteId && activeAddonIds.includes(item.suiteId);
     const isAddonActive = item.addonId && activeAddonIds.includes(item.addonId);
     return !isSuiteActive && !isAddonActive;
-  }, [activeAddonIds]);
+  }, [activeAddonIds, limits, business]);
 
   const roleConfig = useMemo(() => business?.mobileLayout?.[userRole] || {}, [business, userRole]);
   const footerStyle = roleConfig.footerStyle || 'solid';

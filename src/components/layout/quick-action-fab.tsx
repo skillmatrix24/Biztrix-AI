@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { resolveCoreMenuState } from "@/lib/marketplace-catalog";
 import { doc } from "firebase/firestore";
 
 const MASTER_FAB_REGISTRY: Record<string, { label: string, icon: any, color: string, suiteId?: string, addonId?: string }> = {
@@ -48,11 +50,20 @@ export function QuickActionFAB() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
+  const { limits } = useMarketplaceCatalog();
   const activeAddonIds = useMemo(() => business?.activeAddonIds || [], [business]);
 
-  const checkIsLocked = (item: any) => {
+  const checkIsLocked = (item: any, hrefOverride?: string) => {
     if (!item) return true;
-    if (!item.suiteId && !item.addonId) return false;
+    const targetHref = item.href || hrefOverride;
+    if (!item.suiteId && !item.addonId) {
+      if (targetHref) {
+        const coreState = resolveCoreMenuState(targetHref, { limits, business });
+        return coreState === "locked" || coreState === "hidden";
+      }
+      return false;
+    }
+    if ((business?.status || "").toLowerCase() === "pro") return false;
     return !activeAddonIds.includes(item.suiteId!) && !activeAddonIds.includes(item.addonId!);
   };
 
@@ -62,7 +73,7 @@ export function QuickActionFAB() {
     const centered = roleLayout?.fabPosition === 'center';
     
     // Filter out locked items
-    const activeFabPaths = customFab.filter((href: string) => !checkIsLocked(MASTER_FAB_REGISTRY[href]));
+    const activeFabPaths = customFab.filter((href: string) => !checkIsLocked(MASTER_FAB_REGISTRY[href], href));
 
     if (activeFabPaths.length > 0) {
       return {
@@ -79,10 +90,10 @@ export function QuickActionFAB() {
       ? [{ label: "New RE Lead", icon: Target, href: "/properties/leads/new", color: "bg-blue-500", suiteId: 'suite_property' }, { label: "New Property", icon: Building, href: "/properties/new", color: "bg-primary", suiteId: 'suite_property' }]
       : [{ label: "New Sale", icon: Receipt, href: "/billing", color: "bg-primary" }, { label: "New Lead", icon: UserPlus, href: "/leads", color: "bg-blue-600" }, { label: "Scan Bill", icon: ScanLine, href: "/inventory/scanner", color: "bg-indigo-600", suiteId: 'suite_intelligence' }];
     
-    const filteredDefaults = defaults.filter(item => !checkIsLocked(item));
+    const filteredDefaults = defaults.filter(item => !checkIsLocked(item, item.href));
 
     return { dynamicActions: filteredDefaults, isCentered: false };
-  }, [business?.mobileLayout, userRole, activeAddonIds]);
+  }, [business?.mobileLayout, userRole, activeAddonIds, limits, business]);
 
   if (dynamicActions.length === 0) return null;
 

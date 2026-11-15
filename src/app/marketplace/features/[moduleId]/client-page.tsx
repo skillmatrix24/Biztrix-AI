@@ -1,27 +1,88 @@
-
 "use client";
 
-import React, { use } from "react";
-import { 
-  ArrowLeft, 
-  ShieldCheck, 
-  Zap, 
-  CheckCircle2, 
-  Bot, 
-  Sparkles, 
-  Layout, 
-  Terminal, 
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bot,
+  Briefcase,
+  Building,
+  Calculator,
+  CheckCircle2,
+  FileSpreadsheet,
+  Gem,
+  Globe,
+  Headset,
+  IdCard,
+  Layout,
+  LayoutDashboard,
+  Lightbulb,
+  LineChart,
+  ListTodo,
+  MessageSquare,
+  Palette,
+  Power,
+  Receipt,
+  ScanLine,
+  SearchCode,
+  ShieldAlert,
+  ShieldCheck,
+  ShoppingBag,
+  Smartphone,
   SmartphoneNfc,
-  ChevronRight,
-  BadgeCheck,
+  Sun,
+  Target,
+  Ticket,
+  Trophy,
+  Users,
+  Users2,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import { doc } from "firebase/firestore";
+import {
+  useDoc,
+  useFirestore,
+  useMemoFirebase,
+  useUser,
+  updateDocumentNonBlocking,
+} from "@/firebase";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "@/hooks/use-toast";
+import { cn, getCurrencySymbol } from "@/lib/utils";
+import {
+  buildIndividualModuleDetail,
+  calculateMarketplacePrice,
+  getItemWorkspaceLink,
+  MARKETPLACE_META,
+  type MarketplaceBillingCycle,
+} from "@/lib/marketplace-catalog";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { getModuleDetail } from "../../data";
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  LayoutDashboard,
+  SearchCode,
+  Ticket,
+  Users,
+  IdCard,
+  Zap,
   Building,
   Target,
   Trophy,
-  Users,
-  IdCard,
-  Ticket,
-  LayoutDashboard,
-  SearchCode,
+  Bot,
+  SmartphoneNfc,
   Briefcase,
   Headset,
   Wallet,
@@ -37,33 +98,12 @@ import {
   ScanLine,
   Palette,
   Globe,
-  Loader2,
-  X,
-  Info,
-  ShieldAlert,
-  Sun
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
-import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { getModuleDetail } from "../../data";
-
-const iconMap: Record<string, any> = {
-  LayoutDashboard, SearchCode, Ticket, Users, IdCard, Zap, 
-  Building, Target, Trophy, Bot, SmartphoneNfc, Briefcase, 
-  Headset, Wallet, Calculator, MessageSquare, Smartphone, 
-  Gem, LineChart, ShoppingBag, ListTodo, Users2, Lightbulb, 
-  ScanLine, Palette, Globe, Sun
+  Sun,
+  Receipt,
+  FileSpreadsheet,
 };
 
-function DynamicIcon({ name, className }: { name: string, className?: string }) {
+function DynamicIcon({ name, className }: { name: string; className?: string }) {
   const Icon = iconMap[name] || Bot;
   return <Icon className={className} />;
 }
@@ -73,49 +113,130 @@ export default function ModuleFeaturePage(props: { params: { moduleId: string } 
   const firestore = useFirestore();
   const { user } = useUser();
 
-  const userProfileRef = useMemoFirebase(() => 
-    user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid]);
+  const isSignedIn = Boolean(user && !user.isAnonymous);
+
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid && !user.isAnonymous ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid, user?.isAnonymous]
+  );
   const { data: userProfile } = useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
-  const businessRef = useMemoFirebase(() => 
-    businessId ? doc(firestore, 'businesses', businessId) : null
-  , [firestore, businessId]);
+  const businessRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
   const { data: business } = useDoc<any>(businessRef);
 
-  const detail = getModuleDetail(moduleId);
-  const activeAddonIds = business?.activeAddonIds || [];
+  const { limits, allItems } = useMarketplaceCatalog({ includeInactive: true });
+
+  const [billingCycle, setBillingCycle] = useState<MarketplaceBillingCycle>("monthly");
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
+  const [demoPhone, setDemoPhone] = useState("");
+  const [demoNotes, setDemoNotes] = useState("");
+
+  const suiteSummary = useMemo(
+    () => allItems.find((b) => b.id === moduleId),
+    [allItems, moduleId]
+  );
+  const detail = useMemo(() => {
+    const registered = getModuleDetail(moduleId);
+    if (registered && suiteSummary) {
+      const overrideFeatures = suiteSummary.inclusions
+        ? suiteSummary.inclusions
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+      return {
+        ...registered,
+        title: suiteSummary.name || registered.title,
+        description: suiteSummary.description || registered.description,
+        features: overrideFeatures.length > 0 ? overrideFeatures : registered.features,
+        rules: suiteSummary.usageLimit
+          ? [`Configured Quota: ${suiteSummary.usageLimit}`, ...registered.rules]
+          : registered.rules,
+      };
+    }
+    if (registered) return registered;
+    if (suiteSummary) return buildIndividualModuleDetail(suiteSummary);
+    return undefined;
+  }, [moduleId, suiteSummary]);
+  const meta = MARKETPLACE_META[moduleId];
+  const workspace = getItemWorkspaceLink(moduleId);
+
+  const activeAddonIds: string[] = Array.isArray(business?.activeAddonIds)
+    ? business.activeAddonIds
+    : [];
   const isActive = activeAddonIds.includes(moduleId);
 
+  const currencySymbol = getCurrencySymbol(business?.currency || "INR");
+  const discountPercent = suiteSummary?.annualDiscountPercent ?? limits.annualDiscountPercent;
+  const trialDays = suiteSummary?.trialDays ?? limits.trialDurationDays;
+  const pricing = suiteSummary
+    ? calculateMarketplacePrice(suiteSummary.price, billingCycle, discountPercent)
+    : null;
+
   const handleActivate = () => {
-    if (!user || user.isAnonymous) {
-      toast({ title: "Login Required", description: "Please sign in to your business account." });
+    if (!isSignedIn) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to your business account to activate this suite.",
+      });
       return;
     }
-    if (!business || !businessRef) return;
+    if (!businessRef) return;
+    if (activeAddonIds.includes(moduleId)) return;
 
-    const currentIds = business.activeAddonIds || [];
-    if (currentIds.includes(moduleId)) return;
-
-    const newIds = [...currentIds, moduleId];
     updateDocumentNonBlocking(businessRef, {
-      activeAddonIds: newIds,
-      updatedAt: new Date().toISOString()
+      activeAddonIds: [...activeAddonIds, moduleId],
+      updatedAt: new Date().toISOString(),
     });
-    
+
     toast({
-      title: "Module Integrated",
-      description: `This feature is now active on your plan.`,
+      title: `${detail?.title || "Suite"} Trial Started`,
+      description: "Your 14-day free trial is now unlocked in the sidebar.",
+    });
+  };
+
+  const handleDeactivate = () => {
+    if (!isSignedIn || !businessRef) return;
+    updateDocumentNonBlocking(businessRef, {
+      activeAddonIds: activeAddonIds.filter((id) => id !== moduleId),
+      updatedAt: new Date().toISOString(),
+    });
+    toast({
+      title: `${detail?.title || "Suite"} Disabled`,
+      description: "Removed from your active plan. Your saved records remain intact.",
+    });
+  };
+
+  const handleSubmitDemo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!demoPhone.trim()) {
+      toast({ title: "Phone number needed", description: "Please enter a contact number." });
+      return;
+    }
+    setDemoModalOpen(false);
+    setDemoPhone("");
+    setDemoNotes("");
+    toast({
+      title: "Walkthrough Requested",
+      description: "Our onboarding team will reach out shortly with a guided setup.",
     });
   };
 
   if (!detail) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <ShieldAlert className="h-10 w-10 text-red-600 mb-4" />
-        <h1 className="text-xl font-bold uppercase">Module Node Not Found</h1>
-        <Button asChild variant="outline" className="mt-6 rounded-xl">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <ShieldAlert className="h-10 w-10 text-rose-600" />
+        <div className="space-y-1">
+          <h1 className="text-xl font-bold text-slate-900">Module not found</h1>
+          <p className="text-sm text-slate-600">
+            This suite may have moved or been renamed in the Marketplace.
+          </p>
+        </div>
+        <Button asChild variant="outline" className="rounded-xl">
           <Link href="/marketplace">Back to Marketplace</Link>
         </Button>
       </div>
@@ -123,151 +244,288 @@ export default function ModuleFeaturePage(props: { params: { moduleId: string } 
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 pb-20 text-left px-2 sm:px-4">
-      <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-white shadow-sm border shrink-0">
-          <Link href="/marketplace"><ArrowLeft className="h-5 w-5" /></Link>
-        </Button>
-        <div className="text-left">
-          <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary h-5 px-3 mb-1.5">Module Node Inspector</Badge>
-          <h1 className="text-2xl md:text-4xl font-black text-slate-900 leading-none uppercase tracking-tight">{detail.title}</h1>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        <div className="lg:col-span-8 space-y-12">
-          {/* Hero Context */}
-          <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden p-8 sm:p-14 relative">
-             <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
-                <ShieldCheck className="h-64 w-64 text-white" />
-             </div>
-             <div className="relative z-10 space-y-8">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
-                    <Sparkles className="h-7 w-7 text-accent" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold uppercase tracking-tight">{detail.logicTitle}</h3>
-                    <p className="text-accent text-[10px] font-bold uppercase tracking-widest mt-1">Platform Logic Node Verified</p>
-                  </div>
-                </div>
-                <p className="text-base sm:text-xl text-slate-300 leading-relaxed font-medium italic">
-                  "{detail.description}"
-                </p>
-             </div>
-          </Card>
-
-          {/* Core Feature Sections */}
-          {detail.sections && (
-            <section className="space-y-8 text-left">
-              <div className="flex items-center gap-3 px-1">
-                <Layout className="h-4 w-4 text-primary fill-primary" />
-                <h4 className="text-[11px] font-black uppercase tracking-widest text-primary">Operational Ecosystem</h4>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                {detail.sections.map((sec, i) => (
-                  <div key={i} className="p-6 bg-white rounded-[2rem] border-2 border-border/40 hover:border-primary/20 transition-all shadow-sm space-y-4 group">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                        <DynamicIcon name={sec.icon} className="h-5 w-5" />
-                      </div>
-                      <h5 className="text-sm font-black uppercase text-slate-900 tracking-tight">{sec.title}</h5>
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{sec.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Key Feature List */}
-          {detail.features && (
-            <section className="space-y-6 text-left">
-              <div className="flex items-center gap-3 px-1">
-                <Zap className="h-4 w-4 text-primary fill-primary" />
-                <h4 className="text-[11px] font-black uppercase tracking-widest text-primary">Capability Matrix</h4>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {detail.features.map((feat, i) => (
-                  <div key={i} className="flex items-start gap-4 p-5 bg-muted/20 rounded-2xl border border-transparent shadow-inner">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-tight leading-none">{feat}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Logic & Rules */}
-          <section className="p-8 sm:p-12 bg-slate-50 rounded-[3rem] border border-border/50 space-y-10 text-left">
-            <div className="flex items-center gap-3 px-1">
-               <Terminal className="h-4 w-4 text-slate-900" />
-               <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900">System Protocols & Guidelines</h4>
-            </div>
-            <div className="space-y-8">
-               {detail.rules.map((rule, i) => (
-                 <div key={i} className="flex gap-6 text-left items-start group">
-                    <div className="h-8 w-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs shrink-0 mt-0.5 shadow-xl group-hover:scale-110 transition-transform">{i + 1}</div>
-                    <p className="text-sm sm:text-base font-medium text-slate-600 leading-relaxed uppercase tracking-tight pt-1.5">{rule}</p>
-                 </div>
-               ))}
-            </div>
-          </section>
-
-          {/* Backend Info */}
-          <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 flex items-start gap-5 shadow-inner text-left">
-            <ShieldCheck className="h-6 w-6 text-primary shrink-0 opacity-40 mt-0.5" />
-            <div className="space-y-2">
-               <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Verified Backend Sync</p>
-               <p className="text-xs text-primary/70 leading-relaxed font-medium italic">
-                 "{detail.backend}"
-               </p>
-            </div>
+    <div className="max-w-6xl mx-auto space-y-8 pb-20 text-left px-2 sm:px-4">
+      {/* Breadcrumb Back Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            aria-label="Back to Marketplace"
+            className="h-10 w-10 rounded-xl bg-white border-slate-200 shrink-0"
+          >
+            <Link href="/marketplace">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-slate-500">
+              Marketplace / Suite Details
+            </p>
+            <h1 className="text-xl sm:text-3xl font-bold text-slate-900 truncate">
+              {detail.title}
+            </h1>
           </div>
         </div>
 
-        {/* Sidebar: Call to Action */}
-        <div className="lg:col-span-4 space-y-8 sticky top-24">
-          <Card className="border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden border">
-             <CardHeader className="p-8 bg-muted/30 border-b text-left">
-                <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">Action Node</CardTitle>
-             </CardHeader>
-             <CardContent className="p-8 space-y-8">
-                <div className="text-left space-y-4">
-                  <p className="text-sm font-medium text-slate-500 uppercase tracking-tight">Deploy this suite to your tenant OS immediately.</p>
-                  <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 text-center">
-                    <Badge className="bg-primary text-white text-[7px] font-black uppercase h-4 px-2 mb-2">LIMITED OFFER</Badge>
-                    <p className="text-4xl font-black text-primary">14 Days</p>
-                    <p className="text-[10px] font-bold text-primary/60 uppercase">FREE TRIAL ACCESS</p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={handleActivate}
-                  disabled={isActive}
-                  className="w-full h-16 bg-primary hover:bg-primary/90 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl active:scale-95 transition-all"
-                >
-                  {isActive ? "ALREADY ACTIVE" : "ACTIVATE TRIAL"}
-                </Button>
-                <div className="space-y-4">
-                   <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-500" /><span className="text-[9px] font-black uppercase text-slate-400">Zero Setup Fee</span></div>
-                   <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-500" /><span className="text-[9px] font-black uppercase text-slate-400">Instant Node Sync</span></div>
-                   <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-500" /><span className="text-[9px] font-black uppercase text-slate-400">cancel anytime</span></div>
-                </div>
-             </CardContent>
-          </Card>
+        {isActive && (
+          <Button asChild className="rounded-xl font-semibold text-xs shrink-0">
+            <Link href={workspace.href}>
+              {workspace.label}
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        )}
+      </div>
 
-          <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border text-left p-8 space-y-4">
-             <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0">
-                  <Info className="h-4 w-4" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-8 space-y-8 min-w-0">
+          {/* Overview Banner */}
+          <div className="rounded-2xl bg-slate-900 text-white p-6 sm:p-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                <DynamicIcon name={suiteSummary?.icon || "Zap"} className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-300">{detail.logicTitle}</p>
+                <h2 className="text-lg font-bold text-white">{detail.title}</h2>
+              </div>
+            </div>
+            <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
+              {meta?.bestFor ? `${meta.bestFor}. ` : ""}
+              {detail.description}
+            </p>
+          </div>
+
+          {/* Core Modules Inside Suite */}
+          {detail.sections && (
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-900">Tools Included in This Suite</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {detail.sections.map((sec, i) => (
+                  <div
+                    key={i}
+                    className="p-5 bg-white rounded-2xl border border-slate-200 space-y-2"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                        <DynamicIcon name={sec.icon} className="h-4 w-4" />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900">{sec.title}</h4>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{sec.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Key Capabilities */}
+          {detail.features && (
+            <section className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-900">Key Capabilities</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {detail.features.map((feat, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 p-4 bg-white rounded-xl border border-slate-200"
+                  >
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <span className="text-sm text-slate-800">{feat}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Business Rules & Safeguards */}
+          <section className="p-6 sm:p-8 bg-white rounded-2xl border border-slate-200 space-y-5">
+            <h3 className="text-lg font-bold text-slate-900">How It Works & Built-in Safeguards</h3>
+            <div className="space-y-4">
+              {detail.rules.map((rule, i) => (
+                <div key={i} className="flex gap-4 items-start">
+                  <div className="h-7 w-7 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 tabular-nums">
+                    {i + 1}
+                  </div>
+                  <p className="text-sm text-slate-700 leading-relaxed pt-0.5">{rule}</p>
                 </div>
-                <h5 className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">Need a Demo?</h5>
-             </div>
-             <p className="text-[11px] text-muted-foreground font-medium leading-relaxed">Connect with our engineering hub for a one-on-one walkthrough of this module's logic.</p>
-             <Button variant="outline" className="w-full h-11 rounded-xl text-[9px] font-black uppercase border-primary/20 text-primary">Talk to Expert <ChevronRight className="ml-1 h-3 w-3" /></Button>
-          </Card>
+              ))}
+            </div>
+            <div className="pt-4 border-t border-slate-100 flex items-start gap-3">
+              <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-600 leading-relaxed">{detail.backend}</p>
+            </div>
+          </section>
+        </div>
+
+        {/* Sticky Activation Sidebar (desktop only) */}
+        <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-24 min-w-0">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-5">
+            {pricing && (
+              <div className="space-y-3">
+                <div className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-1 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle("monthly")}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors",
+                      billingCycle === "monthly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+                    )}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBillingCycle("yearly")}
+                    className={cn(
+                      "flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors",
+                      billingCycle === "yearly" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600"
+                    )}
+                  >
+                    Annual (-{discountPercent}%)
+                  </button>
+                </div>
+
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-slate-900 tabular-nums">
+                      {currencySymbol}
+                      {pricing.effectiveMonthly.toLocaleString()}
+                    </span>
+                    <span className="text-xs text-slate-500">/ month</span>
+                  </div>
+                  {billingCycle === "yearly" && (
+                    <p className="text-xs text-emerald-700 font-medium mt-0.5 tabular-nums">
+                      Billed {currencySymbol}
+                      {pricing.yearlyTotal.toLocaleString()}/year
+                    </p>
+                  )}
+                  {suiteSummary?.usageLimit && (
+                    <p className="text-xs font-medium text-primary mt-1.5">
+                      {suiteSummary.usageLimit}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isActive ? (
+              <div className="space-y-2.5">
+                <Button asChild className="w-full h-11 rounded-xl font-semibold text-sm">
+                  <Link href={workspace.href}>
+                    {workspace.label}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDeactivate}
+                  className="w-full h-10 rounded-xl text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50"
+                >
+                  <Power className="mr-1.5 h-3.5 w-3.5" /> Turn Off Suite
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={handleActivate}
+                className="w-full h-11 rounded-xl font-semibold text-sm"
+              >
+                {suiteSummary?.isTrialAvailable === false
+                  ? "Activate Now"
+                  : `Start ${trialDays}-Day Free Trial`}
+              </Button>
+            )}
+
+            <ul className="space-y-2.5 pt-2 border-t border-slate-100 text-xs text-slate-600">
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                Zero setup fee — ready immediately
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                Instant sidebar access after activation
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                Cancel or switch plans anytime
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-3">
+            <h4 className="text-sm font-bold text-slate-900">Need a quick walkthrough?</h4>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Have questions about how {detail.title} fits your business workflow? Request a 15-minute live setup call.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDemoModalOpen(true)}
+              className="w-full h-10 rounded-xl text-xs font-semibold border-slate-200"
+            >
+              Request Guided Demo
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Interactive Demo Request Modal */}
+      <Dialog open={demoModalOpen} onOpenChange={setDemoModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <form onSubmit={handleSubmitDemo} className="space-y-4">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-lg font-bold text-slate-900">
+                Request {detail.title} Demo
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-600">
+                Share your WhatsApp or phone number and our team will help configure this suite for you.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 text-left">
+              <div className="space-y-1.5">
+                <Label htmlFor="demo-phone" className="text-xs font-semibold text-slate-700">
+                  Phone / WhatsApp Number
+                </Label>
+                <Input
+                  id="demo-phone"
+                  value={demoPhone}
+                  onChange={(e) => setDemoPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="demo-notes" className="text-xs font-semibold text-slate-700">
+                  What would you like help with? (Optional)
+                </Label>
+                <Input
+                  id="demo-notes"
+                  value={demoNotes}
+                  onChange={(e) => setDemoNotes(e.target.value)}
+                  placeholder="e.g. Importing staff or WhatsApp template setup"
+                  className="h-10 rounded-xl"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setDemoModalOpen(false)}
+                className="rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="rounded-xl">
+                Send Request
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

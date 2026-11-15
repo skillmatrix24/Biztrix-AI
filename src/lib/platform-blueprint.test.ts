@@ -33,7 +33,7 @@ test('SIDEBAR_BLUEPRINT_GROUPS covers all 11 sidebar groups with complete metada
     }
   }
 
-  assert.equal(totalItems, 64);
+  assert.equal(totalItems, 63);
 });
 
 test('SIDEBAR_BLUEPRINT_GROUPS matches SidebarNav hrefs and includes Store Builder 16-section & relay architecture', () => {
@@ -65,12 +65,23 @@ test('SIDEBAR_BLUEPRINT_GROUPS matches SidebarNav hrefs and includes Store Build
   const landingBuilder = storeBuilder.items.find((i) => i.id === 'landing-page-builder');
   assert.ok(landingBuilder);
   assert.equal(landingBuilder.href, '/website/funnels');
+  assert.equal(
+    sidebarHrefs.includes('/owner/marketplace'),
+    false,
+    'Duplicate /owner/marketplace menu should be consolidated into /owner/limits'
+  );
+  const platformMaster = SIDEBAR_BLUEPRINT_GROUPS.find((g) => g.id === 'platform_master');
+  assert.ok(platformMaster);
+  const plansAndLimits = platformMaster.items.find((i) => i.id === 'owner-limits');
+  assert.ok(plansAndLimits);
+  assert.equal(plansAndLimits.label, 'Plans & Limits');
+  assert.ok(plansAndLimits.backendStack.firestoreCollections.includes('system/config/marketplace/{moduleId}'));
 });
 
 test('getBlueprintSummaryStats and filterBlueprintGroups accurately compute stats and search across backend/frontend', () => {
   const stats = getBlueprintSummaryStats(SIDEBAR_BLUEPRINT_GROUPS);
   assert.equal(stats.totalGroups, 11);
-  assert.equal(stats.totalPages, 64);
+  assert.equal(stats.totalPages, 63);
   assert.ok(stats.uniqueCollections >= 25);
   assert.ok(stats.uniqueApiRoutes >= 6);
   assert.ok(stats.uniqueServerActions >= 5);

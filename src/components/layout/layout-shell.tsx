@@ -58,7 +58,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
            path.startsWith('/staff/track');
   }, [pathname]);
                         
-  const isHybridRoute = pathname === '/marketplace' || pathname === '/pricing';
+  const isHybridRoute = Boolean(pathname?.startsWith('/marketplace') || pathname === '/pricing');
   const isActuallyLoggedIn = user && !user.isAnonymous;
 
   const userProfileRef = useMemoFirebase(() => 

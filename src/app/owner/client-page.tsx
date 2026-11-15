@@ -71,6 +71,7 @@ import { suggestUpsellModules } from "@/ai/flows/suggest-upsell-modules";
 import { runCredentialMigration, MigrationReport } from "@/app/actions/p0-migration";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
 
 export default function OwnerOverviewPage() {
   const firestore = useFirestore();
@@ -97,11 +98,11 @@ export default function OwnerOverviewPage() {
   }, [firestore, isPlatformOwner]);
   const { data: allUsers, isLoading: usersLoading } = useCollection<any>(usersQuery);
 
-  const featuresQuery = useMemoFirebase(() => {
-    if (!isPlatformOwner) return null;
-    return collection(firestore, 'system', 'config', 'marketplace');
-  }, [firestore, isPlatformOwner]);
-  const { data: features, isLoading: featLoading } = useCollection<any>(featuresQuery);
+  const { allItems: catalogItems } = useMarketplaceCatalog({ includeInactive: true });
+  const features = useMemo(
+    () => catalogItems.filter((m) => m.isActive !== false),
+    [catalogItems]
+  );
 
   const gatewaysQuery = useMemoFirebase(() => {
     if (!isPlatformOwner) return null;
@@ -256,7 +257,7 @@ export default function OwnerOverviewPage() {
             <Link href="/owner/users"><UserCog className="mr-2 h-4 w-4" /> Users</Link>
           </Button>
           <Button asChild className="bg-primary shadow-lg font-bold text-xs uppercase tracking-widest h-10 px-6 rounded-xl text-white">
-            <Link href="/owner/marketplace"><Plus className="mr-2 h-4 w-4" /> Modules</Link>
+            <Link href="/owner/limits?tab=suites"><Activity className="mr-2 h-4 w-4" /> Plans & Limits</Link>
           </Button>
         </div>
       </div>

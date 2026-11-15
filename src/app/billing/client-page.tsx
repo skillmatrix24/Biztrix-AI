@@ -18,6 +18,8 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -59,6 +61,9 @@ import { QuickProductDialog } from "./components/QuickProductDialog";
 import { SplitBillDialog, type SplitBillPartPayload } from "./components/SplitBillDialog";
 import { EWayBillModal } from "./components/EWayBillModal";
 import { WhatsAppShareModal } from "@/app/invoices/components/WhatsAppShareModal";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota, isCreatedInCurrentMonth } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 export type BillItem = BillingLineItem;
 
@@ -85,6 +90,7 @@ function BillingContent() {
     [firestore, businessId]
   );
   const { data: business } = useDoc<any>(businessRef);
+  const { limits } = useMarketplaceCatalog();
 
   const [activeMembership, setActiveMembership] = useState<any>(null);
   const [isLoyaltyLoading, setIsLoyaltyLoading] = useState(false);
@@ -229,6 +235,56 @@ function BillingContent() {
   );
   const { data: tiersRaw } = useCollection<any>(tiersQuery);
   const tiers = tiersRaw || [];
+
+  const recentInvoicesQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "invoices"),
+            orderBy("createdAt", "desc"),
+            limit(250)
+          )
+        : null,
+    [firestore, businessId]
+  );
+  const { data: recentInvoicesData } = useCollection<any>(recentInvoicesQuery);
+
+  const recentQuotesQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "quotations"),
+            orderBy("createdAt", "desc"),
+            limit(250)
+          )
+        : null,
+    [firestore, businessId]
+  );
+  const { data: recentQuotesData } = useCollection<any>(recentQuotesQuery);
+
+  const monthlyInvoicesCount = useMemo(
+    () =>
+      (recentInvoicesData || []).filter((inv: any) =>
+        isCreatedInCurrentMonth(inv.createdAt || inv.isoDate)
+      ).length,
+    [recentInvoicesData]
+  );
+
+  const monthlyQuotesCount = useMemo(
+    () =>
+      (recentQuotesData || []).filter((q: any) => isCreatedInCurrentMonth(q.createdAt)).length,
+    [recentQuotesData]
+  );
+
+  const billingQuota = useMemo(
+    () => evaluateCoreQuota("billing", monthlyInvoicesCount, { limits, business }),
+    [monthlyInvoicesCount, limits, business]
+  );
+
+  const quoteQuota = useMemo(
+    () => evaluateCoreQuota("quotations", monthlyQuotesCount, { limits, business }),
+    [monthlyQuotesCount, limits, business]
+  );
 
   useEffect(() => {
     if (isRewardSyncMode && selectedCustomerId) {
@@ -719,6 +775,28 @@ function BillingContent() {
     if (isSaving) return;
     if (!selectedCustomerId || !businessId) return;
 
+    if (isQuotation && quoteQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: quoteQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Quotation Limit Reached",
+        description: quoteQuota.isLockedByMode
+          ? `Activate ${quoteQuota.menu.addonName} in Marketplace to create quotations.`
+          : `Your plan includes ${quoteQuota.limit} quotations/month. Upgrade ${quoteQuota.menu.addonName} for unlimited estimates.`,
+      });
+      return;
+    }
+
+    if (!isQuotation && !isRewardSyncMode && billingQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: billingQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Invoice Limit Reached",
+        description: billingQuota.isLockedByMode
+          ? `Activate ${billingQuota.menu.addonName} in Marketplace to issue POS invoices.`
+          : `Your plan includes ${billingQuota.limit} POS invoices/month. Upgrade ${billingQuota.menu.addonName} for unlimited billing.`,
+      });
+      return;
+    }
+
     if (isRewardSyncMode && !manualAmount) {
       toast({
         variant: "destructive",
@@ -1135,6 +1213,21 @@ function BillingContent() {
     splitType: "equal" | "items"
   ) => {
     if (isSaving || !businessId || parts.length < 2) return;
+    if (
+      billingQuota.isReached ||
+      (!billingQuota.isUnlocked &&
+        billingQuota.limit < 999999 &&
+        billingQuota.current + parts.length > billingQuota.limit)
+    ) {
+      toast({
+        variant: "destructive",
+        title: billingQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Invoice Limit Reached",
+        description: billingQuota.isLockedByMode
+          ? `Activate ${billingQuota.menu.addonName} in Marketplace to split POS invoices.`
+          : `Splitting into ${parts.length} bills exceeds your ${billingQuota.limit} invoices/month quota.`,
+      });
+      return;
+    }
     const overStockItem = items.find((i) => i.quantity > i.stock);
     if (overStockItem) {
       toast({
@@ -1547,6 +1640,9 @@ function BillingContent() {
       </div>
 
       <div className="print:hidden space-y-6">
+        {!isRewardSyncMode && (
+          <CoreQuotaBanner quota={isQuotation ? quoteQuota : billingQuota} />
+        )}
         <StatusHeader
           mode={billingMode}
           onModeChange={handleModeChange}

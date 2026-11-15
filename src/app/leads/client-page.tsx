@@ -71,6 +71,9 @@ import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, u
 import { collection, doc, query, where, orderBy, serverTimestamp } from "firebase/firestore";
 import { differenceInDays, parseISO } from "date-fns";
 import Link from "next/link";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const STAGES: { id: LeadStatus; label: string; color: string }[] = [
   { id: 'new', label: 'New Leads', color: 'bg-blue-500' },
@@ -96,12 +99,7 @@ export default function LeadsPage() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
-  // Fetch Global Limits - Protected by user auth
-  const limitsRef = useMemoFirebase(() => {
-    if (!user?.uid) return null;
-    return doc(firestore, 'system', 'config', 'limits', 'default');
-  }, [firestore, user?.uid]);
-  const { data: globalLimits } = useDoc<any>(limitsRef);
+  const { limits } = useMarketplaceCatalog();
 
   const leadsQuery = useMemoFirebase(() => 
     businessId ? collection(firestore, 'businesses', businessId, 'leads') : null,
@@ -110,11 +108,11 @@ export default function LeadsPage() {
   const { data: leadsListData, isLoading: isLeadsLoading } = useCollection<Lead>(leadsQuery);
   const leadsList = leadsListData || [];
 
-  const isLimitReached = useMemo(() => {
-    if (!business || !globalLimits) return false;
-    if (business.status === 'active' || business.status === 'pro') return false;
-    return leadsList.length >= (globalLimits.maxActiveLeads || 20);
-  }, [business, globalLimits, leadsList.length]);
+  const leadsQuota = useMemo(
+    () => evaluateCoreQuota("leads", leadsList.length, { limits, business }),
+    [leadsList.length, limits, business]
+  );
+  const isLimitReached = leadsQuota.isReached;
 
   const isTrialExpired = useMemo(() => {
     if (business?.status !== 'trial') return false;
@@ -220,15 +218,7 @@ export default function LeadsPage() {
         </Alert>
       )}
 
-      {isLimitReached && !isTrialExpired && (
-        <Alert className="bg-orange-50 border-orange-200">
-          <AlertCircle className="h-4 w-4 text-orange-600" />
-          <AlertTitle className="font-bold text-orange-800">Leads Limit Reached</AlertTitle>
-          <AlertDescription className="text-xs text-orange-700">
-            You've reached your free limit of {globalLimits?.maxActiveLeads || 20} leads. <Link href="/marketplace" className="font-bold underline">Upgrade to Pro</Link> to capture more inquiries.
-          </AlertDescription>
-        </Alert>
-      )}
+      {!isTrialExpired && <CoreQuotaBanner quota={leadsQuota} />}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
         <div className="flex items-center gap-4 text-left">

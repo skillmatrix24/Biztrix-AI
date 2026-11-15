@@ -100,6 +100,9 @@ import { DateRange } from "react-day-picker";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota, isCreatedInCurrentMonth } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const entrySchema = z.object({
   type: z.enum(['credit', 'debit', 'nc', 'due']),
@@ -147,6 +150,7 @@ export default function DailyEntriesPage() {
     businessId ? doc(firestore, 'businesses', businessId) : null
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
+  const { limits } = useMarketplaceCatalog();
   
   const currencySymbol = getCurrencySymbol(business?.currency);
   const dynamicUnits: string[] = business?.baseUnits || DEFAULT_UNITS;
@@ -250,6 +254,19 @@ export default function DailyEntriesPage() {
   }, [firestore, businessId]);
   const { data: historicalEntriesData } = useCollection<any>(historicalEntriesQuery);
   const historicalEntries = historicalEntriesData || [];
+
+  const monthlyEntriesCount = useMemo(
+    () =>
+      (historicalEntriesData || entriesData || []).filter((e: any) =>
+        isCreatedInCurrentMonth(e.date || e.createdAt)
+      ).length,
+    [historicalEntriesData, entriesData]
+  );
+
+  const entriesQuota = useMemo(
+    () => evaluateCoreQuota("daily_entries", monthlyEntriesCount, { limits, business }),
+    [monthlyEntriesCount, limits, business]
+  );
 
   const [commonDate, setCommonDate] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -430,6 +447,22 @@ export default function DailyEntriesPage() {
       return;
     }
 
+    if (
+      entriesQuota.isReached ||
+      (!entriesQuota.isUnlocked &&
+        entriesQuota.limit < 999999 &&
+        entriesQuota.current + validEntries.length > entriesQuota.limit)
+    ) {
+      toast({
+        variant: "destructive",
+        title: entriesQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Cashbook Quota Reached",
+        description: entriesQuota.isLockedByMode
+          ? `Activate ${entriesQuota.menu.addonName} in Marketplace to record daily entries.`
+          : `Recording ${validEntries.length} entries exceeds your ${entriesQuota.limit} entries/month quota.`,
+      });
+      return;
+    }
+
     try {
         const productsRef = collection(firestore, 'businesses', businessId, 'products');
         const productRefMap = new Map<string, DocumentReference>();
@@ -593,6 +626,7 @@ export default function DailyEntriesPage() {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
+      <CoreQuotaBanner quota={entriesQuota} />
       {/* Page Header */}
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4">

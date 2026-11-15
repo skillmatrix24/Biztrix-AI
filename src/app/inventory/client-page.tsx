@@ -130,6 +130,9 @@ import {
   adjustProductStock, 
   fetchStockHistory 
 } from "@/app/actions/product-actions";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const DEFAULT_UNITS = ["pcs", "kg", "box", "packet", "unit", "litre", "meter"];
 const DEFAULT_GST_SLABS = [0, 5, 12, 18, 28];
@@ -152,11 +155,7 @@ export default function InventoryPage() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
-  const limitsRef = useMemoFirebase(() => {
-    if (!user?.uid) return null;
-    return doc(firestore, 'system', 'config', 'limits', 'default');
-  }, [firestore, user?.uid]);
-  const { data: globalLimits } = useDoc<any>(limitsRef);
+  const { limits } = useMarketplaceCatalog();
 
   const currencySymbol = getCurrencySymbol(business?.currency);
   const dynamicCategories = business?.cashbookCategories || ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
@@ -176,11 +175,11 @@ export default function InventoryPage() {
   const { data: vendorListData } = useCollection<Vendor>(vendorsQuery);
   const vendorList = vendorListData || [];
 
-  const isLimitReached = useMemo(() => {
-    if (!business || !globalLimits) return false;
-    if (business.status === 'active' || business.status === 'pro') return false;
-    return productList.length >= (globalLimits.maxProducts || 50);
-  }, [business, globalLimits, productList.length]);
+  const inventoryQuota = useMemo(
+    () => evaluateCoreQuota("inventory", productList.length, { limits, business }),
+    [productList.length, limits, business]
+  );
+  const isLimitReached = inventoryQuota.isReached;
 
   const isTrialExpired = useMemo(() => {
     if (business?.status !== 'trial') return false;
@@ -460,7 +459,8 @@ export default function InventoryPage() {
 
   // Submit Product (Create or Update via Server Actions)
   const handleSubmitProduct = () => {
-    if (isTrialExpired || isLimitReached) return;
+    if (isTrialExpired || inventoryQuota.isLockedByMode) return;
+    if (!selectedProduct && isLimitReached) return;
     if (!formName.trim() || !formPrice || !businessId || !user?.uid) {
       toast({ variant: "destructive", title: "Missing Information", description: "Product name and sale price are required." });
       return;
@@ -720,10 +720,12 @@ export default function InventoryPage() {
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle className="font-bold">Trial Expired</AlertTitle>
           <AlertDescription className="text-xs">
-            Your 14-day trial has ended. Inventory is currently in read-only mode. <Link href="/settings/subscription" className="font-bold underline">Upgrade now</Link> to resume management.
+            Your {limits.trialDurationDays}-day trial has ended. Inventory is currently in read-only mode. <Link href="/settings/subscription" className="font-bold underline">Upgrade now</Link> to resume management.
           </AlertDescription>
         </Alert>
       )}
+
+      {!isTrialExpired && <CoreQuotaBanner quota={inventoryQuota} />}
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">

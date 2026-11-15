@@ -1,92 +1,111 @@
-
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { 
-  ShoppingBasket, 
-  Plus, 
-  Search, 
-  SmartphoneNfc, 
-  ScanLine, 
-  ShoppingBag, 
-  Briefcase, 
-  Wallet, 
-  CheckCircle2, 
-  Zap, 
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import {
   ArrowRight,
-  Sparkles, 
-  ShieldCheck, 
-  Gem,
-  Bot, 
-  Lightbulb,
-  Users2,
-  ListTodo,
-  Facebook,
-  Loader2,
-  Lock,
-  Layers,
-  ChevronRight,
-  Star,
+  Bot,
+  Briefcase,
   Building,
+  CheckCircle2,
+  ChevronRight,
+  ExternalLink,
+  Facebook,
+  FileSpreadsheet,
+  Gem,
   Handshake,
-  Palette,
-  MessageCircle,
-  Ticket,
   Headset,
-  Target,
-  Info,
-  BadgeCheck,
-  ShieldAlert,
-  Calculator,
-  Terminal,
-  Activity,
-  UserPlus,
-  X,
-  User,
-  LayoutList,
-  SearchCode,
-  LineChart,
-  Trophy,
-  IdCard,
-  Layout,
-  LayoutDashboard,
-  Users,
-  MousePointer2,
-  TrendingUp,
+  Layers,
+  Lightbulb,
+  ListTodo,
+  MessageCircle,
+  Palette,
+  Power,
+  Receipt,
+  ScanLine,
+  Search,
+  ShieldCheck,
+  ShoppingBag,
+  ShoppingBasket,
+  SmartphoneNfc,
+  Star,
   Sun,
-  CreditCard
+  Target,
+  Ticket,
+  Users2,
+  Wallet,
+  X,
+  Zap,
 } from "lucide-react";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { doc } from "firebase/firestore";
+import {
+  useDoc,
+  useFirestore,
+  useMemoFirebase,
+  useUser,
+  updateDocumentNonBlocking,
+} from "@/firebase";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { cn, getCurrencySymbol } from "@/lib/utils";
-import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import {
+  calculateMarketplacePrice,
+  filterMarketplaceItems,
+  getItemWorkspaceLink,
+  MARKETPLACE_FILTER_OPTIONS,
+  MARKETPLACE_META,
+  resolveModuleActivationStatus,
+  type MarketplaceBillingCycle,
+  type MarketplaceCategoryFilter,
+} from "@/lib/marketplace-catalog";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import type { MarketplaceItem } from "./data";
 
-// Modular Data Import
-import { bundles, individuals } from "./data";
-
-const iconMap: Record<string, any> = {
-  Lightbulb, SmartphoneNfc, Wallet, Briefcase, Users2, ListTodo, Zap, ShoppingBag, Facebook, ScanLine, Bot, Layers, Gem, Handshake, Building, MessageCircle, Palette, Ticket, Headset, Star, Target, Sun
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  Lightbulb,
+  SmartphoneNfc,
+  Wallet,
+  Briefcase,
+  Users2,
+  ListTodo,
+  Zap,
+  ShoppingBag,
+  Facebook,
+  ScanLine,
+  Bot,
+  Layers,
+  Gem,
+  Handshake,
+  Building,
+  MessageCircle,
+  Palette,
+  Ticket,
+  Headset,
+  Star,
+  Target,
+  Sun,
+  Receipt,
+  FileSpreadsheet,
 };
 
-function DynamicIcon({ name, className }: { name: string, className?: string }) {
+function ModuleIcon({ name, className }: { name: string; className?: string }) {
   const Icon = iconMap[name] || Bot;
   return <Icon className={className} />;
 }
@@ -94,311 +113,917 @@ function DynamicIcon({ name, className }: { name: string, className?: string }) 
 export default function MarketplacePage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
-  
-  const userProfileRef = useMemoFirebase(() => 
-    user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
+
+  const isSignedIn = Boolean(user && !user.isAnonymous);
+
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid && !user.isAnonymous ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid, user?.isAnonymous]
+  );
+  const { data: userProfile } = useDoc<any>(userProfileRef);
 
   const businessId = userProfile?.businessId;
-  const businessRef = useMemoFirebase(() => 
-    businessId ? doc(firestore, 'businesses', businessId) : null
-  , [firestore, businessId]);
-  const { data: business } = useDoc<any>(businessRef);
+  const businessRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
+  const { data: business, isLoading: isBusinessLoading } = useDoc<any>(businessRef);
+
+  const {
+    limits,
+    bundles,
+    individuals,
+    allItems,
+    comparisonRows,
+  } = useMarketplaceCatalog();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [categoryFilter, setCategoryFilter] = useState<MarketplaceCategoryFilter>("all");
+  const [billingCycle, setBillingCycle] = useState<MarketplaceBillingCycle>("monthly");
+  const [activeOnly, setActiveOnly] = useState(false);
 
-  const activeAddonIds = useMemo(() => business?.activeAddonIds || [], [business]);
+  const [quickViewItem, setQuickViewItem] = useState<MarketplaceItem | null>(null);
+  const [confirmDeactivateItem, setConfirmDeactivateItem] = useState<MarketplaceItem | null>(null);
 
-  const filteredBundles = useMemo(() => {
-    return bundles.filter(f => 
-      f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      f.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+  const activeAddonIds: string[] = useMemo(
+    () => (Array.isArray(business?.activeAddonIds) ? business.activeAddonIds : []),
+    [business]
+  );
 
-  const filteredIndividuals = useMemo(() => {
-    return individuals.filter(f => {
-      const matchesSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase()) || f.description.toLowerCase().includes(searchTerm.toLowerCase());
-      if (!matchesSearch) return false;
-      if (activeTab === "all") return true;
-      const catSlug = f.category?.toLowerCase()?.replace(/\s+/g, '-') || "";
-      return catSlug === activeTab.toLowerCase();
-    });
-  }, [searchTerm, activeTab]);
+  const currencySymbol = useMemo(
+    () => getCurrencySymbol(business?.currency || "INR"),
+    [business?.currency]
+  );
 
-  const handleActivate = (e: React.MouseEvent, featureId: string, isPurchase: boolean = false) => {
-    e.stopPropagation();
-    if (!user || user.isAnonymous) {
-      toast({ title: "Login Required", description: "Please sign in to your business account." });
+  const filteredBundles = useMemo(
+    () =>
+      filterMarketplaceItems(bundles, {
+        searchTerm,
+        categoryFilter,
+        activeOnly,
+        activeAddonIds,
+        bundles,
+      }),
+    [bundles, searchTerm, categoryFilter, activeOnly, activeAddonIds]
+  );
+
+  const filteredIndividuals = useMemo(
+    () =>
+      filterMarketplaceItems(individuals, {
+        searchTerm,
+        categoryFilter,
+        activeOnly,
+        activeAddonIds,
+        bundles,
+      }),
+    [individuals, bundles, searchTerm, categoryFilter, activeOnly, activeAddonIds]
+  );
+
+  const activeItemsList = useMemo(
+    () => allItems.filter((item) => activeAddonIds.includes(item.id)),
+    [allItems, activeAddonIds]
+  );
+
+  const handleActivate = (item: MarketplaceItem, mode: "trial" | "pro" = "trial") => {
+    if (!isSignedIn) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to your business account to enable modules.",
+      });
       return;
     }
-    if (!business || !businessRef) return;
+    if (!businessRef) {
+      toast({
+        title: "Workspace loading",
+        description: "Your business profile is still syncing. Please try again in a moment.",
+      });
+      return;
+    }
 
-    const currentIds = business.activeAddonIds || [];
-    if (currentIds.includes(featureId)) return;
+    if (activeAddonIds.includes(item.id)) return;
 
-    const newIds = [...currentIds, featureId];
+    const updatedIds = [...activeAddonIds, item.id];
     updateDocumentNonBlocking(businessRef, {
-      activeAddonIds: newIds,
-      updatedAt: new Date().toISOString()
+      activeAddonIds: updatedIds,
+      updatedAt: new Date().toISOString(),
     });
-    
+
     toast({
-      title: isPurchase ? "Module Purchased" : "Trial Activated",
-      description: `This feature is now active on your ${billingCycle} plan.`,
+      title: mode === "pro" ? `${item.name} Activated` : `14-Day Trial Started: ${item.name}`,
+      description: `Added to your sidebar and billed on your ${billingCycle} preference.`,
     });
   };
 
+  const handleDeactivate = (item: MarketplaceItem) => {
+    if (!isSignedIn || !businessRef) return;
+    const updatedIds = activeAddonIds.filter((id) => id !== item.id);
+    updateDocumentNonBlocking(businessRef, {
+      activeAddonIds: updatedIds,
+      updatedAt: new Date().toISOString(),
+    });
+
+    setConfirmDeactivateItem(null);
+    setQuickViewItem(null);
+    toast({
+      title: `${item.name} Disabled`,
+      description: "This module has been removed from your active add-ons.",
+    });
+  };
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("all");
+    setActiveOnly(false);
+  };
+
+  const quickViewStatus = quickViewItem
+    ? resolveModuleActivationStatus(quickViewItem.id, activeAddonIds, bundles)
+    : null;
+  const quickViewPricing = quickViewItem
+    ? calculateMarketplacePrice(
+        quickViewItem.price,
+        billingCycle,
+        quickViewItem.annualDiscountPercent ?? limits.annualDiscountPercent
+      )
+    : null;
+  const quickViewMeta = quickViewItem ? MARKETPLACE_META[quickViewItem.id] : null;
+
   return (
-    <div className="space-y-10 pb-20 text-left">
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 md:p-16 text-white shadow-2xl text-left">
-        <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
-          <ShoppingBasket className="h-80 w-80 text-white" />
-        </div>
-        <div className="relative z-10 max-w-3xl space-y-6">
-          <Badge className="bg-primary hover:bg-primary/90 text-white border-none py-1.5 px-4 rounded-full text-[10px] font-bold uppercase tracking-widest">
-            <Sparkles className="mr-2 h-3.5 w-3.5 fill-current" /> Revenue Strategy Hub
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-black leading-tight tracking-tight uppercase">
-            Expand Your <span className="text-primary italic">Node Logic.</span>
-          </h1>
-          <p className="text-sm md:text-lg text-slate-400 leading-relaxed max-w-xl font-medium">
-            Explore industrial-grade modules for scaling your business. Each module has a dedicated features page with logic, rules, and backend details.
-          </p>
-          
-          <div className="flex items-center gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md w-fit shadow-inner">
-            <Label className={cn("text-[10px] font-black uppercase tracking-widest cursor-pointer", billingCycle === 'monthly' ? "text-primary" : "text-slate-400")}>Monthly</Label>
-            <Switch checked={billingCycle === 'yearly'} onCheckedChange={(v) => setBillingCycle(v ? 'yearly' : 'monthly')} className="data-[state=checked]:bg-primary scale-110" />
-            <div className="flex items-center gap-2">
-              <Label className={cn("text-[10px] font-black uppercase tracking-widest cursor-pointer", billingCycle === 'yearly' ? "text-primary" : "text-slate-400")}>Yearly</Label>
-              <Badge className="bg-green-50 text-white border-none text-[8px] font-black py-1 px-2 uppercase shadow-sm">SAVE 30%</Badge>
+    <div className="min-h-screen bg-slate-50/60 text-slate-900">
+      {/* Clean 3-Zone Top Bar for public/logged-out visitors */}
+      {!isSignedIn && (
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-4 py-3.5 sm:px-6 lg:px-8">
+            <Link
+              href="/"
+              className="text-lg font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
+            >
+              Biztrix AI
+            </Link>
+            <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+              <Link href="/" className="hover:text-slate-900 transition-colors whitespace-nowrap shrink-0">
+                Home
+              </Link>
+              <Link
+                href="/marketplace"
+                className="text-slate-900 font-semibold whitespace-nowrap shrink-0"
+              >
+                Marketplace
+              </Link>
+              <Link
+                href="/pricing"
+                className="hover:text-slate-900 transition-colors whitespace-nowrap shrink-0"
+              >
+                Pricing
+              </Link>
+            </nav>
+            <div className="flex items-center gap-3 shrink-0">
+              <Button asChild size="sm" className="rounded-lg font-semibold whitespace-nowrap shrink-0">
+                <Link href="/login">Sign In</Link>
+              </Button>
             </div>
           </div>
-        </div>
-      </section>
+        </header>
+      )}
 
-      <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 text-left">
-        <div className="flex items-center gap-3 px-2 text-left">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-            <Gem className="h-5 w-5" />
-          </div>
-          <div>
-             <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">Revenue Suites</h2>
-             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Multi-node bundle packages</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredBundles.map((bundle) => {
-            const isActive = activeAddonIds.includes(bundle.id);
-            const price = billingCycle === 'yearly' ? Math.floor(parseInt(bundle.price) * 0.7) : parseInt(bundle.price);
-            
-            return (
-              <Card key={bundle.id} onClick={() => router.push(`/marketplace/features/${bundle.id}`)} className={cn(
-                "border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden transition-all hover:scale-[1.03] hover:shadow-2xl relative border flex flex-col h-full group cursor-pointer",
-                bundle.isPopular && "ring-2 ring-primary",
-                isActive && "ring-2 ring-green-500 shadow-green-100"
-              )}>
-                <CardHeader className="p-8 pb-4 text-left">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className={cn("h-16 w-16 rounded-[1.5rem] flex items-center justify-center text-white shadow-xl transition-transform group-hover:rotate-12", bundle.isPopular ? "bg-primary" : "bg-slate-900")}>
-                      <DynamicIcon name={bundle.icon} className="h-8 w-8" />
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {bundle.isPopular && <Badge className="bg-primary text-white border-none text-[8px] font-black h-5 px-2 uppercase shadow-sm">POPULAR CHOICE</Badge>}
-                      {isActive ? (
-                        <Badge className="bg-green-50 text-white border-none text-[8px] font-black h-5 px-2 uppercase shadow-sm">ACTIVE NODE</Badge>
-                      ) : bundle.isTrialAvailable && (
-                        <Badge className="bg-orange-500 text-white border-none text-[8px] font-black h-5 px-2 uppercase animate-pulse shadow-md">14D FREE TRIAL</Badge>
-                      )}
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl font-black text-slate-900 uppercase tracking-tight">{bundle.name}</CardTitle>
-                  <p className="text-sm text-slate-500 leading-relaxed font-medium mt-2 min-h-[40px] italic">"{bundle.description}"</p>
-                </CardHeader>
-                <CardContent className="p-8 pt-4 space-y-6 flex-1 text-left">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-slate-900">₹{price}</span>
-                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">/mo</span>
-                  </div>
-                  <Separator className="opacity-40" />
-                  <div className="space-y-4">
-                    <p className="text-[9px] font-black text-primary uppercase tracking-widest flex items-center gap-2"><Info className="h-3 w-3" /> Core Inclusions</p>
-                    <div className="flex flex-wrap gap-2">
-                       {bundle.inclusions?.split(',').map((inc, idx) => (
-                         <Badge key={idx} variant="secondary" className="bg-slate-100 text-slate-600 border-none text-[8px] font-bold h-5 px-2 uppercase">{inc.trim()}</Badge>
-                       ))}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="p-8 bg-muted/20 border-t mt-auto flex flex-col gap-3">
-                  <Button 
-                    variant="ghost"
-                    className="w-full text-[9px] font-black uppercase tracking-widest text-primary hover:bg-white"
-                  >
-                    Dedicated Feature Page <ChevronRight className="ml-1.5 h-3 w-3" />
-                  </Button>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-                    <Button 
-                      onClick={(e) => handleActivate(e, bundle.id)}
-                      disabled={isActive}
-                      className={cn(
-                        "h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95",
-                        isActive ? "bg-muted text-muted-foreground" : "bg-primary text-white"
-                      )}
-                    >
-                      {isActive ? "Integrated" : (bundle.isTrialAvailable ? `Trial 14D` : `Purchase`)}
-                    </Button>
-                    <Button 
-                      onClick={(e) => handleActivate(e, bundle.id, true)}
-                      disabled={isActive}
-                      className={cn(
-                        "h-14 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95",
-                        isActive ? "hidden" : "bg-slate-900 text-accent border border-white/10"
-                      )}
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" /> Activate Pro
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="space-y-8 text-left">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-2 text-left">
-          <div className="flex items-center gap-3 text-left">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-              <Plus className="h-5 w-5" />
+      <div
+        className={cn(
+          "mx-auto max-w-7xl space-y-8 pb-20 text-left",
+          !isSignedIn ? "px-4 pt-8 sm:px-6 lg:px-8" : ""
+        )}
+      >
+        {/* Clear Workspace Header + Billing Cadence Selector */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl space-y-2">
+              <p className="text-xs font-semibold text-primary">
+                Biztrix App Directory · Modular Business Tools
+              </p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 text-balance">
+                App & Module Marketplace
+              </h1>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Start with core billing & inventory for free, and turn on only the add-ons your business needs. Every paid module includes a {limits.trialDurationDays}-day free trial.
+              </p>
             </div>
-            <div className="text-left">
-               <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight leading-none">Individual Nodes</h2>
-               <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Pick power-ups a la carte</p>
+
+            {/* Explicit Segmented Billing Cycle Control */}
+            <div className="flex flex-col items-start lg:items-end gap-2 shrink-0">
+              <span className="text-xs font-medium text-slate-500">Billing Preference</span>
+              <div
+                role="group"
+                aria-label="Billing cycle"
+                className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-100 p-1"
+              >
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle("monthly")}
+                  className={cn(
+                    "px-4 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0",
+                    billingCycle === "monthly"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle("yearly")}
+                  className={cn(
+                    "px-4 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5",
+                    billingCycle === "yearly"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  <span>Annual</span>
+                  <span className="text-emerald-700 font-bold">Save {limits.annualDiscountPercent}%</span>
+                </button>
+              </div>
             </div>
           </div>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-            <TabsList className="bg-white border rounded-2xl h-12 p-1 shadow-sm w-full">
-              <TabsTrigger value="all" className="flex-1 text-[10px] font-black uppercase px-6">All</TabsTrigger>
-              <TabsTrigger value="ai" className="flex-1 text-[10px] font-black uppercase px-6">AI</TabsTrigger>
-              <TabsTrigger value="ops" className="flex-1 text-[10px] font-black uppercase px-6">Ops</TabsTrigger>
-              <TabsTrigger value="branding" className="flex-1 text-[10px] font-black uppercase px-6">Branding</TabsTrigger>
-              <TabsTrigger value="real-estate" className="flex-1 text-[10px] font-black uppercase px-6">Real Estate</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 text-left">
-          {filteredIndividuals.map((item) => {
-            const isActive = activeAddonIds.includes(item.id);
-            const price = billingCycle === 'yearly' ? Math.floor(parseInt(item.price) * 0.7) : parseInt(item.price);
-            
-            return (
-              <Card key={item.id} className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden group hover:shadow-2xl transition-all flex flex-col h-full border border-border/50 text-left">
-                <CardHeader className="p-6 pb-4 text-left">
-                  <div className="flex justify-between items-start">
-                    <div className="h-12 w-12 rounded-2xl bg-muted/20 flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary/10 transition-all shadow-inner">
-                      <DynamicIcon name={item.icon} className="h-6 w-6" />
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {isActive && <Badge className="bg-green-500 text-white border-none text-[7px] font-black uppercase px-2 h-4 shadow-sm">ACTIVE</Badge>}
-                    </div>
-                  </div>
-                  <CardTitle className="text-sm font-black mt-4 uppercase tracking-tight">{item.name}</CardTitle>
-                  <p className="text-[10px] text-muted-foreground line-clamp-2 mt-1 h-8 font-medium italic">"{item.description}"</p>
-                </CardHeader>
-                <CardContent className="px-6 pb-6 flex-1 flex flex-col space-y-4 text-left">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-slate-900">₹{price}</span>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest">/mo</span>
-                  </div>
-                  
-                  <Separator className="opacity-40" />
-                  
-                  <div className="space-y-2">
-                    <p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                      <BadgeCheck className="h-3 w-3 text-green-500" /> Key Capability
-                    </p>
-                    <p className="text-[9px] font-bold text-slate-600 uppercase leading-relaxed">{item.inclusions?.split(',')[0] || 'Module Node Access'}</p>
-                  </div>
+          {/* Active Workspace Strip */}
+          {isSignedIn && (
+            <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                <ShoppingBasket className="h-4 w-4 text-primary shrink-0" />
+                {isBusinessLoading ? (
+                  <span>Loading your active modules...</span>
+                ) : activeItemsList.length > 0 ? (
+                  <span>
+                    <strong className="font-semibold text-slate-900 tabular-nums">
+                      {activeItemsList.length}
+                    </strong>{" "}
+                    {activeItemsList.length === 1 ? "module" : "modules"} active on{" "}
+                    <strong className="font-semibold text-slate-900">
+                      {business?.name || "your account"}
+                    </strong>
+                  </span>
+                ) : (
+                  <span>
+                    You are on the <strong className="font-semibold text-slate-900">Free Core Plan</strong> — activate any trial below to unlock extra tools.
+                  </span>
+                )}
+              </div>
 
-                  <div className="grid grid-cols-1 gap-2 mt-auto">
-                    <Button 
-                      variant={isActive ? "secondary" : "outline"} 
-                      size="sm" 
-                      onClick={(e) => handleActivate(e, item.id)}
-                      disabled={isActive}
-                      className={cn(
-                        "w-full h-10 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm",
-                        isActive ? "bg-muted text-muted-foreground border-none" : "border-primary/20 text-primary hover:bg-primary hover:text-white"
-                      )}
-                    >
-                      {isActive ? "Active Node" : (item.isTrialAvailable ? "Trial 14D" : "Activate Node")}
-                    </Button>
-                    {!isActive && (
-                      <Button 
-                        size="sm" 
-                        onClick={(e) => handleActivate(e, item.id, true)}
-                        className="w-full h-10 rounded-xl text-[9px] font-black uppercase tracking-widest bg-slate-900 text-white shadow-lg active:scale-95"
+              {activeItemsList.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeItemsList.slice(0, 3).map((item) => {
+                    const link = getItemWorkspaceLink(item.id);
+                    return (
+                      <Button
+                        key={item.id}
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-lg text-xs font-medium border-slate-200 hover:border-primary/40 whitespace-nowrap"
                       >
-                        Purchase Now
+                        <Link href={link.href}>
+                          {link.label}
+                          <ArrowRight className="ml-1.5 h-3 w-3" />
+                        </Link>
                       </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="pt-10 px-1 text-left">
-        <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[3.5rem] overflow-hidden border">
-          <CardHeader className="p-10 sm:p-16 text-center space-y-4">
-            <CardTitle className="text-3xl sm:text-5xl font-black uppercase tracking-tight">The Multi-Tier OS Value</CardTitle>
-            <p className="text-slate-400 text-sm sm:text-base font-medium max-w-2xl mx-auto uppercase tracking-widest">Compare feature nodes across your business evolution.</p>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto scrollbar-hide">
-              <Table>
-                <TableHeader className="border-white/10 hover:bg-transparent">
-                  <TableRow className="hover:bg-transparent border-white/10">
-                    <TableHead className="text-white text-[10px] font-black uppercase tracking-widest pl-12 h-16">Feature Control</TableHead>
-                    <TableHead className="text-white text-[10px] font-black uppercase tracking-widest text-center h-16">Free Hook</TableHead>
-                    <TableHead className="text-accent text-[10px] font-black uppercase tracking-widest text-center h-16">Paid Suites</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[
-                    { name: 'Invoices & Billing', free: 'Limited (50/mo)', paid: 'Unlimited Pro' },
-                    { name: 'WhatsApp Logic', free: 'Manual Share', paid: 'Full Automation' },
-                    { name: 'AI Insights', free: '❌', paid: 'Gemini Engine' },
-                    { name: 'Project & Tasks', free: '❌', paid: 'Team Scaling' },
-                    { name: 'Custom Branding', free: '❌', paid: 'Full Identity' },
-                  ].map((row, i) => (
-                    <TableRow key={i} className="border-white/5 hover:bg-white/5 group">
-                      <TableCell className="pl-12 py-6 text-sm font-bold text-slate-300 group-hover:text-white transition-colors">{row.name}</TableCell>
-                      <TableCell className="text-center text-xs text-slate-500 uppercase font-black">{row.free}</TableCell>
-                      <TableCell className="text-center text-sm text-accent font-black tracking-widest">{row.paid}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant={activeOnly ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveOnly((prev) => !prev)}
+                    className="h-8 rounded-lg text-xs font-semibold whitespace-nowrap"
+                  >
+                    {activeOnly ? "Showing Active Only" : "Filter Active"}
+                  </Button>
+                </div>
+              )}
             </div>
-          </CardContent>
-          <CardFooter className="p-10 sm:p-12 bg-white/5 justify-center gap-10 flex-wrap">
-            <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-500" /> <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">Cancel Anytime</span></div>
-            <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-500" /> <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">No Setup Fee</span></div>
-            <div className="flex items-center gap-3"><CheckCircle2 className="h-4 w-4 text-green-500" /> <span className="text-[10px] font-black uppercase text-slate-300 tracking-widest">24/7 Expert Port</span></div>
-          </CardFooter>
-        </Card>
-      </section>
+          )}
+        </section>
+
+        {/* Search & Category Filter Toolbar */}
+        <section aria-label="Filter modules" className="space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-sm">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by tool or need (e.g. WhatsApp, GST, Store, Solar)..."
+                aria-label="Search marketplace modules"
+                className="h-11 rounded-xl border-slate-200 bg-white pl-10 pr-9 text-sm"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
+              {MARKETPLACE_FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setCategoryFilter(opt.id)}
+                  className={cn(
+                    "px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0 border",
+                    categoryFilter === opt.id
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:text-slate-900"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Empty State if search/filters match nothing */}
+        {filteredBundles.length === 0 && filteredIndividuals.length === 0 && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center space-y-3">
+            <p className="text-base font-semibold text-slate-900">No matching modules found</p>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">
+              Try clearing your search query or switching back to All Modules.
+            </p>
+            <Button type="button" variant="outline" onClick={resetFilters} className="rounded-xl">
+              Reset All Filters
+            </Button>
+          </div>
+        )}
+
+        {/* 1. All-in-One Business Suites (Bundles) */}
+        {filteredBundles.length > 0 && (
+          <section className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                  All-in-One Business Suites
+                </h2>
+                <p className="text-sm text-slate-600">
+                  Bundled toolkits that combine multiple apps at a lower monthly price.
+                </p>
+              </div>
+              <span className="text-xs font-medium text-slate-500 tabular-nums">
+                {filteredBundles.length} {filteredBundles.length === 1 ? "suite" : "suites"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredBundles.map((bundle) => {
+                const status = resolveModuleActivationStatus(bundle.id, activeAddonIds, bundles);
+                const pricing = calculateMarketplacePrice(
+                  bundle.price,
+                  billingCycle,
+                  bundle.annualDiscountPercent ?? limits.annualDiscountPercent
+                );
+                const meta = MARKETPLACE_META[bundle.id];
+                const workspace = getItemWorkspaceLink(bundle.id);
+                const trialDays = bundle.trialDays ?? limits.trialDurationDays;
+                const inclusionList = bundle.inclusions
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean);
+                const displayPoints = inclusionList.length > 0 ? inclusionList : meta?.highlights || [];
+
+                return (
+                  <article
+                    key={bundle.id}
+                    className={cn(
+                      "flex flex-col justify-between rounded-2xl border bg-white p-6 transition-colors",
+                      status.isAvailable
+                        ? "border-emerald-300 ring-1 ring-emerald-200"
+                        : bundle.isPopular
+                          ? "border-primary/40 ring-1 ring-primary/15"
+                          : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="space-y-4">
+                      {/* Header Row: Icon + Unboxed Status Text */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div
+                          className={cn(
+                            "h-11 w-11 rounded-xl flex items-center justify-center shrink-0",
+                            status.isAvailable
+                              ? "bg-emerald-50 text-emerald-700"
+                              : bundle.isPopular
+                                ? "bg-primary text-white"
+                                : "bg-slate-100 text-slate-800"
+                          )}
+                        >
+                          <ModuleIcon name={bundle.icon} className="h-5 w-5" />
+                        </div>
+
+                        <div className="text-right text-xs font-medium leading-tight">
+                          {status.isAvailable ? (
+                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Active on Plan
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              {bundle.isPopular && (
+                                <>
+                                  <span className="font-semibold text-primary">Popular</span>
+                                  <span aria-hidden="true">·</span>
+                                </>
+                              )}
+                              {bundle.isTrialAvailable && <span>{trialDays}-Day Free Trial</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Title & Plain Audience Explanation */}
+                      <div className="space-y-1.5">
+                        <h3 className="text-lg font-bold text-slate-900">{bundle.name}</h3>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          {bundle.description || meta?.bestFor}
+                        </p>
+                      </div>
+
+                      {/* Price Display with Tabular Figures */}
+                      <div className="pt-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold text-slate-900 tabular-nums">
+                            {currencySymbol}
+                            {pricing.effectiveMonthly.toLocaleString()}
+                          </span>
+                          <span className="text-xs font-medium text-slate-500">/ month</span>
+                          {billingCycle === "yearly" && (
+                            <span className="text-xs text-slate-400 line-through tabular-nums">
+                              {currencySymbol}
+                              {pricing.monthlyOriginal.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {billingCycle === "yearly" && (
+                          <p className="text-xs text-emerald-700 font-medium mt-0.5 tabular-nums">
+                            Billed {currencySymbol}
+                            {pricing.yearlyTotal.toLocaleString()}/year · You save {currencySymbol}
+                            {pricing.yearlySavings.toLocaleString()}
+                          </p>
+                        )}
+                        {bundle.usageLimit && (
+                          <p className="text-xs font-medium text-primary mt-1">{bundle.usageLimit}</p>
+                        )}
+                      </div>
+
+                      {/* Included Tools List */}
+                      <div className="pt-3 border-t border-slate-100 space-y-2">
+                        <p className="text-xs font-semibold text-slate-500">What&apos;s included</p>
+                        <ul className="space-y-1.5">
+                          {displayPoints.slice(0, 4).map((point, idx) => (
+                            <li
+                              key={idx}
+                              className="flex items-start gap-2 text-xs text-slate-700 leading-snug"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                              <span>{point}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Clear Action Footer */}
+                    <div className="mt-6 pt-4 border-t border-slate-100 space-y-2.5">
+                      {status.isAvailable ? (
+                        <div className="flex items-center gap-2">
+                          <Button asChild className="flex-1 h-10 rounded-xl font-semibold text-xs">
+                            <Link href={workspace.href}>
+                              {workspace.label}
+                              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title={`Turn off ${bundle.name}`}
+                            aria-label={`Turn off ${bundle.name}`}
+                            onClick={() => setConfirmDeactivateItem(bundle)}
+                            className="h-10 w-10 rounded-xl border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 shrink-0"
+                          >
+                            <Power className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            onClick={() =>
+                              handleActivate(bundle, bundle.isTrialAvailable ? "trial" : "pro")
+                            }
+                            className="flex-1 h-10 rounded-xl font-semibold text-xs"
+                          >
+                            {bundle.isTrialAvailable ? `Start ${trialDays}-Day Free Trial` : "Activate Suite"}
+                          </Button>
+                        </div>
+                      )}
+
+                      <Link
+                        href={`/marketplace/features/${bundle.id}`}
+                        className="flex items-center justify-between px-1 py-1 text-xs font-medium text-slate-600 hover:text-primary transition-colors"
+                      >
+                        <span>Explore full features & rules</span>
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 2. Individual Apps & Add-ons */}
+        {filteredIndividuals.length > 0 && (
+          <section className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                  Individual Apps & Add-ons
+                </h2>
+                <p className="text-sm text-slate-600">
+                  Need only one specific feature? Pick individual apps without buying a full suite.
+                </p>
+              </div>
+              <span className="text-xs font-medium text-slate-500 tabular-nums">
+                {filteredIndividuals.length} {filteredIndividuals.length === 1 ? "app" : "apps"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {filteredIndividuals.map((item) => {
+                const status = resolveModuleActivationStatus(item.id, activeAddonIds, bundles);
+                const pricing = calculateMarketplacePrice(
+                  item.price,
+                  billingCycle,
+                  item.annualDiscountPercent ?? limits.annualDiscountPercent
+                );
+                const meta = MARKETPLACE_META[item.id];
+                const workspace = getItemWorkspaceLink(item.id);
+                const trialDays = item.trialDays ?? limits.trialDurationDays;
+
+                return (
+                  <article
+                    key={item.id}
+                    className={cn(
+                      "flex flex-col justify-between rounded-2xl border bg-white p-5 transition-colors",
+                      status.isAvailable
+                        ? "border-emerald-300 ring-1 ring-emerald-200"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={cn(
+                              "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
+                              status.isAvailable
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-slate-100 text-slate-700"
+                            )}
+                          >
+                            <ModuleIcon name={item.icon} className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-bold text-slate-900 truncate">
+                              {item.name}
+                            </h3>
+                            <p className="text-xs text-slate-500">
+                              {item.category}
+                              {status.includedViaSuiteName && (
+                                <>
+                                  {" · "}
+                                  <span className="text-emerald-700 font-medium">
+                                    Included in {status.includedViaSuiteName}
+                                  </span>
+                                </>
+                              )}
+                              {!status.includedViaSuiteName && status.isDirectlyActive && (
+                                <>
+                                  {" · "}
+                                  <span className="text-emerald-700 font-medium">Active</span>
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-base font-bold text-slate-900 tabular-nums">
+                            {currencySymbol}
+                            {pricing.effectiveMonthly.toLocaleString()}
+                            <span className="text-xs font-normal text-slate-500">/mo</span>
+                          </div>
+                          {billingCycle === "yearly" && (
+                            <div className="text-[11px] text-slate-400 line-through tabular-nums">
+                              {currencySymbol}
+                              {pricing.monthlyOriginal.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">
+                        {item.description || meta?.bestFor}
+                      </p>
+                      {item.usageLimit && (
+                        <p className="text-xs font-medium text-primary">{item.usageLimit}</p>
+                      )}
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQuickViewItem(item)}
+                        className="text-xs font-semibold text-slate-600 hover:text-primary transition-colors py-1.5"
+                      >
+                        View capabilities
+                      </button>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {status.isAvailable ? (
+                          <>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="h-9 rounded-xl text-xs font-semibold border-slate-200"
+                            >
+                              <Link href={workspace.href}>
+                                Open
+                                <ExternalLink className="ml-1.5 h-3 w-3" />
+                              </Link>
+                            </Button>
+                            {status.isDirectlyActive && (
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                title={`Turn off ${item.name}`}
+                                aria-label={`Turn off ${item.name}`}
+                                onClick={() => setConfirmDeactivateItem(item)}
+                                className="h-9 w-9 rounded-xl text-slate-400 hover:text-rose-600"
+                              >
+                                <Power className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              handleActivate(item, item.isTrialAvailable ? "trial" : "pro")
+                            }
+                            className="h-9 rounded-xl px-4 text-xs font-semibold"
+                          >
+                            {item.isTrialAvailable ? `Try ${trialDays} Days Free` : "Activate"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* 3. Clear Plan Comparison Table */}
+        <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="p-6 sm:p-8 border-b border-slate-100 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+                Free Core Plan vs Paid Add-ons
+              </h2>
+              <p className="text-sm text-slate-600">
+                See what comes built-in forever versus what unlocks with marketplace modules.
+              </p>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-medium text-slate-600 shrink-0">
+              <span className="inline-flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                Cancel or switch anytime
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50/80 hover:bg-slate-50/80">
+                  <TableHead className="pl-6 py-3.5 text-xs font-semibold text-slate-700">
+                    Business Capability
+                  </TableHead>
+                  <TableHead className="py-3.5 text-xs font-semibold text-slate-700">
+                    Free Core Plan
+                  </TableHead>
+                  <TableHead className="pr-6 py-3.5 text-xs font-semibold text-primary">
+                    With Marketplace Add-ons
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {comparisonRows.map((row) => (
+                  <TableRow key={row.feature} className="border-slate-100">
+                    <TableCell className="pl-6 py-4 text-sm font-medium text-slate-900">
+                      {row.feature}
+                    </TableCell>
+                    <TableCell className="py-4 text-sm text-slate-600">{row.free}</TableCell>
+                    <TableCell className="pr-6 py-4 text-sm font-medium text-slate-900">
+                      {row.paid}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="px-6 py-4 bg-slate-50/60 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-600">
+            <div className="flex flex-wrap items-center gap-6">
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> No setup fee
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Instant sidebar unlock
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Keep your data if you switch
+              </span>
+            </div>
+            {isSignedIn && (
+              <Link
+                href="/settings/subscription"
+                className="font-semibold text-primary hover:underline"
+              >
+                Manage billing & active plan →
+              </Link>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Quick-View Dialog for Individual Apps */}
+      <Dialog open={Boolean(quickViewItem)} onOpenChange={(open) => !open && setQuickViewItem(null)}>
+        <DialogContent className="sm:max-w-lg rounded-2xl">
+          {quickViewItem && quickViewPricing && quickViewStatus && (
+            <>
+              <DialogHeader className="text-left space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <ModuleIcon name={quickViewItem.icon} className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-bold text-slate-900">
+                      {quickViewItem.name}
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500">
+                      {quickViewItem.category} · {currencySymbol}
+                      {quickViewPricing.effectiveMonthly.toLocaleString()}/month
+                      {billingCycle === "yearly" ? " (billed annually)" : ""}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2 text-left">
+                <p className="text-sm text-slate-700 leading-relaxed">
+                  {quickViewMeta?.bestFor || quickViewItem.description}
+                </p>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2.5">
+                  <p className="text-xs font-semibold text-slate-600">Key features included</p>
+                  <ul className="space-y-2">
+                    {(quickViewItem.inclusions
+                      ? quickViewItem.inclusions
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                      : quickViewMeta?.highlights || [quickViewItem.description]
+                    ).map((point, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-800">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {quickViewItem.usageLimit && (
+                    <p className="text-xs font-semibold text-primary pt-1">
+                      Quota: {quickViewItem.usageLimit}
+                    </p>
+                  )}
+                </div>
+
+                {quickViewStatus.includedViaSuiteName && (
+                  <p className="text-xs font-medium text-emerald-700">
+                    Already included via your active {quickViewStatus.includedViaSuiteName} bundle — no extra charge required.
+                  </p>
+                )}
+              </div>
+
+              <DialogFooter className="gap-2 sm:justify-between">
+                {quickViewStatus.isDirectlyActive ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmDeactivateItem(quickViewItem)}
+                    className="rounded-xl text-rose-600 border-rose-200 hover:bg-rose-50"
+                  >
+                    Turn Off Module
+                  </Button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setQuickViewItem(null)}
+                    className="rounded-xl"
+                  >
+                    Close
+                  </Button>
+                  {quickViewStatus.isAvailable ? (
+                    <Button asChild className="rounded-xl">
+                      <Link href={getItemWorkspaceLink(quickViewItem.id).href}>
+                        {getItemWorkspaceLink(quickViewItem.id).label}
+                        <ArrowRight className="ml-1.5 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        handleActivate(
+                          quickViewItem,
+                          quickViewItem.isTrialAvailable ? "trial" : "pro"
+                        );
+                        setQuickViewItem(null);
+                      }}
+                      className="rounded-xl"
+                    >
+                      {quickViewItem.isTrialAvailable
+                        ? `Start ${quickViewItem.trialDays ?? limits.trialDurationDays}-Day Trial`
+                        : "Activate Now"}
+                    </Button>
+                  )}
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Safe Confirmation Dialog before turning off an active module */}
+      <Dialog
+        open={Boolean(confirmDeactivateItem)}
+        onOpenChange={(open) => !open && setConfirmDeactivateItem(null)}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          {confirmDeactivateItem && (
+            <>
+              <DialogHeader className="text-left">
+                <DialogTitle className="text-lg font-bold text-slate-900">
+                  Turn off {confirmDeactivateItem.name}?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-slate-600 pt-1">
+                  Your saved records stay safe, and you can re-enable this module anytime from the Marketplace.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmDeactivateItem(null)}
+                  className="rounded-xl"
+                >
+                  Keep Active
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => handleDeactivate(confirmDeactivateItem)}
+                  className="rounded-xl"
+                >
+                  Confirm Turn Off
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

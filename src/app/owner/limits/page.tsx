@@ -5,6 +5,7 @@ export default async function Page(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   await props.params;
-  await props.searchParams;
-  return <ClientPage />;
+  const searchParams = await props.searchParams;
+  const tabParam = typeof searchParams?.tab === "string" ? searchParams.tab : undefined;
+  return <ClientPage initialTab={tabParam} />;
 }

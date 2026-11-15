@@ -110,7 +110,7 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         connectedPages: [
           { label: 'Global Users', href: '/owner/users', relation: 'Tenant status & user role inspection' },
-          { label: 'Modules', href: '/owner/marketplace', relation: 'Entitlement catalog management' },
+          { label: 'Plans & Limits', href: '/owner/limits', relation: 'Unified quotas, suites, add-ons & pricing control' },
           { label: 'Gateways', href: '/owner/gateways', relation: 'Platform payment provider keys' },
         ],
         frontendStack: ['src/app/owner/page.tsx', 'src/app/owner/client-page.tsx', 'useCollection / useDoc hooks', 'SidebarNav globalBranding sync'],
@@ -163,50 +163,37 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
       },
       {
         id: 'owner-limits',
-        label: 'System Limits',
+        label: 'Plans & Limits',
         href: '/owner/limits',
         pageFile: 'src/app/owner/limits/page.tsx',
         entitlement: 'Platform Owner Only',
         howItWorks:
-          'Trial aur free-tier tenants ke liye global quota ceilings (max bills, products, storage, staff limits) define aur update karta hai.',
+          'Unified master control center (replaces legacy `/owner/marketplace` via auto-redirect) jahan se Platform Owner Free Core OS quotas, global trial duration, annual discount %, Pro module ceilings, aur sabhi 7 Business Suites + 14+ Individual Add-ons ke prices, features, custom modules, aur visibility live manage karta hai.',
         pageSections: [
-          'Default Quota Policy Form',
-          'Trial Duration & Feature Cap Inputs',
-          'Save Policy Confirmation Controls',
+          'Core Free & Pro Module Quota Ceilings (Invoices, SKUs, Leads, Funnels, AI, WhatsApp)',
+          'All-in-One Business Suites Price, Trial & Feature Manager (?tab=suites)',
+          'Individual Add-ons Price, Quota, Custom Module & Visibility Manager (?tab=addons)',
+          'Live Free Core vs Marketplace Comparison Matrix Preview (?tab=preview)',
         ],
         connectedPages: [
-          { label: 'Subscription Settings', href: '/settings/subscription', relation: 'Applies trial limits to tenant workspaces' },
-          { label: 'Global Users', href: '/owner/users', relation: 'Per-tenant override checks' },
+          { label: 'Marketplace', href: '/marketplace', relation: 'Syncs live prices, features, trials & visibility' },
+          { label: 'Pricing', href: '/pricing', relation: 'Syncs Core OS limits, annual discount & comparison matrix' },
+          { label: 'Subscription Settings', href: '/settings/subscription', relation: 'Applies trial days & active billing estimates' },
+          { label: 'Global Users', href: '/owner/users', relation: 'Per-tenant status & activeAddonIds override checks' },
         ],
-        frontendStack: ['src/app/owner/limits/page.tsx', 'useDoc / updateDocumentNonBlocking'],
+        frontendStack: [
+          'src/app/owner/limits/page.tsx',
+          'src/app/owner/limits/client-page.tsx',
+          'src/app/owner/marketplace/page.tsx (redirect -> /owner/limits?tab=suites)',
+          'src/hooks/use-marketplace-catalog.ts',
+          'src/lib/marketplace-catalog.ts',
+        ],
         backendStack: {
-          firestoreCollections: ['system/config/limits/default'],
-          apiRoutes: [],
-          serverActions: [],
-          aiAndExternal: [],
-        },
-      },
-      {
-        id: 'owner-marketplace',
-        label: 'Modules',
-        href: '/owner/marketplace',
-        pageFile: 'src/app/owner/marketplace/page.tsx',
-        entitlement: 'Platform Owner Only',
-        howItWorks:
-          'Marketplace me dikhne wale sabhi Suites aur Add-on modules (Solar, Loyalty, Growth, Property, Storefront, Accounting) ki pricing, IDs, aur descriptions manage karta hai.',
-        pageSections: [
-          'Marketplace Module Catalog Grid',
-          'Create / Edit Addon Drawer (suiteId / featId, price, tier)',
-          'Module Enable/Disable & Delete Actions',
-        ],
-        connectedPages: [
-          { label: 'Marketplace', href: '/marketplace', relation: 'Publishes module catalog for tenants to purchase/activate' },
-          { label: 'Sidebar Nav', href: '/dashboard', relation: 'Controls activeAddonIds visibility gating' },
-        ],
-        frontendStack: ['src/app/owner/marketplace/page.tsx'],
-        backendStack: {
-          firestoreCollections: ['system/config/marketplace/{moduleId}'],
-          apiRoutes: [],
+          firestoreCollections: [
+            'system/config/limits/default',
+            'system/config/marketplace/{moduleId}',
+          ],
+          apiRoutes: ['/api/public/catalog'],
           serverActions: [],
           aiAndExternal: [],
         },
@@ -251,7 +238,7 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         connectedPages: [
           { label: 'Overview', href: '/owner', relation: 'Master tenant telemetry' },
-          { label: 'Modules', href: '/owner/marketplace', relation: 'Assigns activeAddonIds from module catalog' },
+          { label: 'Plans & Limits', href: '/owner/limits', relation: 'Assigns activeAddonIds from unified module catalog' },
         ],
         frontendStack: ['src/app/owner/users/page.tsx'],
         backendStack: {
@@ -1987,7 +1974,7 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
           'Razorpay Checkout / Module Activation Controls',
         ],
         connectedPages: [
-          { label: 'Owner Modules', href: '/owner/marketplace', relation: 'Reads catalog configured by Platform Master' },
+          { label: 'Plans & Limits', href: '/owner/limits', relation: 'Reads live quotas, prices & catalog configured by Platform Master' },
           { label: 'Subscription Settings', href: '/settings/subscription', relation: 'Syncs activeAddonIds & plan status' },
         ],
         frontendStack: ['src/app/marketplace/page.tsx', 'features/[moduleId]/page.tsx'],

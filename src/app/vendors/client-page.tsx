@@ -111,6 +111,9 @@ import { collection, doc, serverTimestamp, query, where, orderBy, increment } fr
 import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -154,11 +157,17 @@ export default function VendorsPage() {
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const currencySymbol = getCurrencySymbol(business?.currency);
 
+  const { limits } = useMarketplaceCatalog();
   const vendorsQuery = useMemoFirebase(() => 
     businessId ? collection(firestore, 'businesses', businessId, 'vendors') : null
   , [firestore, businessId]);
   const { data, isLoading: isVendorsLoading } = useCollection<Vendor>(vendorsQuery);
   const vendorList = useMemo(() => data || [], [data]);
+
+  const vendorQuota = useMemo(
+    () => evaluateCoreQuota("vendors", vendorList.length, { limits, business }),
+    [vendorList.length, limits, business]
+  );
   
   // New Filter State
   const [filterCity, setFilterCity] = useState("all");
@@ -203,6 +212,14 @@ export default function VendorsPage() {
 
   const handleSaveVendor = () => {
     if (!businessId) return;
+    if (!formData.id && vendorQuota.isReached) {
+      toast({
+        variant: "destructive",
+        title: "Supplier Quota Reached",
+        description: `Your plan allows up to ${vendorQuota.limit} vendor profiles. Activate ${vendorQuota.menu.addonLabel} in Marketplace for unlimited suppliers.`,
+      });
+      return;
+    }
     if (!formData.name?.trim() || !formData.phone?.trim()) {
       toast({ variant: "destructive", title: "Missing Details", description: "Supplier name and WhatsApp phone are required." });
       return;
@@ -303,6 +320,7 @@ export default function VendorsPage() {
 
   return (
     <div className="space-y-6 md:space-y-10 pb-10 px-2 sm:px-0 text-left">
+      <CoreQuotaBanner quota={vendorQuota} />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -313,6 +331,7 @@ export default function VendorsPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button
+            disabled={vendorQuota.isReached}
             onClick={() => {
               setFormData({ status: "Active", state: business?.state || "Maharashtra" });
               setIsAddVendorOpen(true);
