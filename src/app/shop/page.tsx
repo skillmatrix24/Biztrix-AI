@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { Metadata } from "next";
 import { getBusinessIdBySlug, getPublicBusinessNode } from "@/app/actions/p0-migration";
 import { initializeAdmin } from "@/firebase/admin";
+import { isPermissionDeniedError, restQueryCollection } from "@/firebase/firestore-rest";
 import { ShopClient } from "./shop-client";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
@@ -12,8 +13,10 @@ import {
   getPublicStoreProductsForSeo, 
   resolveCanonicalStorefrontUrl,
   generateStoreJsonLd,
-  generateProductJsonLd
+  generateProductJsonLd,
+  ProductSeoData
 } from "@/lib/storefront-seo";
+import { isStorePubliclyVisible } from "@/lib/storefront-engine";
 
 /**
  * PRIVILEGED DOMAIN RESOLVER (Phase 4A & 4B)
@@ -22,7 +25,6 @@ import {
  */
 async function getBusinessIdByDomain(domain: string): Promise<string | null> {
   try {
-    const { db } = initializeAdmin();
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
     
     // Skip internal platform and local domains
@@ -34,14 +36,33 @@ async function getBusinessIdByDomain(domain: string): Promise<string | null> {
       return null;
     }
 
-    const q = db.collectionGroup('websites')
-      .where('customDomain', '==', cleanDomain)
-      .limit(1);
-    const snap = await q.get();
-    if (snap.empty) return null;
+    let websitePath: string | null = null;
+    let websiteData: Record<string, any> | undefined;
 
-    const websiteDoc = snap.docs[0];
-    const websiteData = websiteDoc.data();
+    try {
+      const { db } = initializeAdmin();
+      const q = db.collectionGroup('websites')
+        .where('customDomain', '==', cleanDomain)
+        .limit(1);
+      const snap = await q.get();
+      if (snap.empty) return null;
+
+      const websiteDoc = snap.docs[0];
+      websitePath = websiteDoc.ref.path;
+      websiteData = websiteDoc.data();
+    } catch (adminErr: any) {
+      if (!isPermissionDeniedError(adminErr)) throw adminErr;
+      const docs = await restQueryCollection('', 'websites', {
+        allDescendants: true,
+        where: [{ field: 'customDomain', op: 'EQUAL', value: cleanDomain }],
+        limit: 1,
+      });
+      if (docs.length === 0) return null;
+      websitePath = docs[0].__path;
+      websiteData = docs[0];
+    }
+
+    if (!websitePath) return null;
 
     // Phase 4B: Only verified custom domains are permitted to serve production traffic
     const isVerified = websiteData?.customDomainStatus === 'verified' || websiteData?.customDomainStatus === 'active';
@@ -49,7 +70,7 @@ async function getBusinessIdByDomain(domain: string): Promise<string | null> {
       return null;
     }
 
-    return websiteDoc.ref.path.split('/')[1];
+    return websitePath.split('/')[1] || null;
   } catch (err) {
     console.error("Error resolving custom domain in getBusinessIdByDomain:", err);
     return null;
@@ -92,7 +113,7 @@ async function resolveStoreBusinessId(searchParams: { bId?: string; slug?: strin
  * Never exposes hidden/archived products or private business configuration.
  */
 export async function generateMetadata(
-  props: { searchParams: Promise<{ bId?: string; slug?: string; pId?: string }> }
+  props: { searchParams: Promise<{ bId?: string; slug?: string; pId?: string; preview?: string }> }
 ): Promise<Metadata> {
   const searchParams = await props.searchParams;
   const { resolvedId } = await resolveStoreBusinessId(searchParams);
@@ -114,12 +135,20 @@ export async function generateMetadata(
     };
   }
 
-  const isStoreLive = seoData.status === 'published' || seoData.status === 'active' || seoData.status === 'pro';
+  const isStoreLive = isStorePubliclyVisible({
+    websiteStatus: seoData.websiteStatus,
+    businessStatus: seoData.businessStatus || seoData.status,
+    isPreview: false,
+  });
+
   if (!isStoreLive) {
     return {
       title: `${seoData.storeName} (Preview Mode)`,
       description: "Storefront is currently in preview mode.",
       robots: { index: false, follow: false },
+      icons: {
+        icon: seoData.faviconUrl || "/favicon.ico",
+      },
     };
   }
 
@@ -206,6 +235,13 @@ export async function generateMetadata(
     icons: {
       icon: seoData.faviconUrl || "/favicon.ico",
     },
+    ...(seoData.trackingConfig?.googleSiteVerification
+      ? {
+          verification: {
+            google: seoData.trackingConfig.googleSiteVerification,
+          },
+        }
+      : {}),
   };
 }
 
@@ -214,20 +250,23 @@ export async function generateMetadata(
  * Includes Server-side JSON-LD structured data and deep-linked product view.
  */
 export default async function ShopPage(props: { 
-  searchParams: Promise<{ bId?: string; slug?: string; pId?: string }> 
+  searchParams: Promise<{ bId?: string; slug?: string; pId?: string; preview?: string }> 
 }) {
   const searchParams = await props.searchParams;
+  const isPreview = searchParams.preview === "1" || searchParams.preview === "true";
   const { resolvedId } = await resolveStoreBusinessId(searchParams);
 
-  // DATA NODE FETCHING: Fetch public business profile and SEO data server-side
+  // DATA NODE FETCHING: Fetch public business profile, SEO data, and public catalog server-side
   let businessNode = null;
   let seoData = null;
+  let initialProducts: ProductSeoData[] = [];
   let jsonLdScripts: Record<string, any>[] = [];
 
   if (resolvedId) {
-    [businessNode, seoData] = await Promise.all([
+    [businessNode, seoData, initialProducts] = await Promise.all([
       getPublicBusinessNode(resolvedId),
-      getStorefrontSeoData(resolvedId)
+      getStorefrontSeoData(resolvedId),
+      getPublicStoreProductsForSeo(resolvedId, 100),
     ]);
 
     if (seoData) {
@@ -242,7 +281,9 @@ export default async function ShopPage(props: {
 
       // 2. Product JSON-LD (if pId is in query or for top public products)
       if (searchParams.pId) {
-        const product = await getProductSeoData(resolvedId, searchParams.pId);
+        const product =
+          initialProducts.find((p) => p.id === searchParams.pId) ||
+          (await getProductSeoData(resolvedId, searchParams.pId));
         if (product) {
           const productCanonical = resolveCanonicalStorefrontUrl({
             customDomain: seoData.customDomain,
@@ -254,8 +295,7 @@ export default async function ShopPage(props: {
         }
       } else {
         // Embed top 5 visible products in catalog structured data
-        const topProducts = await getPublicStoreProductsForSeo(resolvedId, 5);
-        topProducts.forEach(prod => {
+        initialProducts.slice(0, 5).forEach((prod) => {
           const prodUrl = `${canonicalStoreUrl}?pId=${prod.id}`;
           jsonLdScripts.push(generateProductJsonLd(prod, seoData!, prodUrl));
         });
@@ -263,19 +303,26 @@ export default async function ShopPage(props: {
     }
   }
 
-  // SECURITY GATE: Only allow published stores to render publicly
-  const isPublished = businessNode?.status === 'published' || businessNode?.status === 'active' || businessNode?.status === 'pro';
+  // SECURITY GATE: Respect website publish status + preview mode
+  const isPublished =
+    Boolean(businessNode) &&
+    isStorePubliclyVisible({
+      websiteStatus: seoData?.websiteStatus ?? businessNode?.websiteStatus,
+      businessStatus: businessNode?.status,
+      isPreview,
+    });
 
   return (
     <>
       {/* Structured Data (JSON-LD) */}
-      {jsonLdScripts.map((schema, index) => (
-        <script
-          key={`ld-json-${index}`}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-        />
-      ))}
+      {isPublished &&
+        jsonLdScripts.map((schema, index) => (
+          <script
+            key={`ld-json-${index}`}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
 
       <Suspense fallback={
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -288,6 +335,8 @@ export default async function ShopPage(props: {
           businessId={resolvedId}
           initialProductId={searchParams.pId || null}
           initialSeoData={seoData}
+          initialProducts={isPublished ? initialProducts : []}
+          isPreview={isPreview}
         />
       </Suspense>
     </>

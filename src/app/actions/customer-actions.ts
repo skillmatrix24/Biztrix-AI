@@ -1,77 +1,31 @@
 "use server";
 
 import { initializeAdmin } from "@/firebase/admin";
+import {
+  isPermissionDeniedError,
+  restDeleteDoc,
+  restGetDoc,
+  restQueryCollection,
+  restSetDoc,
+  restUpdateDoc,
+  SERVER_TIMESTAMP_SENTINEL,
+} from "@/firebase/firestore-rest";
+import { authenticateMerchantServer } from "@/firebase/server-auth";
 import { FieldValue } from "firebase-admin/firestore";
 import { revalidatePath } from "next/cache";
 import { normalizePhoneNumber } from "@/lib/utils";
 
 /**
  * PHASE 7: PRODUCTION-GRADE CUSTOMER MANAGEMENT SERVER ACTIONS
- * 
+ *
  * Enforces:
  * 1. User authentication & tenant isolation
  * 2. Role-based authorization (owner / admin / manager / staff)
  * 3. Deterministic customer deduplication (by normalized phone)
  * 4. Safe customer deletion (preserves historical order documents)
  * 5. Accurate customer metrics (paid vs unsettled vs refunded)
- * 6. Privileged writes via Firebase Admin SDK
+ * 6. Privileged writes via Firebase Admin SDK with authenticated Firestore REST fallback
  */
-
-interface AuthTenantResult {
-  authorized: boolean;
-  uid?: string;
-  businessId?: string;
-  role?: string;
-  error?: string;
-}
-
-/**
- * Verifies tenant ownership and role permissions server-side.
- */
-async function authenticateMerchant(
-  userId: string,
-  requestedBusinessId: string,
-  idToken?: string,
-  allowedRoles: string[] = ['owner', 'admin', 'manager', 'staff']
-): Promise<AuthTenantResult> {
-  const { admin, db } = initializeAdmin();
-
-  if (!userId || !requestedBusinessId) {
-    return { authorized: false, error: "MISSING_AUTHENTICATION_CONTEXT" };
-  }
-
-  // 1. Verify Firebase Auth Token if provided
-  if (idToken) {
-    try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      if (decoded.uid !== userId) {
-        return { authorized: false, error: "TOKEN_UID_MISMATCH" };
-      }
-    } catch {
-      return { authorized: false, error: "INVALID_AUTH_TOKEN" };
-    }
-  }
-
-  // 2. Fetch User Profile to confirm business mapping & role
-  const userSnap = await db.doc(`users/${userId}`).get();
-  if (!userSnap.exists) {
-    return { authorized: false, error: "USER_PROFILE_NOT_FOUND" };
-  }
-
-  const userData = userSnap.data();
-  const userBusinessId = userData?.businessId || userData?.tenantId;
-
-  if (userBusinessId !== requestedBusinessId) {
-    return { authorized: false, error: "TENANT_MISMATCH_SECURITY_VIOLATION" };
-  }
-
-  const role = userData?.role || 'staff';
-  if (!allowedRoles.includes(role)) {
-    return { authorized: false, error: "INSUFFICIENT_ROLE_PERMISSIONS" };
-  }
-
-  return { authorized: true, uid: userId, businessId: userBusinessId, role };
-}
 
 export interface SaveCustomerInput {
   userId: string;
@@ -105,12 +59,12 @@ export interface SaveCustomerInput {
  */
 export async function saveCustomer(input: SaveCustomerInput) {
   try {
-    const auth = await authenticateMerchant(
-      input.userId,
-      input.businessId,
-      input.idToken,
-      ['owner', 'admin', 'manager', 'staff']
-    );
+    const auth = await authenticateMerchantServer({
+      userId: input.userId,
+      requestedBusinessId: input.businessId,
+      idToken: input.idToken,
+      allowedRoles: ['owner', 'admin', 'manager', 'staff'],
+    });
 
     if (!auth.authorized) {
       return { success: false, error: auth.error };
@@ -127,40 +81,94 @@ export async function saveCustomer(input: SaveCustomerInput) {
       return { success: false, error: "A valid mobile phone number is required." };
     }
 
+    let useRest = Boolean(auth.useRestFallback);
     let customerId = input.id;
     let isExistingRecord = false;
+    let existingData: Record<string, any> = {};
+    let docExists = false;
 
-    // Deduplication check if creating without an explicit ID
-    if (!customerId) {
-      const canonicalId = `c_${cleanPhone}`;
-      const canonicalDoc = await db.doc(`businesses/${input.businessId}/customers/${canonicalId}`).get();
-
-      if (canonicalDoc.exists) {
-        customerId = canonicalId;
-        isExistingRecord = true;
-      } else {
-        // Check if a customer exists with this phone under a legacy ID
-        const phoneMatchSnap = await db.collection(`businesses/${input.businessId}/customers`)
-          .where('phone', '==', input.phone)
-          .limit(1)
-          .get();
-
-        if (!phoneMatchSnap.empty) {
-          customerId = phoneMatchSnap.docs[0].id;
-          isExistingRecord = true;
-        } else {
+    const resolveCustomerViaRest = async () => {
+      if (!customerId) {
+        const canonicalId = `c_${cleanPhone}`;
+        const canonicalSnap = await restGetDoc(`businesses/${input.businessId}/customers/${canonicalId}`, input.idToken);
+        if (canonicalSnap.exists) {
           customerId = canonicalId;
+          isExistingRecord = true;
+          docExists = true;
+          existingData = canonicalSnap.data() || {};
+        } else {
+          const matches = await restQueryCollection(
+            `businesses/${input.businessId}`,
+            'customers',
+            { where: [{ field: 'phone', value: input.phone }], limit: 1 },
+            input.idToken
+          );
+          if (matches.length > 0) {
+            customerId = matches[0].id;
+            isExistingRecord = true;
+            docExists = true;
+            existingData = matches[0];
+          } else {
+            customerId = canonicalId;
+          }
+        }
+      } else {
+        isExistingRecord = true;
+        const snap = await restGetDoc(`businesses/${input.businessId}/customers/${customerId}`, input.idToken);
+        if (snap.exists) {
+          docExists = true;
+          existingData = snap.data() || {};
         }
       }
+    };
+
+    if (useRest) {
+      await resolveCustomerViaRest();
     } else {
-      isExistingRecord = true;
+      try {
+        if (!customerId) {
+          const canonicalId = `c_${cleanPhone}`;
+          const canonicalDoc = await db.doc(`businesses/${input.businessId}/customers/${canonicalId}`).get();
+
+          if (canonicalDoc.exists) {
+            customerId = canonicalId;
+            isExistingRecord = true;
+            docExists = true;
+            existingData = canonicalDoc.data() || {};
+          } else {
+            const phoneMatchSnap = await db.collection(`businesses/${input.businessId}/customers`)
+              .where('phone', '==', input.phone)
+              .limit(1)
+              .get();
+
+            if (!phoneMatchSnap.empty) {
+              customerId = phoneMatchSnap.docs[0].id;
+              isExistingRecord = true;
+              docExists = true;
+              existingData = phoneMatchSnap.docs[0].data() || {};
+            } else {
+              customerId = canonicalId;
+            }
+          }
+        } else {
+          isExistingRecord = true;
+          const existingSnap = await db.doc(`businesses/${input.businessId}/customers/${customerId}`).get();
+          if (existingSnap.exists) {
+            docExists = true;
+            existingData = existingSnap.data() || {};
+          }
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+          await resolveCustomerViaRest();
+        } else {
+          throw err;
+        }
+      }
     }
 
-    const customerRef = db.doc(`businesses/${input.businessId}/customers/${customerId}`);
-    const existingSnap = await customerRef.get();
-    const existingData = existingSnap.exists ? existingSnap.data() : {};
-
-    const payload: Record<string, any> = {
+    const basePayload: Record<string, any> = {
       id: customerId,
       tenantId: input.businessId,
       name: trimmedName,
@@ -178,29 +186,62 @@ export async function saveCustomer(input: SaveCustomerInput) {
       language: input.language || "English",
       communicationMode: input.communicationMode || "WhatsApp",
       notes: input.notes !== undefined ? input.notes : (existingData?.notes || ""),
-      updatedAt: FieldValue.serverTimestamp(),
       updatedBy: input.userId
     };
 
     if (input.openingBalance !== undefined) {
-      payload.creditBalance = parseFloat(String(input.openingBalance)) || 0;
+      basePayload.creditBalance = parseFloat(String(input.openingBalance)) || 0;
     }
     if (input.customFields) {
-      payload.customFields = input.customFields;
+      basePayload.customFields = input.customFields;
     }
     if (input.events) {
-      payload.events = input.events;
+      basePayload.events = input.events;
     }
 
-    if (!existingSnap.exists) {
-      payload.createdAt = FieldValue.serverTimestamp();
-      payload.createdBy = input.userId;
-      payload.loyaltyTier = input.loyaltyTier || "Standard";
-      payload.rewardPoints = input.rewardPoints || 0;
-      payload.walletBalance = input.walletBalance || 0;
+    if (!docExists) {
+      basePayload.createdBy = input.userId;
+      basePayload.loyaltyTier = input.loyaltyTier || "Standard";
+      basePayload.rewardPoints = input.rewardPoints || 0;
+      basePayload.walletBalance = input.walletBalance || 0;
     }
 
-    await customerRef.set(payload, { merge: true });
+    const customerPath = `businesses/${input.businessId}/customers/${customerId}`;
+
+    if (useRest) {
+      const restPayload: Record<string, any> = {
+        ...basePayload,
+        updatedAt: SERVER_TIMESTAMP_SENTINEL,
+      };
+      if (!docExists) {
+        restPayload.createdAt = SERVER_TIMESTAMP_SENTINEL;
+      }
+      await restSetDoc(customerPath, restPayload, input.idToken, { merge: true });
+    } else {
+      try {
+        const adminPayload: Record<string, any> = {
+          ...basePayload,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (!docExists) {
+          adminPayload.createdAt = FieldValue.serverTimestamp();
+        }
+        await db.doc(customerPath).set(adminPayload, { merge: true });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          const restPayload: Record<string, any> = {
+            ...basePayload,
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          };
+          if (!docExists) {
+            restPayload.createdAt = SERVER_TIMESTAMP_SENTINEL;
+          }
+          await restSetDoc(customerPath, restPayload, input.idToken, { merge: true });
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/customers");
     revalidatePath("/website/orders");
@@ -208,7 +249,7 @@ export async function saveCustomer(input: SaveCustomerInput) {
     return {
       success: true,
       customerId,
-      message: isExistingRecord 
+      message: isExistingRecord
         ? `Customer profile for "${trimmedName}" updated successfully.`
         : `Customer "${trimmedName}" registered successfully.`
     };
@@ -229,31 +270,58 @@ export async function updateCustomerNotes(input: {
   idToken?: string;
 }) {
   try {
-    const auth = await authenticateMerchant(
-      input.userId,
-      input.businessId,
-      input.idToken,
-      ['owner', 'admin', 'manager', 'staff']
-    );
+    const auth = await authenticateMerchantServer({
+      userId: input.userId,
+      requestedBusinessId: input.businessId,
+      idToken: input.idToken,
+      allowedRoles: ['owner', 'admin', 'manager', 'staff'],
+    });
 
     if (!auth.authorized) {
       return { success: false, error: auth.error };
     }
 
     const { db } = initializeAdmin();
-    const customerRef = db.doc(`businesses/${input.businessId}/customers/${input.customerId}`);
-    const snap = await customerRef.get();
+    const customerPath = `businesses/${input.businessId}/customers/${input.customerId}`;
+    const customerRef = db.doc(customerPath);
+    const trimmedNotes = (input.notes || "").trim();
 
-    if (!snap.exists) {
-      return { success: false, error: "Customer not found." };
+    if (auth.useRestFallback) {
+      const snap = await restGetDoc(customerPath, input.idToken);
+      if (!snap.exists) return { success: false, error: "Customer not found." };
+      await restUpdateDoc(customerPath, {
+        notes: trimmedNotes,
+        notesUpdatedAt: SERVER_TIMESTAMP_SENTINEL,
+        notesUpdatedBy: input.userId,
+        updatedAt: SERVER_TIMESTAMP_SENTINEL,
+      }, input.idToken);
+    } else {
+      try {
+        const snap = await customerRef.get();
+        if (!snap.exists) {
+          return { success: false, error: "Customer not found." };
+        }
+        await customerRef.update({
+          notes: trimmedNotes,
+          notesUpdatedAt: FieldValue.serverTimestamp(),
+          notesUpdatedBy: input.userId,
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          const snap = await restGetDoc(customerPath, input.idToken);
+          if (!snap.exists) return { success: false, error: "Customer not found." };
+          await restUpdateDoc(customerPath, {
+            notes: trimmedNotes,
+            notesUpdatedAt: SERVER_TIMESTAMP_SENTINEL,
+            notesUpdatedBy: input.userId,
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          }, input.idToken);
+        } else {
+          throw err;
+        }
+      }
     }
-
-    await customerRef.update({
-      notes: (input.notes || "").trim(),
-      notesUpdatedAt: FieldValue.serverTimestamp(),
-      notesUpdatedBy: input.userId,
-      updatedAt: FieldValue.serverTimestamp()
-    });
 
     revalidatePath("/customers");
 
@@ -275,70 +343,120 @@ export async function deleteCustomer(input: {
   idToken?: string;
 }) {
   try {
-    const auth = await authenticateMerchant(
-      input.userId,
-      input.businessId,
-      input.idToken,
-      ['owner', 'admin', 'manager']
-    );
+    const auth = await authenticateMerchantServer({
+      userId: input.userId,
+      requestedBusinessId: input.businessId,
+      idToken: input.idToken,
+      allowedRoles: ['owner', 'admin', 'manager'],
+    });
 
     if (!auth.authorized) {
       return { success: false, error: auth.error };
     }
 
     const { db } = initializeAdmin();
-    const customerRef = db.doc(`businesses/${input.businessId}/customers/${input.customerId}`);
-    const snap = await customerRef.get();
+    const customerPath = `businesses/${input.businessId}/customers/${input.customerId}`;
+    const customerRef = db.doc(customerPath);
 
-    if (!snap.exists) {
-      return { success: false, error: "Customer record not found." };
-    }
+    let cData: Record<string, any> = {};
+    let hasOrders = false;
+    let useRest = Boolean(auth.useRestFallback);
 
-    const cData = snap.data() || {};
-    const cleanPhone = normalizePhoneNumber(cData.phone || "");
+    const runRestDelete = async () => {
+      const snap = await restGetDoc(customerPath, input.idToken);
+      if (!snap.exists) {
+        return { notFound: true };
+      }
+      cData = snap.data() || {};
+      const cleanPhone = normalizePhoneNumber(cData.phone || "");
 
-    // Check if historical orders reference this customer
-    const ordersSnap = await db.collection(`businesses/${input.businessId}/orders`)
-      .where('customerId', '==', input.customerId)
-      .limit(1)
-      .get();
+      const ordersById = await restQueryCollection(
+        `businesses/${input.businessId}`,
+        'orders',
+        { where: [{ field: 'customerId', value: input.customerId }], limit: 1 },
+        input.idToken
+      );
+      hasOrders = ordersById.length > 0;
 
-    let hasOrders = !ordersSnap.empty;
+      if (!hasOrders && cleanPhone) {
+        const phoneOrders = await restQueryCollection(
+          `businesses/${input.businessId}`,
+          'orders',
+          { where: [{ field: 'customerData.phone', value: cData.phone }], limit: 1 },
+          input.idToken
+        );
+        hasOrders = phoneOrders.length > 0;
+      }
 
-    if (!hasOrders && cleanPhone) {
-      const phoneOrdersSnap = await db.collection(`businesses/${input.businessId}/orders`)
-        .where('customerData.phone', '==', cData.phone)
-        .limit(1)
-        .get();
-      hasOrders = !phoneOrdersSnap.empty;
-    }
+      if (hasOrders) {
+        await restUpdateDoc(customerPath, {
+          isArchived: true,
+          archivedAt: new Date().toISOString(),
+          archivedBy: input.userId,
+          updatedAt: SERVER_TIMESTAMP_SENTINEL,
+        }, input.idToken);
+      } else {
+        await restDeleteDoc(customerPath, input.idToken);
+      }
+      return { notFound: false };
+    };
 
-    if (hasOrders) {
-      // Soft-archive to protect historical order integrity
-      await customerRef.update({
-        isArchived: true,
-        archivedAt: new Date().toISOString(),
-        archivedBy: input.userId,
-        updatedAt: FieldValue.serverTimestamp()
-      });
-
-      revalidatePath("/customers");
-
-      return {
-        success: true,
-        message: `Customer "${cData.name}" has historical orders. The profile was safely archived to maintain transaction records.`
-      };
+    if (useRest) {
+      const res = await runRestDelete();
+      if (res.notFound) return { success: false, error: "Customer record not found." };
     } else {
-      // Safe to delete if no historical orders exist
-      await customerRef.delete();
+      try {
+        const snap = await customerRef.get();
+        if (!snap.exists) {
+          return { success: false, error: "Customer record not found." };
+        }
 
-      revalidatePath("/customers");
+        cData = snap.data() || {};
+        const cleanPhone = normalizePhoneNumber(cData.phone || "");
 
-      return {
-        success: true,
-        message: `Customer record for "${cData.name}" permanently deleted.`
-      };
+        const ordersSnap = await db.collection(`businesses/${input.businessId}/orders`)
+          .where('customerId', '==', input.customerId)
+          .limit(1)
+          .get();
+
+        hasOrders = !ordersSnap.empty;
+
+        if (!hasOrders && cleanPhone) {
+          const phoneOrdersSnap = await db.collection(`businesses/${input.businessId}/orders`)
+            .where('customerData.phone', '==', cData.phone)
+            .limit(1)
+            .get();
+          hasOrders = !phoneOrdersSnap.empty;
+        }
+
+        if (hasOrders) {
+          await customerRef.update({
+            isArchived: true,
+            archivedAt: new Date().toISOString(),
+            archivedBy: input.userId,
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        } else {
+          await customerRef.delete();
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          const res = await runRestDelete();
+          if (res.notFound) return { success: false, error: "Customer record not found." };
+        } else {
+          throw err;
+        }
+      }
     }
+
+    revalidatePath("/customers");
+
+    return {
+      success: true,
+      message: hasOrders
+        ? `Customer "${cData.name}" has historical orders. The profile was safely archived to maintain transaction records.`
+        : `Customer record for "${cData.name}" permanently deleted.`
+    };
   } catch (err: any) {
     console.error("[deleteCustomer] error:", err);
     return { success: false, error: err.message || "Failed to process customer deletion." };
@@ -361,62 +479,98 @@ export async function fetchCustomerDetailsAndOrders(input: {
   error?: string;
 }> {
   try {
-    const auth = await authenticateMerchant(
-      input.userId,
-      input.businessId,
-      input.idToken
-    );
+    const auth = await authenticateMerchantServer({
+      userId: input.userId,
+      requestedBusinessId: input.businessId,
+      idToken: input.idToken,
+    });
 
     if (!auth.authorized) {
       return { success: false, error: auth.error };
     }
 
     const { db } = initializeAdmin();
-    const customerRef = db.doc(`businesses/${input.businessId}/customers/${input.customerId}`);
-    const snap = await customerRef.get();
-
-    if (!snap.exists) {
-      return { success: false, error: "Customer not found." };
-    }
-
-    const customerData = snap.data()!;
-    const cleanPhone = normalizePhoneNumber(customerData.phone || "");
-
-    // Query orders for this customer (safe limit 100)
+    const customerPath = `businesses/${input.businessId}/customers/${input.customerId}`;
+    let customerData: Record<string, any> | undefined;
     let orderDocs: any[] = [];
 
-    // Query 1: by customerId
-    const ordersByIdSnap = await db.collection(`businesses/${input.businessId}/orders`)
-      .where('customerId', '==', input.customerId)
-      .limit(100)
-      .get();
+    const loadViaRest = async () => {
+      const restSnap = await restGetDoc(customerPath, input.idToken);
+      if (!restSnap.exists) {
+        return { notFound: true };
+      }
+      customerData = restSnap.data()!;
+      const cleanPhone = normalizePhoneNumber(customerData.phone || "");
 
-    ordersByIdSnap.docs.forEach(doc => {
-      orderDocs.push({ id: doc.id, ...doc.data() });
-    });
+      orderDocs = await restQueryCollection(
+        `businesses/${input.businessId}`,
+        'orders',
+        { where: [{ field: 'customerId', value: input.customerId }], limit: 100 },
+        input.idToken
+      );
 
-    // Query 2: fallback by phone if customerId wasn't previously linked
-    if (orderDocs.length === 0 && cleanPhone) {
-      const ordersByPhoneSnap = await db.collection(`businesses/${input.businessId}/orders`)
-        .where('customerData.phone', '==', customerData.phone)
-        .limit(100)
-        .get();
+      if (orderDocs.length === 0 && cleanPhone) {
+        orderDocs = await restQueryCollection(
+          `businesses/${input.businessId}`,
+          'orders',
+          { where: [{ field: 'customerData.phone', value: customerData.phone }], limit: 100 },
+          input.idToken
+        );
+      }
+      return { notFound: false };
+    };
 
-      ordersByPhoneSnap.docs.forEach(doc => {
-        orderDocs.push({ id: doc.id, ...doc.data() });
-      });
+    if (auth.useRestFallback) {
+      const res = await loadViaRest();
+      if (res.notFound) return { success: false, error: "Customer not found." };
+    } else {
+      try {
+        const customerRef = db.doc(customerPath);
+        const snap = await customerRef.get();
+
+        if (!snap.exists) {
+          return { success: false, error: "Customer not found." };
+        }
+
+        customerData = snap.data()!;
+        const cleanPhone = normalizePhoneNumber(customerData.phone || "");
+
+        const ordersByIdSnap = await db.collection(`businesses/${input.businessId}/orders`)
+          .where('customerId', '==', input.customerId)
+          .limit(100)
+          .get();
+
+        ordersByIdSnap.docs.forEach(doc => {
+          orderDocs.push({ id: doc.id, ...doc.data() });
+        });
+
+        if (orderDocs.length === 0 && cleanPhone) {
+          const ordersByPhoneSnap = await db.collection(`businesses/${input.businessId}/orders`)
+            .where('customerData.phone', '==', customerData.phone)
+            .limit(100)
+            .get();
+
+          ordersByPhoneSnap.docs.forEach(doc => {
+            orderDocs.push({ id: doc.id, ...doc.data() });
+          });
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          orderDocs = [];
+          const res = await loadViaRest();
+          if (res.notFound) return { success: false, error: "Customer not found." };
+        } else {
+          throw err;
+        }
+      }
     }
 
-    // Sort newest first
     orderDocs.sort((a, b) => {
       const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
       const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
       return timeB - timeA;
     });
 
-    // Compute metrics adhering strictly to payment status semantics:
-    // Only 'paid', 'processing', 'shipped', 'delivered' count towards successful revenue.
-    // 'payment_captured_unsettled', 'created', 'cancelled', 'refunded' do NOT count as revenue.
     let totalPaidAmount = 0;
     let paidOrdersCount = 0;
     let cancelledOrdersCount = 0;
@@ -449,7 +603,7 @@ export async function fetchCustomerDetailsAndOrders(input: {
     return {
       success: true,
       customer: {
-        id: snap.id,
+        id: input.customerId,
         ...customerData
       },
       orders: orderDocs,

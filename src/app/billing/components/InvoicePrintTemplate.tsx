@@ -4,6 +4,7 @@
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { calculateGST } from "@/lib/mock-db";
+import { getEWayModeLabel } from "@/lib/eway-bill";
 
 interface InvoicePrintTemplateProps {
   invoice: any;
@@ -172,14 +173,64 @@ export function InvoicePrintTemplate({ invoice, business, currencySymbol, isPrev
         <div className="text-left space-y-3">
           <p className="text-[8px] font-black uppercase text-black tracking-[0.2em] border-b border-black/20 pb-1 w-fit pr-6 leading-none">EXECUTION NODE</p>
           <div className="text-[9px] font-bold text-black space-y-2 uppercase leading-none">
-              <div className="flex justify-between max-w-[220px]"><span>Method:</span> <span className="font-black">{invoice.paymentMode || 'Cash'}</span></div>
-              <div className="flex justify-between max-w-[220px]"><span>Place of Supply:</span> <span className="font-black">{business?.state || 'Local'}</span></div>
-              <div className="flex justify-between items-center max-w-[220px]">
+              <div className="flex justify-between max-w-[240px]"><span>Method:</span> <span className="font-black">{invoice.paymentMode || 'Cash'}</span></div>
+              {Array.isArray(invoice.splitPayments) && invoice.splitPayments.length > 0 && (
+                <div className="text-[8px] text-black/80 space-y-1 pl-2 border-l border-black/20">
+                  {invoice.splitPayments.map((sp: any, idx: number) => (
+                    <div key={idx} className="flex justify-between max-w-[220px]">
+                      <span>{sp.mode}:</span>
+                      <span className="font-black">{currencySymbol}{Number(sp.amount || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex justify-between max-w-[240px]"><span>Place of Supply:</span> <span className="font-black">{business?.state || 'Local'}</span></div>
+              <div className="flex justify-between items-center max-w-[240px]">
                 <span>Status:</span> 
                 <div className="px-3 py-1 border border-black rounded text-[7px] font-black uppercase badge-hardened">
                   {invoice.totals?.paymentStatus || 'SETTLED'}
                 </div>
               </div>
+              {(invoice.ewayBill?.enabled || invoice.ewayBill?.ewbNumber || invoice.ewayBill?.vehicleNo) && (
+                <div className="pt-1.5 mt-1.5 border-t border-black/15 space-y-1 text-[8px] max-w-[240px]">
+                  <div className="flex justify-between">
+                    <span>E-Way Bill No:</span>
+                    <span className="font-black">
+                      {invoice.ewayBill?.ewbNumber || 'PENDING PORTAL'}
+                      {invoice.ewayBill?.ewbStatus === 'CANCELLED' ? ' (CANCELLED)' : ''}
+                    </span>
+                  </div>
+                  {invoice.ewayBill?.ewbDate && (
+                    <div className="flex justify-between">
+                      <span>EWB Date:</span>
+                      <span className="font-black">{invoice.ewayBill.ewbDate}</span>
+                    </div>
+                  )}
+                  {invoice.ewayBill?.ewbValidUpto && (
+                    <div className="flex justify-between">
+                      <span>Valid Upto:</span>
+                      <span className="font-black">{invoice.ewayBill.ewbValidUpto}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span>Transport:</span>
+                    <span className="font-black">
+                      {getEWayModeLabel(invoice.ewayBill?.transMode)}
+                      {invoice.ewayBill?.vehicleNo ? ` · ${invoice.ewayBill.vehicleNo}` : ''}
+                    </span>
+                  </div>
+                  {(invoice.ewayBill?.transDistance || invoice.ewayBill?.transporterName) && (
+                    <div className="flex justify-between">
+                      <span>Dispatch:</span>
+                      <span className="font-black">
+                        {invoice.ewayBill?.transDistance ? `${invoice.ewayBill.transDistance} KM` : ''}
+                        {invoice.ewayBill?.transDistance && invoice.ewayBill?.transporterName ? ' · ' : ''}
+                        {invoice.ewayBill?.transporterName || ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       </div>
@@ -205,7 +256,14 @@ export function InvoicePrintTemplate({ invoice, business, currencySymbol, isPrev
               return (
                 <tr key={i}>
                   <td className="text-center">{i + 1}</td>
-                  <td className="uppercase text-left font-black">{item.name}</td>
+                  <td className="uppercase text-left font-black">
+                    {item.name}
+                    {item.hsnCode ? (
+                      <span className="block text-[7px] font-bold opacity-60 mt-0.5">
+                        HSN: {item.hsnCode}
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="text-center">{item.quantity}</td>
                   <td className="text-center">{item.price.toLocaleString()}</td>
                   {!isSyncMode && <td className="text-center">{item.gstRate}%</td>}

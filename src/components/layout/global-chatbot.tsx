@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Minus, Maximize2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -15,6 +16,7 @@ type Message = {
 };
 
 export function GlobalChatbot() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -27,6 +29,10 @@ export function GlobalChatbot() {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isLoading]);
+
+  if (pathname?.startsWith("/shop") || pathname?.startsWith("/funnel")) {
+    return null;
+  }
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();

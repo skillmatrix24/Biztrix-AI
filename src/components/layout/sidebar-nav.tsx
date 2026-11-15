@@ -56,7 +56,8 @@ import {
   Wrench,
   ShieldAlert,
   BarChart3,
-  FileText
+  FileText,
+  Percent
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -84,6 +85,8 @@ const mainItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Daily Entries", href: "/daily-entries", icon: BookOpenText },
   { label: "Billing (POS)", href: "/billing", icon: Receipt },
+  { label: "Invoices & E-Way", href: "/invoices", icon: FileText },
+  { label: "GST & GSTR-1", href: "/accounting/gst", icon: Percent },
   { label: "Quotations", href: "/quotations", icon: FileSpreadsheet },
   { label: "Inventory", href: "/inventory", icon: Package },
   { label: "CRM & Leads", href: "/leads", icon: UserCheckIcon },
@@ -157,6 +160,7 @@ const backOfficeItems = [
 
 const storeItems = [
   { label: "Storefront Manager", href: "/website", icon: ShoppingBag, addonId: 'feat_store' },
+  { label: "Landing Page Builder", href: "/website/funnels", icon: Sparkles, addonId: 'feat_store' },
   { label: "Store Orders", href: "/website/orders", icon: Receipt, addonId: 'feat_store' },
   { label: "Visitor Insights", href: "/website/visitors", icon: MousePointer2, addonId: 'feat_store' },
 ];
@@ -179,7 +183,9 @@ export function SidebarNav() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
-  const globalBrandingRef = useMemoFirebase(() => doc(firestore, 'system', 'config', 'branding', 'main'), [firestore]);
+  const globalBrandingRef = useMemoFirebase(() => 
+    user?.uid && !user.isAnonymous ? doc(firestore, 'system', 'config', 'branding', 'main') : null
+  , [firestore, user?.uid, user?.isAnonymous]);
   const { data: globalBranding } = useDoc<any>(globalBrandingRef);
 
   const isPlatformOwner = user?.email?.toLowerCase() === 'skillmatrix24@gmail.com'; 

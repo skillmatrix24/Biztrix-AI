@@ -205,41 +205,84 @@ export async function runCredentialPurge() {
 export async function getPublicBusinessNode(businessId: string) {
   const { firestore } = initializeFirebase();
   const bizRef = doc(firestore, 'businesses', businessId);
-  const snap = await getDoc(bizRef);
+  const webRef = doc(firestore, 'businesses', businessId, 'websites', 'main');
+  const [snap, webSnap] = await Promise.all([getDoc(bizRef), getDoc(webRef)]);
   if (!snap.exists()) return null;
   const data = snap.data();
+  const webData = webSnap.exists() ? webSnap.data() : {};
   return {
     id: snap.id,
-    name: data.name,
-    address: data.address,
+    name: webData.storeName || data.name,
+    businessName: data.name,
+    address: webData.storeAddress || data.address || '',
+    phone: webData.contactPhone || data.phone || '',
+    email: webData.contactEmail || data.email || '',
     status: data.status,
+    websiteStatus: webData.status || null,
     currency: data.currency,
-    logoUrl: data.logoUrl,
-    faviconUrl: data.faviconUrl,
+    logoUrl: webData.logoUrl || data.logoUrl || '',
+    faviconUrl: webData.faviconUrl || data.faviconUrl || '',
     activeAddonIds: data.activeAddonIds || [],
     trialEndDate: data.trialEndDate ? data.trialEndDate.toDate().toISOString() : null,
     gstMode: data.gstMode || 'exclusive',
     defaultGstRate: data.defaultGstRate || 18,
     cardConfig: data.cardConfig,
     offerGroups: data.offerGroups || [],
-    slug: data.slug || null
+    slug: webData.slug || data.slug || null,
+    websiteConfig: webSnap.exists()
+      ? {
+          storeName: webData.storeName || data.name || '',
+          primaryColor: webData.primaryColor || '#0C83B3',
+          uiStyle: webData.uiStyle || 'modern',
+          whatsappOrderEnabled: webData.whatsappOrderEnabled ?? true,
+          codEnabled: webData.codEnabled ?? true,
+          showDiscount: webData.showDiscount ?? true,
+          logoUrl: webData.logoUrl || data.logoUrl || '',
+          faviconUrl: webData.faviconUrl || data.faviconUrl || '',
+          contactPhone: webData.contactPhone || data.phone || '',
+          contactEmail: webData.contactEmail || data.email || '',
+          storeAddress: webData.storeAddress || data.address || '',
+          seoDescription: webData.seoDescription || '',
+          sections: Array.isArray(webData.sections) ? webData.sections : null,
+          status: webData.status || null,
+        }
+      : null,
   };
 }
 
 /**
- * PRIVILEGED SLUG RESOLVER (Phase 2B)
- * Resolves businessId from a public slug.
+ * PRIVILEGED SLUG RESOLVER (Phase 2B + Storefront Sync)
+ * Resolves businessId from a public slug across businesses root & websites collectionGroup.
  */
 export async function getBusinessIdBySlug(slug: string): Promise<string | null> {
+  const cleanSlug = String(slug || '').toLowerCase().trim();
+  if (!cleanSlug) return null;
+
   const { firestore } = initializeFirebase();
   const q = query(
     collection(firestore, 'businesses'),
-    where('slug', '==', slug.toLowerCase()),
+    where('slug', '==', cleanSlug),
     limit(1)
   );
   const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return snap.docs[0].id;
+  if (!snap.empty) return snap.docs[0].id;
+
+  // Fallback: resolve from businesses/{businessId}/websites/main if slug was saved in Store Builder
+  try {
+    const { restQueryCollection } = await import('@/firebase/firestore-rest');
+    const webDocs = await restQueryCollection('', 'websites', {
+      allDescendants: true,
+      where: [{ field: 'slug', op: 'EQUAL', value: cleanSlug }],
+      limit: 1,
+    });
+    if (webDocs.length > 0 && webDocs[0].__path) {
+      return webDocs[0].__path.split('/')[1] || null;
+    }
+  } catch (err) {
+    console.error('[getBusinessIdBySlug] websites fallback error:', err);
+  }
+
+  return null;
 }
 
 /**

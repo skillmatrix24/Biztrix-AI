@@ -1,38 +1,59 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { initializeAdmin } from '@/firebase/admin';
+import { isPermissionDeniedError, restGetDoc, restQueryCollection } from '@/firebase/firestore-rest';
 import { calculateGST } from '@/lib/mock-db';
 
-/**
- * Secure Server Route: Create Razorpay Order
- * Validates price and discounts from server-side source of truth.
- * Hardened: Fetches API Secrets EXCLUSIVELY from privateConfig node.
- * Privileged: Uses Admin SDK to update order nodes.
- */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { businessId, tierId, orderId, name, phone, couponCode } = body;
 
-    // Minimum requirement: businessId and either a tierId (memberships) or orderId (storefront)
     if (!businessId || (!tierId && !orderId)) {
       return NextResponse.json({ success: false, message: "Required parameters missing." }, { status: 400 });
     }
 
-    // Initialize Privileged Firebase for Server-side
     const { db, admin } = initializeAdmin();
 
-    // 1. Resolve Amount and Context
     let finalAmountPaise = 0;
     let currency = "INR";
     let rzpNotes: any = { businessId, name, phone, couponCode: couponCode || "" };
 
-    const bizRef = db.doc(`businesses/${businessId}`);
-    const bizSnap = await bizRef.get();
-    if (!bizSnap.exists) {
-      return NextResponse.json({ success: false, message: "Business node not found." }, { status: 404 });
+    let business: Record<string, any> | undefined;
+    try {
+      const bizSnap = await db.doc(`businesses/${businessId}`).get();
+      if (!bizSnap.exists) {
+        return NextResponse.json({ success: false, message: "Business node not found." }, { status: 404 });
+      }
+      business = bizSnap.data()!;
+    } catch (adminErr: any) {
+      if (isPermissionDeniedError(adminErr)) {
+        // Check if gateway is configured publicly via REST to return an accurate message
+        const gwDocs = await restQueryCollection(`businesses/${businessId}`, 'paymentGatewayConfigs', {
+          where: [{ field: 'provider', value: 'RAZORPAY' }, { field: 'isActive', value: true }],
+          limit: 1,
+        }).catch(() => []);
+        if (gwDocs.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: 'GATEWAY_NOT_ACTIVE',
+              message: 'Online payment gateway is not active for this store. Please choose Cash on Delivery or Order via WhatsApp.',
+            },
+            { status: 403 }
+          );
+        }
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'IAM_REQUIRED',
+            message: 'Online gateway secret access requires production App Hosting IAM. Please use Cash on Delivery or Order via WhatsApp in preview.',
+          },
+          { status: 503 }
+        );
+      }
+      throw adminErr;
     }
-    const business = bizSnap.data()!;
     currency = business.currency || "INR";
 
     if (orderId) {

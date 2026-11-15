@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,33 +15,39 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.uid == 'sEM5J1HuMCW8RbBTbvnJ5EwaDYA2' ||
         request.auth.uid == 'jA4htunMjSVcMBpRuzfSx8yooHC2' ||
-        request.auth.token.email == 'skillmatrix24@gmail.com' ||
-        request.auth.token.email == 'gw7infra@gmail.com'
+        (request.auth.token.email_verified == true && (
+          request.auth.token.email == 'skillmatrix24@gmail.com' ||
+          request.auth.token.email == 'gw7infra@gmail.com'
+        ))
       );
     }
 
     /**
      * GLOBAL MASTER OVERRIDE
-     * Provides the Platform Owner unrestricted access across all nodes.
+     * Provides ONLY the Platform Owner unrestricted access across all nodes.
      */
     match /{allPaths=**} {
-      allow read, write: if true;
+      allow read, write: if isPlatformOwner();
     }
 
     // --- SYSTEM & AUDIT RULES ---
 
     match /system/logs/payments/{logId} {
-      allow read: if true;
-      allow create: if true;
+      allow read, write: if isPlatformOwner();
     }
 
     match /system/counters/memberships/{businessId} {
-      allow read, write: if true;
+      allow read: if isBusinessMember(businessId) || isPlatformOwner();
+      allow write: if isPlatformOwner();
+    }
+
+    match /system/config/{document=**} {
+      allow read: if true;
+      allow write: if isPlatformOwner();
     }
 
     match /system/{document=**} {
-      allow read: if true;
-      allow write: if isPlatformOwner();
+      allow read, write: if isPlatformOwner();
     }
 
     // --- BUSINESS & USER HELPERS ---
@@ -50,7 +55,7 @@ service cloud.firestore {
     function isBusinessMember(businessId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       let bizPath = /databases/$(database)/documents/businesses/$(businessId);
-      
+
       return isSignedIn() && (
         (exists(userPath) && get(userPath).data.businessId == businessId) ||
         (exists(bizPath) && get(bizPath).data.ownerId == request.auth.uid)
@@ -60,11 +65,11 @@ service cloud.firestore {
     function isBusinessAdmin(businessId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       let bizPath = /databases/$(database)/documents/businesses/$(businessId);
-      
+
       return isSignedIn() && (
         (exists(bizPath) && get(bizPath).data.ownerId == request.auth.uid) ||
-        (exists(userPath) && 
-         get(userPath).data.businessId == businessId && 
+        (exists(userPath) &&
+         get(userPath).data.businessId == businessId &&
          (get(userPath).data.role.lower() in ['admin', 'manager', 'owner']))
       );
     }
@@ -74,7 +79,7 @@ service cloud.firestore {
      */
     function isTargetCustomer(businessId, customerId) {
       let customerPath = /databases/$(database)/documents/businesses/$(businessId)/customers/$(customerId);
-      return isSignedIn() && exists(customerPath) && (
+      return isSignedIn() && customerId != null && exists(customerPath) && (
         get(customerPath).data.phone == request.auth.token.phone_number ||
         get(customerPath).data.phone == request.auth.token.phone_number.replace('+91', '')
       );
@@ -90,45 +95,122 @@ service cloud.firestore {
     // --- USER RULES ---
 
     match /users/{userId} {
-      allow read: if true; 
-      allow create: if true; 
-      allow update: if isSignedIn() && (
-        request.auth.uid == userId || 
-        (request.resource.data.businessId != null && isBusinessMember(request.resource.data.businessId)) ||
-        isPlatformOwner()
+      allow read: if isPlatformOwner() || (
+        isSignedIn() && (
+          request.auth.uid == userId ||
+          (resource.data.status == 'pending' &&
+           request.auth.token.email != null &&
+           resource.data.email == request.auth.token.email) ||
+          (resource.data.businessId != null && isBusinessMember(resource.data.businessId))
+        )
       );
-      allow delete: if isSignedIn() && (
-        request.auth.uid == userId ||
-        (resource.data.businessId != null && isBusinessAdmin(resource.data.businessId)) ||
-        isPlatformOwner()
+
+      allow create: if isPlatformOwner() || (
+        isSignedIn() && (
+          // 1. Business admin creating a pending staff invite
+          (request.resource.data.businessId is string &&
+           isBusinessAdmin(request.resource.data.businessId) &&
+           request.resource.data.status == 'pending') ||
+          // 2. Owner creating their own profile right after creating their business
+          (request.auth.uid == userId &&
+           request.resource.data.id == request.auth.uid &&
+           request.resource.data.businessId is string &&
+           exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)) &&
+           get(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)).data.ownerId == request.auth.uid) ||
+          // 3. Invited staff member claiming an invite issued by that business admin
+          (request.auth.uid == userId &&
+           request.resource.data.id == request.auth.uid &&
+           request.resource.data.businessId is string &&
+           request.auth.token.email != null &&
+           exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)/invites/$(request.auth.token.email)))
+        )
+      );
+
+      allow update: if isPlatformOwner() || (
+        isSignedIn() && (
+          // Self update allowed only for non-privileged fields (cannot hijack businessId or escalate role)
+          (request.auth.uid == userId &&
+           request.resource.data.businessId == resource.data.businessId &&
+           request.resource.data.role == resource.data.role) ||
+          // Business admin updating a staff member in their own business
+          (resource.data.businessId != null &&
+           isBusinessAdmin(resource.data.businessId) &&
+           request.resource.data.businessId == resource.data.businessId)
+        )
+      );
+
+      allow delete: if isPlatformOwner() || (
+        isSignedIn() && (
+          request.auth.uid == userId ||
+          (resource.data.status == 'pending' &&
+           request.auth.token.email != null &&
+           resource.data.email == request.auth.token.email) ||
+          (resource.data.businessId != null && isBusinessAdmin(resource.data.businessId))
+        )
       );
     }
 
-    match /notifications {
-      allow list: if isSignedIn() && (request.auth.uid == resource.data.recipientId);
-      allow read, write: if true;
+    match /notifications/{notifId} {
+      allow read, update, delete: if isSignedIn() && (
+        resource.data.recipientId == request.auth.uid || isPlatformOwner()
+      );
+      allow create: if isSignedIn() && request.resource.data.recipientId is string;
     }
 
     // --- BUSINESS SCOPED RULES ---
 
     match /businesses/{businessId} {
-      // Public reading allowed for published stores
+      // Public reading allowed for published storefronts, slug lookup, and public portals
       allow read: if true;
-      allow create: if true; 
-      allow update: if isBusinessAdmin(businessId) || isPlatformOwner(); 
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isBusinessAdmin(businessId) || isPlatformOwner();
+      allow delete: if isPlatformOwner();
 
-      // STOREFRONT READS
+      // STAFF INVITE MARKERS
+      match /invites/{inviteEmail} {
+        allow read: if isBusinessMember(businessId) ||
+          (isSignedIn() && request.auth.token.email == inviteEmail) ||
+          isPlatformOwner();
+        allow create, update: if isBusinessAdmin(businessId) || isPlatformOwner();
+        allow delete: if isBusinessAdmin(businessId) ||
+          (isSignedIn() && request.auth.token.email == inviteEmail) ||
+          isPlatformOwner();
+      }
+
+      // BUSINESS-SCOPED USER MIRRORS
+      match /users/{memberUid} {
+        allow read: if isBusinessMember(businessId) ||
+          (isSignedIn() && request.auth.uid == memberUid) ||
+          isPlatformOwner();
+        allow create: if isBusinessAdmin(businessId) ||
+          isPlatformOwner() ||
+          (isSignedIn() && request.auth.uid == memberUid && isBusinessMember(businessId));
+        allow update: if isBusinessAdmin(businessId) ||
+          isPlatformOwner() ||
+          (isSignedIn() && request.auth.uid == memberUid && request.resource.data.role == resource.data.role);
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // STOREFRONT CONFIG
       match /websites/{docId} {
         allow read: if true;
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
-      
+
+      // CATALOG & INVENTORY
       match /products/{productId} {
         // Public can read only products intended for the storefront
         allow read: if resource.data.showOnWebsite == true || isBusinessMember(businessId) || isPlatformOwner();
-        allow write: if (isBusinessMember(businessId) && isStockValid()) || isPlatformOwner();
+        allow create, update: if (isBusinessMember(businessId) && isStockValid()) || isPlatformOwner();
+        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+
+        match /stockHistory/{historyId} {
+          allow read, create: if isBusinessMember(businessId) || isPlatformOwner();
+          allow update, delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+        }
       }
 
-      // PRIVATE CONFIG (Credentials Node)
+      // PRIVATE CONFIG (Credentials Node - Server Admin SDK only)
       match /privateConfig/{docId} {
         allow read, write: if false;
       }
@@ -175,33 +257,54 @@ service cloud.firestore {
         allow create: if isTargetCustomer(businessId, request.resource.data.customerId) || isBusinessMember(businessId) || isPlatformOwner();
         allow update: if isBusinessMember(businessId) || isPlatformOwner();
       }
+
+      // SOCIAL REVIEWS & FEEDBACK
       match /socialReviews/{id} {
-        allow read: if true;
-        allow create: if true;
+        allow read, create: if true;
+        allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
       }
+      match /feedbackConfig/{configId} {
+        allow read: if true;
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+      match /feedback/{feedbackId} {
+        allow get, create: if true;
+        allow list: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) ||
+          isPlatformOwner() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replies', 'updatedAt']);
+        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
       match /quotations/{id} {
         allow read: if isBusinessMember(businessId) || isTargetCustomer(businessId, resource.data.customerId) || isPlatformOwner();
         allow write: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
+      // LOYALTY CONFIG & TIERS
       match /loyaltyTiers/{tierId} {
-        allow read, list: if true; 
+        allow read, list: if true;
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /loyaltyJoinConfig/{configId} {
-        allow read: if true; 
+        allow read: if true;
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /loyaltyConfig/{configId} {
-        allow read: if true; 
+        allow read: if true;
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /loyaltyActivity/{activityId} {
-        allow read: if true;
-        allow write: if true;
+        allow read: if isBusinessMember(businessId) ||
+          isTargetCustomer(businessId, resource.data.customerId) ||
+          isPlatformOwner();
+        allow create: if isBusinessMember(businessId) ||
+          isTargetCustomer(businessId, request.resource.data.customerId) ||
+          isPlatformOwner();
+        allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
       match /campaigns/{campaignId} {
@@ -210,7 +313,7 @@ service cloud.firestore {
       }
 
       match /coupons/{couponId} {
-        allow read, list: if true; 
+        allow read, list: if true;
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
@@ -219,13 +322,15 @@ service cloud.firestore {
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
+      // ORDERS & PAYMENTS
       match /orders/{orderId} {
-        // Public direct writes blocked. All creation flows through secure Server Actions (Admin SDK).
-        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+        allow get: if isBusinessMember(businessId) ||
+          isTargetCustomer(businessId, resource.data.customerId) ||
+          isPlatformOwner();
+        allow list, write: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
       match /payments/{paymentId} {
-        // Public direct writes blocked. Payment records generated by server-side settlement node.
         allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
@@ -236,27 +341,42 @@ service cloud.firestore {
         allow delete: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
+      // MEMBERSHIPS & CUSTOMERS
       match /memberships/{memberId} {
-        allow read: if true; 
-        allow create: if true; 
-        allow update: if true; 
+        allow read: if true;
+        allow create, delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) ||
+          isTargetCustomer(businessId, resource.data.customerId) ||
+          isPlatformOwner();
       }
 
       match /customers/{customerId} {
-        // Public direct writes blocked. All creation flows through secure Server Actions (Admin SDK).
-        allow read, write: if isBusinessMember(businessId) || isPlatformOwner(); 
+        allow read: if isBusinessMember(businessId) ||
+          isTargetCustomer(businessId, customerId) ||
+          isPlatformOwner();
+        allow create, delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) ||
+          (isTargetCustomer(businessId, customerId) &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['events', 'email', 'dob', 'anniversary', 'gender', 'city', 'address', 'profileBonusClaimed', 'updatedAt'])) ||
+          isPlatformOwner();
       }
 
+      // SUPPORT TICKETS
       match /complaints/{ticketId} {
-        allow read: if true;
-        allow create: if true;
-        allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow get, create: if true;
+        allow list: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) ||
+          isPlatformOwner() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'feedback', 'feedbackAt']);
+        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
 
         match /timeline/{logId} {
-          allow read, write: if true;
+          allow read, create: if true;
+          allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
         }
       }
 
+      // BUSINESS DEFAULT CATCH-ALL
       match /{allPaths=**} {
         allow read: if isBusinessMember(businessId) || isPlatformOwner();
         allow write: if (isBusinessMember(businessId) && isStockValid()) || isPlatformOwner();

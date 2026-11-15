@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { headers } from 'next/headers';
 import { initializeAdmin } from '@/firebase/admin';
+import { isPermissionDeniedError, restQueryCollection } from '@/firebase/firestore-rest';
 import { getBusinessIdBySlug } from '@/app/actions/p0-migration';
 import { 
   getStorefrontSeoData, 
@@ -13,7 +14,6 @@ import {
  */
 async function getVerifiedBusinessIdByDomain(domain: string): Promise<string | null> {
   try {
-    const { db } = initializeAdmin();
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
 
     if (
@@ -24,19 +24,39 @@ async function getVerifiedBusinessIdByDomain(domain: string): Promise<string | n
       return null;
     }
 
-    const q = db.collectionGroup('websites')
-      .where('customDomain', '==', cleanDomain)
-      .limit(1);
-    const snap = await q.get();
-    if (snap.empty) return null;
+    let docPath: string | null = null;
+    let data: Record<string, any> | undefined;
 
-    const doc = snap.docs[0];
-    const data = doc.data();
+    try {
+      const { db } = initializeAdmin();
+      const q = db.collectionGroup('websites')
+        .where('customDomain', '==', cleanDomain)
+        .limit(1);
+      const snap = await q.get();
+      if (snap.empty) return null;
+
+      const doc = snap.docs[0];
+      docPath = doc.ref.path;
+      data = doc.data();
+    } catch (adminErr: any) {
+      if (!isPermissionDeniedError(adminErr)) throw adminErr;
+      const docs = await restQueryCollection('', 'websites', {
+        allDescendants: true,
+        where: [{ field: 'customDomain', op: 'EQUAL', value: cleanDomain }],
+        limit: 1,
+      });
+      if (docs.length === 0) return null;
+      docPath = docs[0].__path;
+      data = docs[0];
+    }
+
+    if (!docPath) return null;
+
     if (data?.customDomainStatus !== 'verified' && data?.customDomainStatus !== 'active') {
       return null;
     }
 
-    return doc.ref.path.split('/')[1];
+    return docPath.split('/')[1] || null;
   } catch (err) {
     console.error("[sitemap] getVerifiedBusinessIdByDomain error:", err);
     return null;

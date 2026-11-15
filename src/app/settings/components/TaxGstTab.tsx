@@ -54,6 +54,7 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { collection, query, where, Timestamp } from "firebase/firestore";
+import { EWayGspConfigPanel } from "@/components/eway/EWayGspConfigPanel";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -382,6 +383,15 @@ export function TaxGstTab({ business, businessRef, isAdmin, isTrialExpired, curr
               </CardContent>
             </Card>
           </div>
+
+          {business?.id && (
+            <EWayGspConfigPanel
+              businessId={business.id}
+              business={business}
+              isAdmin={isAdmin}
+              isTrialExpired={isTrialExpired}
+            />
+          )}
 
           <Alert className="bg-blue-50 border-blue-100 rounded-[2rem] p-8 text-left">
              <Clock className="h-6 w-6 text-primary" />

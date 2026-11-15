@@ -1,57 +1,123 @@
 "use client";
 
-import { Receipt, SmartphoneNfc, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, Receipt, RotateCcw, SmartphoneNfc } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+
+export type BillingMode = "pos" | "quotation" | "reward_sync";
 
 interface StatusHeaderProps {
-  isRewardSyncMode: boolean;
-  setIsRewardSyncMode: (v: boolean) => void;
-  isQuotation: boolean;
-  setIsQuotation: (v: boolean) => void;
-  setItems: (items: any[]) => void;
+  mode: BillingMode;
+  onModeChange: (mode: BillingMode) => void;
+  gstMode: string;
+  businessState?: string;
+  isInterState?: boolean;
+  projectId?: string | null;
+  hasActiveDraft?: boolean;
+  onResetBill?: () => void;
 }
 
-export function StatusHeader({ isRewardSyncMode, setIsRewardSyncMode, isQuotation, setIsQuotation, setItems }: StatusHeaderProps) {
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-1">
-      <div className="flex items-center gap-4">
-        <div className="h-14 w-14 rounded-[1.5rem] bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
-          <Receipt className="h-8 w-8 text-primary" />
-        </div>
-        <h2 className="text-2xl md:text-4xl font-black text-slate-900 uppercase">Billing Hub</h2>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-         <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-2xl border shadow-sm w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <SmartphoneNfc className="h-4 w-4 text-green-600" />
-              <span className="text-[10px] font-black uppercase text-muted-foreground">Reward Sync Only</span>
-            </div>
-            <Switch 
-              checked={isRewardSyncMode} 
-              onCheckedChange={(v) => { 
-                setIsRewardSyncMode(v); 
-                if(v) { setItems([]); setIsQuotation(false); } 
-              }} 
-              className="data-[state=checked]:bg-green-600 scale-90" 
-            />
-         </div>
+const MODE_TABS: Array<{
+  id: BillingMode;
+  label: string;
+  icon: typeof Receipt;
+}> = [
+  { id: "pos", label: "POS Sale", icon: Receipt },
+  { id: "quotation", label: "Quotation", icon: FileSpreadsheet },
+  { id: "reward_sync", label: "Reward Sync", icon: SmartphoneNfc },
+];
 
-         <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-2xl border shadow-sm w-full sm:w-auto">
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4 text-orange-600" />
-              <span className="text-[10px] font-black uppercase text-muted-foreground">Quotation</span>
-            </div>
-            <Switch 
-              checked={isQuotation} 
-              onCheckedChange={(v) => { 
-                setIsQuotation(v); 
-                if(v) setIsRewardSyncMode(false); 
-              }} 
-              className="data-[state=checked]:bg-orange-600 scale-90" 
-            />
-         </div>
+export function StatusHeader({
+  mode,
+  onModeChange,
+  gstMode,
+  businessState,
+  isInterState,
+  projectId,
+  hasActiveDraft,
+  onResetBill,
+}: StatusHeaderProps) {
+  return (
+    <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between border-b border-slate-200 pb-5">
+      <div className="space-y-1 text-left">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+          <span className="font-semibold text-primary">Billing &amp; Checkout</span>
+          <span aria-hidden="true">/</span>
+          <span>
+            {mode === "quotation"
+              ? "Quotation Builder"
+              : mode === "reward_sync"
+                ? "External Loyalty Sync"
+                : "GST Point of Sale"}
+          </span>
+          {mode !== "reward_sync" && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="capitalize">Tax: {gstMode || "exclusive"}</span>
+              <span aria-hidden="true">·</span>
+              <span>
+                {isInterState ? "IGST (Inter-state)" : `CGST + SGST (${businessState || "Local"})`}
+              </span>
+            </>
+          )}
+          {projectId && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-medium text-slate-700">Project Milestone Linked</span>
+            </>
+          )}
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          Billing Hub
+        </h1>
       </div>
-    </div>
+
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div
+          role="tablist"
+          aria-label="Billing mode"
+          className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200"
+        >
+          {MODE_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const active = mode === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onModeChange(tab.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1.5",
+                  active
+                    ? tab.id === "quotation"
+                      ? "bg-amber-600 text-white shadow-sm"
+                      : tab.id === "reward_sync"
+                        ? "bg-emerald-700 text-white shadow-sm"
+                        : "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {hasActiveDraft && onResetBill && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onResetBill}
+            className="h-9 px-3 rounded-lg border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:text-red-700 whitespace-nowrap shrink-0"
+          >
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            Clear Bill
+          </Button>
+        )}
+      </div>
+    </header>
   );
 }

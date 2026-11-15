@@ -12,7 +12,8 @@
         "status": { "type": "string", "enum": ["trial", "active", "pro", "suspended"] },
         "currency": { "type": "string" },
         "gstEnabled": { "type": "boolean" },
-        "activeAddonIds": { "type": "array", "items": { "type": "string" } }
+        "activeAddonIds": { "type": "array", "items": { "type": "string" } },
+        "ewayApiConfig": { "type": "object", "description": "Non-secret GSP API connection status metadata" }
       }
     },
     "SolarInquiry": {
@@ -289,6 +290,63 @@
         "timestamp": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["sent", "delivered", "read", "failed"] }
       }
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "type": "object",
+      "description": "Persisted POS or Group Split invoice record with GST breakdown and optional E-Way Bill Part-B transport metadata.",
+      "properties": {
+        "invoiceId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "customerGstin": { "type": "string" },
+        "customerAddress": { "type": "string" },
+        "customerState": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "gstTotal": { "type": "number" },
+        "finalPayout": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "dueAmount": { "type": "number" },
+        "gstType": { "type": "string", "enum": ["intra", "inter"] },
+        "paymentMode": { "type": "string" },
+        "ewayRequired": { "type": "boolean" },
+        "ewayStatus": { "type": "string" },
+        "ewayDetails": { "type": "object" },
+        "ewayBill": { "type": "object", "description": "Live GSP and NIC Part-B E-Way Bill tracking metadata" },
+        "paymentStatus": { "type": "string", "enum": ["PAID", "PARTIAL", "UNPAID"] },
+        "recoveryPaidAmount": { "type": "number" },
+        "paymentHistory": { "type": "array" },
+        "creditNoteStatus": { "type": "string" },
+        "returnedAmount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CreditNote": {
+      "title": "CreditNote",
+      "type": "object",
+      "description": "Sales Return / Credit Note document reversing GST liability and tracking stock restock or refund.",
+      "properties": {
+        "creditNoteId": { "type": "string" },
+        "originalInvoiceId": { "type": "string" },
+        "originalInvoiceDate": { "type": "string" },
+        "isoDate": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerGstin": { "type": "string" },
+        "posCode": { "type": "string" },
+        "isInterState": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "refundMode": { "type": "string" },
+        "restocked": { "type": "boolean" },
+        "items": { "type": "array" },
+        "totals": { "type": "object" },
+        "rateBuckets": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -366,6 +424,14 @@
     "/businesses/{businessId}/chats/{chatId}/messages/{messageId}": {
       "schema": "#/backend/entities/WhatsappMessage",
       "description": "Message thread for a specific chat node."
+    },
+    "/businesses/{businessId}/invoices/{invoiceId}": {
+      "schema": "#/backend/entities/Invoice",
+      "description": "Persisted POS and Split Invoices with GST and E-Way Bill Part-B data."
+    },
+    "/businesses/{businessId}/creditNotes/{creditNoteId}": {
+      "schema": "#/backend/entities/CreditNote",
+      "description": "Credit Notes / Sales Returns linked to Invoices for GSTR-1 CDNR and GSTR-3B tax reversal."
     }
   }
 }

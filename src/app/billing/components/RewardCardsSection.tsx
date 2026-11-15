@@ -1,33 +1,20 @@
-
 "use client";
 
-import { useMemo } from "react";
-import { 
-  Sparkles, 
-  Check, 
-  AlertCircle, 
-  X, 
-  Tag,
-  BadgeCheck,
-  Clock,
-  Link2,
-  Lock
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { AlertCircle, BadgeCheck, Check, Link2, Lock, Sparkles, X } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-const THEMES: Record<string, { label: string, class: string, accent: string }> = {
-  blue: { label: 'Indigo Night', class: 'bg-gradient-to-br from-blue-600 to-indigo-800', accent: 'text-blue-100' },
-  purple: { label: 'Royal Purple', class: 'bg-gradient-to-br from-purple-600 to-pink-700', accent: 'text-purple-100' },
-  orange: { label: 'Sunset Glow', class: 'bg-gradient-to-br from-orange-500 to-red-600', accent: 'text-orange-100' },
-  green: { label: 'Emerald Forest', class: 'bg-gradient-to-br from-emerald-500 to-teal-700', accent: 'text-emerald-100' },
-  black: { label: 'Carbon Black', class: 'bg-gradient-to-br from-slate-800 to-black', accent: 'text-slate-300' },
-  red: { label: 'Crimson Fire', class: 'bg-gradient-to-br from-red-600 to-rose-900', accent: 'text-red-100' },
-  gold: { label: 'Golden Luxury', class: 'bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-800', accent: 'text-yellow-100' },
-  cyan: { label: 'Ocean Cyan', class: 'bg-gradient-to-br from-cyan-500 to-blue-700', accent: 'text-cyan-100' },
-  rose: { label: 'Rose Quartz', class: 'bg-gradient-to-br from-rose-400 to-pink-600', accent: 'text-rose-100' },
-  indigo: { label: 'Deep Space', class: 'bg-gradient-to-br from-indigo-900 to-slate-900', accent: 'text-indigo-200' },
+const THEMES: Record<string, { class: string }> = {
+  blue: { class: "bg-gradient-to-br from-blue-600 to-indigo-800" },
+  purple: { class: "bg-gradient-to-br from-purple-600 to-pink-700" },
+  orange: { class: "bg-gradient-to-br from-orange-500 to-red-600" },
+  green: { class: "bg-gradient-to-br from-emerald-500 to-teal-700" },
+  black: { class: "bg-gradient-to-br from-slate-800 to-slate-950" },
+  red: { class: "bg-gradient-to-br from-red-600 to-rose-900" },
+  gold: { class: "bg-gradient-to-br from-amber-500 to-yellow-700" },
+  cyan: { class: "bg-gradient-to-br from-cyan-600 to-blue-700" },
+  rose: { class: "bg-gradient-to-br from-rose-500 to-pink-700" },
+  indigo: { class: "bg-gradient-to-br from-indigo-900 to-slate-900" },
 };
 
 interface RewardCardsSectionProps {
@@ -36,133 +23,142 @@ interface RewardCardsSectionProps {
   grossSubtotal: number;
   handleApplyCoupon: (code: string) => void;
   activities?: any[];
+  currencySymbol?: string;
 }
 
-export function RewardCardsSection({ 
-  memberCoupons, 
-  appliedCoupons, 
-  grossSubtotal, 
-  handleApplyCoupon, 
-  activities = []
+export function RewardCardsSection({
+  memberCoupons,
+  appliedCoupons,
+  grossSubtotal,
+  handleApplyCoupon,
+  activities = [],
+  currencySymbol = "₹",
 }: RewardCardsSectionProps) {
   if (!memberCoupons || memberCoupons.length === 0) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 w-full text-left">
-      <div className="flex items-center justify-between px-2 text-left">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h4 className="text-xs font-black uppercase text-primary tracking-widest leading-none">Applicable Reward Cards</h4>
+          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+          <h3 className="text-sm font-bold text-slate-900">Available Loyalty Rewards</h3>
         </div>
-        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] font-black h-5 px-2 uppercase">{memberCoupons.length} Nodes Found</Badge>
+        <span className="text-xs font-mono tabular-nums text-slate-500">
+          {memberCoupons.length} active offer{memberCoupons.length === 1 ? "" : "s"}
+        </span>
       </div>
-      
-      <ScrollArea className="w-full whitespace-nowrap pb-4">
-        <div className="flex gap-6 px-1">
-            {memberCoupons.map((coupon: any) => {
-              const isApplied = appliedCoupons.some(c => c.id === coupon.id);
-              
-              // 1. INDIVIDUAL USAGE LOGIC
-              const redemptionCount = (activities || []).filter((a: any) => 
-                a.type === 'coupon_redeem' && (a.couponId === coupon.id || a.couponCode === coupon.code)
-              ).length;
-              const isUserLimitReached = redemptionCount >= (coupon.perUserLimit || 1);
-              
-              // 2. GLOBAL USAGE LOGIC
-              const isGlobalLimitReached = (coupon.usageLimit > 0) && (coupon.usageCount >= coupon.usageLimit);
-              
-              // 3. ELIGIBILITY
-              const isEligible = (grossSubtotal >= (coupon.minOrder || 0)) && !isGlobalLimitReached && !isUserLimitReached;
-              
-              const theme = THEMES[coupon.theme || 'blue'] || THEMES.blue;
-              const style = coupon.cardStyle || 'ticket';
 
-              return (
-                <button 
-                  key={coupon.id} 
-                  onClick={() => !isGlobalLimitReached && !isUserLimitReached && handleApplyCoupon(coupon.code)}
-                  disabled={isGlobalLimitReached || isUserLimitReached}
-                  className={cn(
-                    "flex flex-col rounded-[2rem] overflow-hidden border-2 transition-all duration-500 min-w-[280px] max-w-[280px] text-left shrink-0 shadow-xl relative",
-                    isApplied 
-                      ? "ring-4 ring-green-500 scale-95" 
-                      : (isGlobalLimitReached || isUserLimitReached)
-                        ? "opacity-40 grayscale cursor-not-allowed border-muted"
-                        : !isEligible 
-                          ? "opacity-40 grayscale-[0.5] border-transparent cursor-not-allowed"
-                          : "hover:scale-105 hover:shadow-2xl border-primary"
-                  )}
-                >
-                  <div className={cn("p-6 text-white relative h-[140px] flex flex-col justify-center text-left", theme.class)}>
-                    <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: `radial-gradient(#ffffff 1px, transparent 1px)`, backgroundSize: '12px 12px' }} />
-                    <div className="relative z-10 text-left">
-                      <p className="text-[8px] font-black uppercase opacity-60 tracking-[0.2em] mb-1">{coupon.category || 'REWARD'}</p>
-                      <h5 className="text-xl font-black tracking-widest truncate uppercase leading-none">{coupon.code}</h5>
-                      <p className="text-[10px] font-bold text-accent uppercase mt-3">
-                        {coupon.type === 'percentage' ? `${coupon.value}% OFF` : coupon.type === 'bogo' ? coupon.value : `₹${coupon.value} FLAT`}
+      <ScrollArea className="w-full whitespace-nowrap pb-2">
+        <div className="flex gap-3.5">
+          {memberCoupons.map((coupon: any) => {
+            const isApplied = appliedCoupons.some((c) => c.id === coupon.id);
+            const redemptionCount = (activities || []).filter(
+              (a: any) =>
+                a.type === "coupon_redeem" &&
+                (a.couponId === coupon.id || a.couponCode === coupon.code)
+            ).length;
+            const isUserLimitReached = redemptionCount >= (coupon.perUserLimit || 1);
+            const isGlobalLimitReached =
+              coupon.usageLimit > 0 && coupon.usageCount >= coupon.usageLimit;
+            const isEligible =
+              grossSubtotal >= (coupon.minOrder || 0) &&
+              !isGlobalLimitReached &&
+              !isUserLimitReached;
+            const theme = THEMES[coupon.theme || "blue"] || THEMES.blue;
+
+            return (
+              <button
+                key={coupon.id}
+                type="button"
+                onClick={() =>
+                  !isGlobalLimitReached && !isUserLimitReached && handleApplyCoupon(coupon.code)
+                }
+                disabled={isGlobalLimitReached || isUserLimitReached}
+                className={cn(
+                  "flex flex-col rounded-xl overflow-hidden border transition-all min-w-[240px] max-w-[240px] text-left shrink-0 bg-white",
+                  isApplied
+                    ? "ring-2 ring-emerald-600 border-emerald-600"
+                    : isGlobalLimitReached || isUserLimitReached
+                      ? "opacity-50 grayscale cursor-not-allowed border-slate-200"
+                      : !isEligible
+                        ? "opacity-75 border-slate-200 cursor-not-allowed"
+                        : "border-slate-200 hover:border-primary"
+                )}
+              >
+                <div className={cn("p-4 text-white relative", theme.class)}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium text-white/80">
+                        {coupon.category || "Member Reward"}
                       </p>
+                      <h4 className="text-base font-bold font-mono tracking-wide truncate mt-0.5">
+                        {coupon.code}
+                      </h4>
                     </div>
-                    
                     {isApplied && (
-                      <div className="absolute top-4 right-4 h-6 w-6 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg animate-in zoom-in">
-                        <Check className="h-4 w-4 stroke-[4px]" />
-                      </div>
+                      <span className="h-6 w-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                        <Check className="h-3.5 w-3.5 stroke-[3px]" />
+                      </span>
                     )}
                     {(isGlobalLimitReached || isUserLimitReached) && (
-                      <div className="absolute top-4 right-4 bg-red-600 text-white p-1 rounded-md shadow-lg animate-in zoom-in">
-                         <X className="h-4 w-4 stroke-[3px]" />
-                      </div>
-                    )}
-                    
-                    {style === 'ticket' && (
-                      <>
-                        <div className="absolute -top-3 right-[32%] -translate-x-1/2 h-6 w-6 bg-slate-50 rounded-full z-20 shadow-inner" />
-                        <div className="absolute -bottom-3 right-[32%] -translate-x-1/2 h-6 w-6 bg-white rounded-full z-20 shadow-inner" />
-                      </>
+                      <span className="h-6 w-6 rounded-full bg-red-600 text-white flex items-center justify-center shrink-0">
+                        <X className="h-3.5 w-3.5" />
+                      </span>
                     )}
                   </div>
-                  
-                  <div className="p-6 bg-white space-y-4 flex-1 flex flex-col justify-between text-left">
-                      <div className="flex justify-between items-center text-left">
-                        <div className="space-y-0.5 text-left">
-                            <p className="text-[7px] font-black text-muted-foreground uppercase">Min Order</p>
-                            <p className="text-sm font-black text-slate-900">₹{(coupon.minOrder || 0).toLocaleString()}</p>
-                        </div>
-                        <div className="text-right space-y-0.5">
-                            <p className="text-[7px] font-black text-muted-foreground uppercase">Usage Node</p>
-                            <Badge variant={coupon.isStackable ? "secondary" : "outline"} className={cn("text-[7px] font-black h-4 px-1.5 border-none", coupon.isStackable ? "bg-green-50 text-green-700" : "bg-muted text-slate-400")}>
-                               {coupon.isStackable ? <Link2 className="h-2 w-2 mr-1" /> : <Lock className="h-2 w-2 mr-1" />}
-                               {coupon.isStackable ? 'STACKABLE' : 'EXCLUSIVE'}
-                            </Badge>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-left">
-                        <Badge variant="outline" className="text-[6px] font-bold h-4 border-none opacity-40 uppercase">Global: {coupon.usageCount || 0}/{coupon.usageLimit || '∞'}</Badge>
-                      </div>
+                  <p className="text-sm font-bold text-white mt-2">
+                    {coupon.type === "percentage"
+                      ? `${coupon.value}% OFF`
+                      : coupon.type === "bogo"
+                        ? coupon.value
+                        : `${currencySymbol}${coupon.value} OFF`}
+                  </p>
+                </div>
 
-                      {isUserLimitReached ? (
-                        <Badge className="bg-green-50 text-green-600 border-none text-[8px] font-black h-6 px-3 uppercase w-full justify-center gap-1.5">
-                           <BadgeCheck className="h-3 w-3" /> ALREADY USED
-                        </Badge>
-                      ) : isGlobalLimitReached ? (
-                        <Badge className="bg-red-50 text-red-600 border-none text-[8px] font-black h-6 px-3 uppercase w-full justify-center gap-1.5">
-                           <AlertCircle className="h-3 w-3" /> LIMIT EXHAUSTED
-                        </Badge>
-                      ) : isApplied ? (
-                        <Badge className="bg-green-100 text-green-700 border-none text-[8px] font-black h-6 px-3 uppercase w-full justify-center">UNSELECT TO REMOVE</Badge>
-                      ) : isEligible ? (
-                        <Badge className="bg-green-500 text-white border-none text-[8px] font-black h-6 px-3 uppercase animate-pulse w-full justify-center">TAP TO REDEEM</Badge>
+                <div className="p-3.5 space-y-2.5 flex-1 flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-xs text-slate-600">
+                    <span className="font-mono tabular-nums">
+                      Min: {currencySymbol}
+                      {(coupon.minOrder || 0).toLocaleString("en-IN")}
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                      {coupon.isStackable ? (
+                        <Link2 className="h-3 w-3 text-emerald-600" />
                       ) : (
-                        <p className="text-[8px] font-black text-red-500 uppercase text-center bg-red-50 p-1.5 rounded-lg border border-red-100">Add ₹{(coupon.minOrder - grossSubtotal).toLocaleString()} more</p>
+                        <Lock className="h-3 w-3 text-slate-400" />
                       )}
+                      {coupon.isStackable ? "Stackable" : "Exclusive"}
+                    </span>
                   </div>
-                </button>
-              );
-            })}
+
+                  <div className="text-xs font-semibold">
+                    {isUserLimitReached ? (
+                      <span className="inline-flex items-center gap-1 text-emerald-700">
+                        <BadgeCheck className="h-3.5 w-3.5" /> Already used
+                      </span>
+                    ) : isGlobalLimitReached ? (
+                      <span className="inline-flex items-center gap-1 text-red-700">
+                        <AlertCircle className="h-3.5 w-3.5" /> Campaign limit reached
+                      </span>
+                    ) : isApplied ? (
+                      <span className="text-emerald-700">Applied · Click to remove</span>
+                    ) : isEligible ? (
+                      <span className="text-primary">Click to apply</span>
+                    ) : (
+                      <span className="text-amber-700 font-mono tabular-nums">
+                        Add {currencySymbol}
+                        {Math.ceil((coupon.minOrder || 0) - grossSubtotal).toLocaleString("en-IN")}{" "}
+                        more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
-    </div>
+    </section>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { initializeAdmin } from '@/firebase/admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { buildStorefrontCashbookEntry } from '@/lib/storefront-engine';
 import { sendWhatsAppTemplate } from "@/app/actions/whatsapp-actions";
 
 /**
@@ -189,6 +190,8 @@ export async function POST(request: Request) {
           razorpayPaymentId: razorpay_payment_id,
           settlementStatus: 'success',
           paymentCaptured: true,
+          stockDeducted: true,
+          cashbookRecorded: true,
           updatedAt: FieldValue.serverTimestamp() 
         });
 
@@ -201,6 +204,21 @@ export async function POST(request: Request) {
           source: 'storefront',
           verifiedAt: FieldValue.serverTimestamp(),
           customerId
+        }, { merge: true });
+
+        const cbRef = db.doc(`businesses/${businessId}/cashbook/cb_ord_${bizOrderId}`);
+        const cbEntry = buildStorefrontCashbookEntry({
+          businessId,
+          orderId: bizOrderId,
+          customerName: orderData.customerData?.name,
+          amount: parseFloat(orderData.amount) || 0,
+          direction: 'credit',
+          paymentMode: 'Online (Razorpay)',
+          note: `Razorpay Payment ID: ${razorpay_payment_id}`,
+        });
+        transaction.set(cbRef, {
+          ...cbEntry,
+          createdAt: FieldValue.serverTimestamp(),
         }, { merge: true });
 
         return { success: true, bizData, customerPhone: phone, isStorefront: true };

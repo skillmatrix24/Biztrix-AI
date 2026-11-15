@@ -46,6 +46,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     return path === '' || 
            path === '/' || 
            path === '/shop' || 
+           path === '/funnel' || 
+           path.startsWith('/funnel/') || 
            path.startsWith('/projects/track') || 
            path.startsWith('/feedback/form') || 
            path.startsWith('/feedback/track') ||
@@ -71,7 +73,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
-  const globalBrandingRef = useMemoFirebase(() => doc(firestore, 'system', 'config', 'branding', 'main'), [firestore]);
+  const globalBrandingRef = useMemoFirebase(() => 
+    isActuallyLoggedIn ? doc(firestore, 'system', 'config', 'branding', 'main') : null
+  , [firestore, isActuallyLoggedIn]);
   const { data: globalBranding } = useDoc<any>(globalBrandingRef);
 
   const activeFavicon = useMemo(() => {
@@ -156,7 +160,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   if (!isActuallyLoggedIn && (isFullPageRoute || isAuthRoute || isHybridRoute)) return <>{children}</>;
   if (isFullPageRoute || isAuthRoute) return <>{children}</>;
   
-  if (isUserLoading || (isActuallyLoggedIn && isProfileLoading)) {
+  if (isUserLoading || (isActuallyLoggedIn && isProfileLoading) || (!isActuallyLoggedIn && !isFullPageRoute && !isAuthRoute && !isHybridRoute)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white animate-pulse shadow-lg mb-4">

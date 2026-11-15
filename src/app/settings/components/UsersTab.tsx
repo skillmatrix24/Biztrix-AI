@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useFirestore, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -129,6 +129,15 @@ export function UsersTab({ businessId, business, businessRef, businessUsers, cur
     };
 
     addDocumentNonBlocking(usersRef, userData);
+    setDoc(
+      doc(firestore, 'businesses', businessId, 'invites', newUserEmail.toLowerCase().trim()),
+      {
+        email: newUserEmail.toLowerCase().trim(),
+        role: newUserRole,
+        createdAt: new Date().toISOString(),
+      },
+      { merge: true }
+    ).catch((err) => console.warn("Invite marker sync skipped:", err));
     setIsAddUserOpen(false);
     resetForm();
     toast({ title: "Invite Dispatched", description: `${newUserName} has been added.` });

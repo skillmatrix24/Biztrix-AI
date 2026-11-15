@@ -1,95 +1,24 @@
 "use server";
 
 import { initializeAdmin } from "@/firebase/admin";
+import {
+  incrementSentinel,
+  isPermissionDeniedError,
+  restCommit,
+  restGetDoc,
+  restUpdateDoc,
+  SERVER_TIMESTAMP_SENTINEL,
+} from "@/firebase/firestore-rest";
+import { authenticateMerchantServer } from "@/firebase/server-auth";
+import { buildStorefrontCashbookEntry } from "@/lib/storefront-engine";
 import { FieldValue } from "firebase-admin/firestore";
 import { revalidatePath } from "next/cache";
 import { refundOrder } from "./payment-actions";
 
-/**
- * PHASE 5: PRODUCTION-GRADE ORDER MANAGEMENT SERVER ACTIONS
- * 
- * Enforces:
- * 1. User authentication & tenant isolation
- * 2. Role-based authorization (owner / admin / manager)
- * 3. State-machine transition validation
- * 4. Safe payment/cancellation coordination
- * 5. Privileged writes via Firebase Admin SDK
- */
-
-interface AuthTenantResult {
-  authorized: boolean;
-  uid?: string;
-  businessId?: string;
-  role?: string;
-  error?: string;
-}
-
-/**
- * Verifies tenant ownership and role permissions server-side.
- */
-async function authenticateMerchant(
-  userId?: string, 
-  requestedBusinessId?: string, 
-  idToken?: string
-): Promise<AuthTenantResult> {
-  const { admin, db } = initializeAdmin();
-
-  let resolvedUid = userId;
-
-  // 1. Verify ID token if provided
-  if (idToken) {
-    try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
-      resolvedUid = decoded.uid;
-    } catch {
-      return { authorized: false, error: "AUTH_TOKEN_EXPIRED" };
-    }
-  }
-
-  if (!resolvedUid) {
-    return { authorized: false, error: "AUTHENTICATION_REQUIRED" };
-  }
-
-  // 2. Fetch authenticated user document
-  const userDoc = await db.doc(`users/${resolvedUid}`).get();
-  if (!userDoc.exists) {
-    return { authorized: false, error: "USER_RECORD_NOT_FOUND" };
-  }
-
-  const uData = userDoc.data();
-  const tenantBusinessId = uData?.businessId;
-
-  if (!tenantBusinessId) {
-    return { authorized: false, error: "NO_TENANT_LINKED" };
-  }
-
-  // Prevent cross-tenant tampering
-  if (requestedBusinessId && requestedBusinessId !== tenantBusinessId) {
-    return { authorized: false, error: "TENANT_MISMATCH_SECURITY_VIOLATION" };
-  }
-
-  // 3. Enforce Role: owner, admin, or manager
-  const role = (uData?.role || "").toLowerCase();
-  const allowedRoles = ["owner", "admin", "manager"];
-  if (!allowedRoles.includes(role)) {
-    return { authorized: false, error: "INSUFFICIENT_PERMISSIONS" };
-  }
-
-  return {
-    authorized: true,
-    uid: resolvedUid,
-    businessId: tenantBusinessId,
-    role,
-  };
-}
-
-/**
- * Valid transitions dictionary enforcing strict state progression.
- */
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  created: ["cancelled"],
+  created: ["paid", "processing", "cancelled"],
   paid: ["processing", "shipped", "cancelled", "refunded"],
-  processing: ["shipped", "delivered", "cancelled", "refunded"],
+  processing: ["paid", "shipped", "delivered", "cancelled", "refunded"],
   shipped: ["delivered", "refunded"],
   delivered: ["refunded"],
   payment_captured_unsettled: ["paid", "refunded"],
@@ -119,34 +48,59 @@ export async function updateOrderStatus(params: UpdateOrderStatusParams): Promis
 }> {
   const { userId, businessId, orderId, newStatus, note, trackingNumber, courierName, idToken } = params;
 
-  const auth = await authenticateMerchant(userId, businessId, idToken);
+  const auth = await authenticateMerchantServer({
+    userId,
+    requestedBusinessId: businessId,
+    idToken,
+    allowedRoles: ["owner", "admin", "manager"],
+  });
   if (!auth.authorized || !auth.businessId || !auth.uid) {
     return { success: false, error: auth.error || "UNAUTHORIZED" };
   }
 
   const tenantBusinessId = auth.businessId;
   const { db } = initializeAdmin();
-  const orderRef = db.doc(`businesses/${tenantBusinessId}/orders/${orderId}`);
+  const orderPath = `businesses/${tenantBusinessId}/orders/${orderId}`;
+  const orderRef = db.doc(orderPath);
 
   try {
-    const orderSnap = await orderRef.get();
-    if (!orderSnap.exists) {
-      return { success: false, error: "ORDER_NOT_FOUND" };
+    let orderData: Record<string, any> | undefined;
+    let useRest = Boolean(auth.useRestFallback);
+
+    if (!useRest) {
+      try {
+        const orderSnap = await orderRef.get();
+        if (!orderSnap.exists) {
+          return { success: false, error: "ORDER_NOT_FOUND" };
+        }
+        orderData = orderSnap.data()!;
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    const orderData = orderSnap.data()!;
-    const currentStatus = orderData.status;
+    if (useRest) {
+      const restSnap = await restGetDoc(orderPath, idToken);
+      if (!restSnap.exists) {
+        return { success: false, error: "ORDER_NOT_FOUND" };
+      }
+      orderData = restSnap.data()!;
+    }
 
-    // Validate state transition
+    const currentStatus = orderData!.status;
+
     const allowed = VALID_TRANSITIONS[currentStatus] || [];
     if (!allowed.includes(newStatus)) {
-      return { 
-        success: false, 
-        error: `Cannot transition order from "${currentStatus}" to "${newStatus}". Allowed transitions: ${allowed.join(', ') || 'None (Terminal state)'}` 
+      return {
+        success: false,
+        error: `Cannot transition order from "${currentStatus}" to "${newStatus}". Allowed transitions: ${allowed.join(', ') || 'None (Terminal state)'}`
       };
     }
 
-    // Special Handling: Cancellation on paid/unsettled order requires refund processing
     if (newStatus === "cancelled") {
       return cancelMerchantOrder({
         userId: auth.uid,
@@ -157,14 +111,14 @@ export async function updateOrderStatus(params: UpdateOrderStatusParams): Promis
       });
     }
 
-    // Special Handling: Transition to refunded delegates to the hardened refund engine
     if (newStatus === "refunded") {
       const refundRes = await refundOrder(
         auth.uid,
         tenantBusinessId,
         orderId,
         note || "Merchant initiated refund",
-        true
+        true,
+        idToken
       );
       if (refundRes.success) {
         revalidatePath("/website/orders");
@@ -173,7 +127,6 @@ export async function updateOrderStatus(params: UpdateOrderStatusParams): Promis
       return { success: false, error: refundRes.error || "REFUND_EXECUTION_FAILED" };
     }
 
-    // Standard Forward Transitions (processing, shipped, delivered)
     const nowIso = new Date().toISOString();
     const historyEntry: Record<string, any> = {
       status: newStatus,
@@ -186,25 +139,163 @@ export async function updateOrderStatus(params: UpdateOrderStatusParams): Promis
     if (trackingNumber) historyEntry.trackingNumber = trackingNumber;
     if (courierName) historyEntry.courierName = courierName;
 
-    const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
+    const existingHistory = Array.isArray(orderData!.statusHistory) ? orderData!.statusHistory : [];
+    const needsStockDeduction =
+      currentStatus === "created" &&
+      (newStatus === "paid" || newStatus === "processing") &&
+      !orderData!.stockDeducted;
 
-    const updatePayload: Record<string, any> = {
+    const shouldRecordOfflineCashbook =
+      !orderData!.cashbookRecorded &&
+      !orderData!.razorpayPaymentId &&
+      (newStatus === "paid" || (newStatus === "delivered" && orderData!.paymentMethod === "COD"));
+
+    const baseUpdate: Record<string, any> = {
       status: newStatus,
-      updatedAt: FieldValue.serverTimestamp(),
       statusHistory: [...existingHistory, historyEntry],
     };
 
-    if (newStatus === "processing") {
-      updatePayload.processingStartedAt = FieldValue.serverTimestamp();
-    } else if (newStatus === "shipped") {
-      updatePayload.shippedAt = FieldValue.serverTimestamp();
-      if (trackingNumber) updatePayload.trackingNumber = trackingNumber;
-      if (courierName) updatePayload.courierName = courierName;
-    } else if (newStatus === "delivered") {
-      updatePayload.deliveredAt = FieldValue.serverTimestamp();
+    if (needsStockDeduction) {
+      baseUpdate.stockDeducted = true;
+    }
+    if (newStatus === "paid" || (newStatus === "delivered" && orderData!.paymentMethod === "COD")) {
+      baseUpdate.settlementStatus = "success";
+      baseUpdate.paymentCaptured = true;
+    }
+    if (shouldRecordOfflineCashbook) {
+      baseUpdate.cashbookRecorded = true;
     }
 
-    await orderRef.update(updatePayload);
+    if (newStatus === "shipped") {
+      if (trackingNumber) baseUpdate.trackingNumber = trackingNumber;
+      if (courierName) baseUpdate.courierName = courierName;
+    }
+
+    const cbModeLabel =
+      orderData!.paymentMethod === "COD"
+        ? "Cash on Delivery"
+        : orderData!.paymentMethod === "WHATSAPP"
+          ? "WhatsApp Order"
+          : "Storefront Offline";
+
+    const updateViaRest = async () => {
+      const ops: Parameters<typeof restCommit>[0] = [];
+
+      if (needsStockDeduction && Array.isArray(orderData!.items)) {
+        for (const item of orderData!.items) {
+          const prodPath = `businesses/${tenantBusinessId}/products/${item.productId}`;
+          const prodSnap = await restGetDoc(prodPath, idToken);
+          if (!prodSnap.exists || (prodSnap.data()?.stock || 0) < item.quantity) {
+            throw new Error(`Insufficient stock to confirm "${item.name}".`);
+          }
+          ops.push({
+            type: "update",
+            path: prodPath,
+            currentDocument: prodSnap.updateTime ? { updateTime: prodSnap.updateTime } : { exists: true },
+            data: {
+              stock: incrementSentinel(-item.quantity),
+              updatedAt: SERVER_TIMESTAMP_SENTINEL,
+            },
+          });
+        }
+      }
+
+      const restPayload: Record<string, any> = {
+        ...baseUpdate,
+        updatedAt: SERVER_TIMESTAMP_SENTINEL,
+      };
+      if (newStatus === "processing") restPayload.processingStartedAt = SERVER_TIMESTAMP_SENTINEL;
+      else if (newStatus === "shipped") restPayload.shippedAt = SERVER_TIMESTAMP_SENTINEL;
+      else if (newStatus === "delivered") restPayload.deliveredAt = SERVER_TIMESTAMP_SENTINEL;
+
+      ops.push({
+        type: "update",
+        path: orderPath,
+        data: restPayload,
+      });
+
+      if (shouldRecordOfflineCashbook) {
+        const cbEntry = buildStorefrontCashbookEntry({
+          businessId: tenantBusinessId,
+          orderId,
+          customerName: orderData!.customerData?.name,
+          amount: parseFloat(orderData!.amount) || 0,
+          direction: "credit",
+          paymentMode: cbModeLabel,
+          dateIso: nowIso,
+          note: note || `${cbModeLabel} settled`,
+        });
+        ops.push({
+          type: "set",
+          path: `businesses/${tenantBusinessId}/cashbook/cb_ord_${orderId}`,
+          merge: true,
+          data: {
+            ...cbEntry,
+            createdAt: SERVER_TIMESTAMP_SENTINEL,
+          },
+        });
+      }
+
+      await restCommit(ops, idToken);
+    };
+
+    if (useRest) {
+      await updateViaRest();
+    } else {
+      try {
+        await db.runTransaction(async (tx) => {
+          if (needsStockDeduction && Array.isArray(orderData!.items)) {
+            for (const item of orderData!.items) {
+              const pRef = db.doc(`businesses/${tenantBusinessId}/products/${item.productId}`);
+              const pSnap = await tx.get(pRef);
+              if (!pSnap.exists || (pSnap.data()?.stock || 0) < item.quantity) {
+                throw new Error(`Insufficient stock to confirm "${item.name}".`);
+              }
+            }
+            for (const item of orderData!.items) {
+              const pRef = db.doc(`businesses/${tenantBusinessId}/products/${item.productId}`);
+              tx.update(pRef, {
+                stock: FieldValue.increment(-item.quantity),
+                updatedAt: FieldValue.serverTimestamp(),
+              });
+            }
+          }
+
+          const adminPayload: Record<string, any> = {
+            ...baseUpdate,
+            updatedAt: FieldValue.serverTimestamp(),
+          };
+          if (newStatus === "processing") adminPayload.processingStartedAt = FieldValue.serverTimestamp();
+          else if (newStatus === "shipped") adminPayload.shippedAt = FieldValue.serverTimestamp();
+          else if (newStatus === "delivered") adminPayload.deliveredAt = FieldValue.serverTimestamp();
+          tx.update(orderRef, adminPayload);
+
+          if (shouldRecordOfflineCashbook) {
+            const cbEntry = buildStorefrontCashbookEntry({
+              businessId: tenantBusinessId,
+              orderId,
+              customerName: orderData!.customerData?.name,
+              amount: parseFloat(orderData!.amount) || 0,
+              direction: "credit",
+              paymentMode: cbModeLabel,
+              dateIso: nowIso,
+              note: note || `${cbModeLabel} settled`,
+            });
+            tx.set(
+              db.doc(`businesses/${tenantBusinessId}/cashbook/cb_ord_${orderId}`),
+              { ...cbEntry, createdAt: FieldValue.serverTimestamp() },
+              { merge: true }
+            );
+          }
+        });
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await updateViaRest();
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/website/orders");
     return { success: true, message: `Order updated to ${newStatus}.` };
@@ -233,38 +324,61 @@ export async function cancelMerchantOrder(params: CancelOrderParams): Promise<{
 }> {
   const { userId, businessId, orderId, reason, idToken } = params;
 
-  const auth = await authenticateMerchant(userId, businessId, idToken);
+  const auth = await authenticateMerchantServer({
+    userId,
+    requestedBusinessId: businessId,
+    idToken,
+    allowedRoles: ["owner", "admin", "manager"],
+  });
   if (!auth.authorized || !auth.businessId || !auth.uid) {
     return { success: false, error: auth.error || "UNAUTHORIZED" };
   }
 
   const tenantBusinessId = auth.businessId;
   const { db } = initializeAdmin();
-  const orderRef = db.doc(`businesses/${tenantBusinessId}/orders/${orderId}`);
+  const orderPath = `businesses/${tenantBusinessId}/orders/${orderId}`;
+  const orderRef = db.doc(orderPath);
 
   try {
-    const orderSnap = await orderRef.get();
-    if (!orderSnap.exists) {
-      return { success: false, error: "ORDER_NOT_FOUND" };
+    let orderData: Record<string, any> | undefined;
+    let useRest = Boolean(auth.useRestFallback);
+
+    if (!useRest) {
+      try {
+        const orderSnap = await orderRef.get();
+        if (!orderSnap.exists) {
+          return { success: false, error: "ORDER_NOT_FOUND" };
+        }
+        orderData = orderSnap.data()!;
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
     }
 
-    const orderData = orderSnap.data()!;
-    const currentStatus = orderData.status;
+    if (useRest) {
+      const restSnap = await restGetDoc(orderPath, idToken);
+      if (!restSnap.exists) {
+        return { success: false, error: "ORDER_NOT_FOUND" };
+      }
+      orderData = restSnap.data()!;
+    }
+
+    const currentStatus = orderData!.status;
 
     if (currentStatus === "cancelled" || currentStatus === "refunded") {
       return { success: false, error: `Order is already ${currentStatus}.` };
     }
 
-    // 1. UNPAID ORDER (created): Direct cancellation without payment action
     if (currentStatus === "created") {
       const nowIso = new Date().toISOString();
-      const existingHistory = Array.isArray(orderData.statusHistory) ? orderData.statusHistory : [];
-
-      await orderRef.update({
+      const existingHistory = Array.isArray(orderData!.statusHistory) ? orderData!.statusHistory : [];
+      const cancelBase = {
         status: "cancelled",
         cancelReason: reason || "Cancelled by merchant",
-        cancelledAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
         statusHistory: [
           ...existingHistory,
           {
@@ -275,55 +389,214 @@ export async function cancelMerchantOrder(params: CancelOrderParams): Promise<{
             note: reason || "Unpaid order cancelled.",
           },
         ],
-      });
+      };
+
+      if (useRest) {
+        await restUpdateDoc(orderPath, {
+          ...cancelBase,
+          cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+          updatedAt: SERVER_TIMESTAMP_SENTINEL,
+        }, idToken);
+      } else {
+        try {
+          await orderRef.update({
+            ...cancelBase,
+            cancelledAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        } catch (err: any) {
+          if (isPermissionDeniedError(err)) {
+            await restUpdateDoc(orderPath, {
+              ...cancelBase,
+              cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+              updatedAt: SERVER_TIMESTAMP_SENTINEL,
+            }, idToken);
+          } else {
+            throw err;
+          }
+        }
+      }
 
       revalidatePath("/website/orders");
       return { success: true, message: "Unpaid order marked as cancelled." };
     }
 
-    // 2. STALLED ORDER (payment_captured_unsettled): Refund payment, no stock restock needed
     if (currentStatus === "payment_captured_unsettled") {
       const res = await refundOrder(
         auth.uid,
         tenantBusinessId,
         orderId,
         `Order cancelled: ${reason}`,
-        false
+        false,
+        idToken
       );
       if (res.success) {
-        await orderRef.update({
-          status: "cancelled",
-          cancelReason: reason,
-          cancelledAt: FieldValue.serverTimestamp(),
-        });
+        if (useRest) {
+          await restUpdateDoc(orderPath, {
+            status: "cancelled",
+            cancelReason: reason,
+            cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+          }, idToken);
+        } else {
+          try {
+            await orderRef.update({
+              status: "cancelled",
+              cancelReason: reason,
+              cancelledAt: FieldValue.serverTimestamp(),
+            });
+          } catch (err: any) {
+            if (isPermissionDeniedError(err)) {
+              await restUpdateDoc(orderPath, {
+                status: "cancelled",
+                cancelReason: reason,
+                cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+              }, idToken);
+            } else {
+              throw err;
+            }
+          }
+        }
         revalidatePath("/website/orders");
         return { success: true, message: "Stalled order cancelled and customer refunded." };
       }
       return { success: false, error: res.error || "REFUND_FAILED" };
     }
 
-    // 3. SETTLED ORDER (paid or processing): Refund payment AND restore stock
+    // Handle COD / Offline processing order cancellation (no Razorpay payment, restore stock directly)
+    if (
+      (currentStatus === "paid" || currentStatus === "processing") &&
+      !orderData!.razorpayPaymentId
+    ) {
+      const nowIso = new Date().toISOString();
+      const existingHistory = Array.isArray(orderData!.statusHistory) ? orderData!.statusHistory : [];
+      const shouldRestoreCodStock = Boolean(orderData!.stockDeducted);
+      const cancelPayload = {
+        status: "cancelled",
+        cancelReason: reason || "Cancelled by merchant",
+        stockDeducted: false,
+        statusHistory: [
+          ...existingHistory,
+          {
+            status: "cancelled",
+            previousStatus: currentStatus,
+            changedBy: auth.uid,
+            changedAt: nowIso,
+            note: reason || "Offline/COD order cancelled and stock restored.",
+          },
+        ],
+      };
+
+      const cancelOfflineViaRest = async () => {
+        const ops: Parameters<typeof restCommit>[0] = [];
+        if (shouldRestoreCodStock && Array.isArray(orderData!.items)) {
+          for (const item of orderData!.items) {
+            if (item.productId && item.quantity > 0) {
+              ops.push({
+                type: "update",
+                path: `businesses/${tenantBusinessId}/products/${item.productId}`,
+                data: {
+                  stock: incrementSentinel(item.quantity),
+                  updatedAt: SERVER_TIMESTAMP_SENTINEL,
+                },
+              });
+            }
+          }
+        }
+        ops.push({
+          type: "update",
+          path: orderPath,
+          data: {
+            ...cancelPayload,
+            cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          },
+        });
+        await restCommit(ops, idToken);
+      };
+
+      if (useRest) {
+        await cancelOfflineViaRest();
+      } else {
+        try {
+          await db.runTransaction(async (tx) => {
+            if (shouldRestoreCodStock && Array.isArray(orderData!.items)) {
+              for (const item of orderData!.items) {
+                if (item.productId && item.quantity > 0) {
+                  tx.update(
+                    db.doc(`businesses/${tenantBusinessId}/products/${item.productId}`),
+                    {
+                      stock: FieldValue.increment(item.quantity),
+                      updatedAt: FieldValue.serverTimestamp(),
+                    }
+                  );
+                }
+              }
+            }
+            tx.update(orderRef, {
+              ...cancelPayload,
+              cancelledAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+          });
+        } catch (err: any) {
+          if (isPermissionDeniedError(err)) {
+            await cancelOfflineViaRest();
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      revalidatePath("/website/orders");
+      return {
+        success: true,
+        message: shouldRestoreCodStock
+          ? "Order cancelled and reserved inventory restored."
+          : "Order marked as cancelled.",
+      };
+    }
+
     if (currentStatus === "paid" || currentStatus === "processing") {
       const res = await refundOrder(
         auth.uid,
         tenantBusinessId,
         orderId,
         `Order cancelled: ${reason}`,
-        true
+        true,
+        idToken
       );
       if (res.success) {
-        await orderRef.update({
-          status: "cancelled",
-          cancelReason: reason,
-          cancelledAt: FieldValue.serverTimestamp(),
-        });
+        if (useRest) {
+          await restUpdateDoc(orderPath, {
+            status: "cancelled",
+            cancelReason: reason,
+            cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+          }, idToken);
+        } else {
+          try {
+            await orderRef.update({
+              status: "cancelled",
+              cancelReason: reason,
+              cancelledAt: FieldValue.serverTimestamp(),
+            });
+          } catch (err: any) {
+            if (isPermissionDeniedError(err)) {
+              await restUpdateDoc(orderPath, {
+                status: "cancelled",
+                cancelReason: reason,
+                cancelledAt: SERVER_TIMESTAMP_SENTINEL,
+              }, idToken);
+            } else {
+              throw err;
+            }
+          }
+        }
         revalidatePath("/website/orders");
         return { success: true, message: "Order cancelled, inventory restored, and customer refunded." };
       }
       return { success: false, error: res.error || "REFUND_FAILED" };
     }
 
-    // 4. DISPATCHED ORDER (shipped or delivered): Cannot silently cancel
     return {
       success: false,
       error: `Order has already been ${currentStatus}. Dispatched items must be handled via the formal return/refund workflow.`
@@ -337,7 +610,6 @@ export async function cancelMerchantOrder(params: CancelOrderParams): Promise<{
 
 /**
  * Fetches unified customer metrics from businesses/{businessId}/customers/{customerId}.
- * Resolves customer order history and contact details securely.
  */
 export async function fetchCustomerProfile(
   userId: string,
@@ -349,28 +621,43 @@ export async function fetchCustomerProfile(
   customer?: any;
   error?: string;
 }> {
-  const auth = await authenticateMerchant(userId, businessId, idToken);
+  const auth = await authenticateMerchantServer({
+    userId,
+    requestedBusinessId: businessId,
+    idToken,
+    allowedRoles: ["owner", "admin", "manager"],
+  });
   if (!auth.authorized || !auth.businessId) {
     return { success: false, error: auth.error || "UNAUTHORIZED" };
   }
 
   const { db } = initializeAdmin();
-  const customerRef = db.doc(`businesses/${auth.businessId}/customers/${customerId}`);
+  const customerPath = `businesses/${auth.businessId}/customers/${customerId}`;
 
   try {
-    const snap = await customerRef.get();
-    if (!snap.exists) {
-      return { success: false, error: "CUSTOMER_NOT_FOUND" };
+    if (auth.useRestFallback) {
+      const restSnap = await restGetDoc(customerPath, idToken);
+      if (!restSnap.exists) return { success: false, error: "CUSTOMER_NOT_FOUND" };
+      return { success: true, customer: { id: restSnap.id, ...restSnap.data() } };
     }
 
-    const data = snap.data();
-    return {
-      success: true,
-      customer: {
-        id: snap.id,
-        ...data,
-      },
-    };
+    try {
+      const snap = await db.doc(customerPath).get();
+      if (!snap.exists) {
+        return { success: false, error: "CUSTOMER_NOT_FOUND" };
+      }
+      return {
+        success: true,
+        customer: { id: snap.id, ...snap.data() },
+      };
+    } catch (err: any) {
+      if (isPermissionDeniedError(err)) {
+        const restSnap = await restGetDoc(customerPath, idToken);
+        if (!restSnap.exists) return { success: false, error: "CUSTOMER_NOT_FOUND" };
+        return { success: true, customer: { id: restSnap.id, ...restSnap.data() } };
+      }
+      throw err;
+    }
   } catch (err: any) {
     return { success: false, error: err.message || "FETCH_FAILED" };
   }

@@ -2,6 +2,10 @@ import firebaseConfig from '../../firebase-applet-config.json';
 
 export const SERVER_TIMESTAMP_SENTINEL = { __serverTimestamp: true } as const;
 
+export function incrementSentinel(delta: number) {
+  return { __increment: delta } as const;
+}
+
 const PROJECT_ID = firebaseConfig.projectId;
 const API_KEY = firebaseConfig.apiKey;
 const DATABASE_ID = '(default)';
@@ -28,6 +32,18 @@ function isServerTimestampSentinel(val: unknown): boolean {
   );
 }
 
+function getIncrementDelta(val: unknown): number | null {
+  if (
+    val &&
+    typeof val === 'object' &&
+    '__increment' in (val as Record<string, unknown>) &&
+    typeof (val as Record<string, unknown>).__increment === 'number'
+  ) {
+    return (val as Record<string, number>).__increment;
+  }
+  return null;
+}
+
 function toFirestoreValue(val: unknown): Record<string, unknown> {
   if (val === null || val === undefined) {
     return { nullValue: null };
@@ -51,7 +67,7 @@ function toFirestoreValue(val: unknown): Record<string, unknown> {
     return {
       arrayValue: {
         values: val
-          .filter((item) => item !== undefined && !isServerTimestampSentinel(item))
+          .filter((item) => item !== undefined && !isServerTimestampSentinel(item) && getIncrementDelta(item) === null)
           .map((item) => toFirestoreValue(item)),
       },
     };
@@ -59,7 +75,7 @@ function toFirestoreValue(val: unknown): Record<string, unknown> {
   if (typeof val === 'object') {
     const fields: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(val as Record<string, unknown>)) {
-      if (v === undefined || isServerTimestampSentinel(v)) continue;
+      if (v === undefined || isServerTimestampSentinel(v) || getIncrementDelta(v) !== null) continue;
       fields[k] = toFirestoreValue(v);
     }
     return { mapValue: { fields } };
@@ -89,16 +105,20 @@ function fromFirestoreValue(val: Record<string, unknown>): unknown {
   return null;
 }
 
+type FieldTransform =
+  | { fieldPath: string; setToServerValue: 'REQUEST_TIME' }
+  | { fieldPath: string; increment: Record<string, unknown> };
+
 function extractFieldsAndTransforms(
   data: Record<string, unknown>,
   prefix = ''
 ): {
   fields: Record<string, unknown>;
-  transforms: Array<{ fieldPath: string; setToServerValue: 'REQUEST_TIME' }>;
+  transforms: FieldTransform[];
   fieldPaths: string[];
 } {
   const fields: Record<string, unknown> = {};
-  const transforms: Array<{ fieldPath: string; setToServerValue: 'REQUEST_TIME' }> = [];
+  const transforms: FieldTransform[] = [];
   const fieldPaths: string[] = [];
 
   for (const [key, value] of Object.entries(data)) {
@@ -106,6 +126,11 @@ function extractFieldsAndTransforms(
     const fullPath = prefix ? `${prefix}.${key}` : key;
     if (isServerTimestampSentinel(value)) {
       transforms.push({ fieldPath: fullPath, setToServerValue: 'REQUEST_TIME' });
+      continue;
+    }
+    const incDelta = getIncrementDelta(value);
+    if (incDelta !== null) {
+      transforms.push({ fieldPath: fullPath, increment: toFirestoreValue(incDelta) });
       continue;
     }
     fields[key] = toFirestoreValue(value);
@@ -133,6 +158,7 @@ function docName(docPath: string): string {
 export interface RestDocSnapshot {
   exists: boolean;
   id: string;
+  path: string;
   updateTime?: string;
   data: () => Record<string, any> | undefined;
 }
@@ -152,7 +178,7 @@ export async function restGetDoc(
   });
 
   if (res.status === 404) {
-    return { exists: false, id, data: () => undefined };
+    return { exists: false, id, path: clean, data: () => undefined };
   }
 
   if (!res.ok) {
@@ -171,6 +197,7 @@ export async function restGetDoc(
   return {
     exists: true,
     id,
+    path: clean,
     updateTime: json.updateTime,
     data: () => parsed,
   };
@@ -180,6 +207,7 @@ export interface RestWriteOp {
   type: 'set' | 'update';
   path: string;
   data: Record<string, unknown>;
+  merge?: boolean;
   currentDocument?: { exists?: boolean; updateTime?: string };
 }
 
@@ -199,6 +227,11 @@ export async function restCommit(
     if (op.type === 'update') {
       writeObj.updateMask = { fieldPaths };
       writeObj.currentDocument = op.currentDocument || { exists: true };
+    } else if (op.merge) {
+      writeObj.updateMask = { fieldPaths };
+      if (op.currentDocument) {
+        writeObj.currentDocument = op.currentDocument;
+      }
     } else if (op.currentDocument) {
       writeObj.currentDocument = op.currentDocument;
     }
@@ -227,9 +260,13 @@ export async function restCommit(
 export async function restSetDoc(
   docPath: string,
   data: Record<string, unknown>,
-  idToken?: string
+  idToken?: string,
+  options?: { merge?: boolean }
 ): Promise<void> {
-  await restCommit([{ type: 'set', path: docPath, data }], idToken);
+  await restCommit(
+    [{ type: 'set', path: docPath, data, merge: Boolean(options?.merge) }],
+    idToken
+  );
 }
 
 export async function restUpdateDoc(
@@ -263,22 +300,52 @@ export async function restDeleteDoc(
   }
 }
 
+export interface RestWhereFilter {
+  field: string;
+  op?: 'EQUAL' | 'NOT_EQUAL' | 'LESS_THAN' | 'GREATER_THAN' | 'ARRAY_CONTAINS';
+  value: unknown;
+}
+
 export async function restQueryCollection(
   parentDocPath: string,
   collectionId: string,
   options: {
+    where?: RestWhereFilter[];
+    allDescendants?: boolean;
     orderByField?: string;
     direction?: 'ASCENDING' | 'DESCENDING';
     limit?: number;
   } = {},
   idToken?: string
-): Promise<Array<{ id: string; [key: string]: any }>> {
+): Promise<Array<{ id: string; __path: string; [key: string]: any }>> {
   const cleanParent = parentDocPath.replace(/^\/+/, '');
-  const url = `${BASE_URL}/${cleanParent}:runQuery?key=${API_KEY}`;
+  const url = cleanParent
+    ? `${BASE_URL}/${cleanParent}:runQuery?key=${API_KEY}`
+    : `${BASE_URL}:runQuery?key=${API_KEY}`;
 
   const structuredQuery: Record<string, unknown> = {
-    from: [{ collectionId }],
+    from: [{ collectionId, allDescendants: Boolean(options.allDescendants) }],
   };
+
+  if (options.where && options.where.length > 0) {
+    const fieldFilters = options.where.map((f) => ({
+      fieldFilter: {
+        field: { fieldPath: f.field },
+        op: f.op || 'EQUAL',
+        value: toFirestoreValue(f.value),
+      },
+    }));
+
+    structuredQuery.where =
+      fieldFilters.length === 1
+        ? fieldFilters[0]
+        : {
+            compositeFilter: {
+              op: 'AND',
+              filters: fieldFilters,
+            },
+          };
+  }
 
   if (options.orderByField) {
     structuredQuery.orderBy = [
@@ -308,18 +375,20 @@ export async function restQueryCollection(
   const rows = await res.json();
   if (!Array.isArray(rows)) return [];
 
-  const results: Array<{ id: string; [key: string]: any }> = [];
+  const results: Array<{ id: string; __path: string; [key: string]: any }> = [];
   for (const row of rows) {
     if (!row.document) continue;
-    const name: string = row.document.name || '';
-    const id = name.split('/').pop() || '';
-    const parsed: Record<string, any> = { id };
+    const fullName: string = row.document.name || '';
+    const marker = '/documents/';
+    const relPath = fullName.includes(marker) ? fullName.split(marker)[1] : fullName;
+    const id = relPath.split('/').pop() || '';
+    const parsed: Record<string, any> = { id, __path: relPath };
     if (row.document.fields) {
       for (const [k, v] of Object.entries(row.document.fields)) {
         parsed[k] = fromFirestoreValue(v as Record<string, unknown>);
       }
     }
-    results.push(parsed as { id: string; [key: string]: any });
+    results.push(parsed as { id: string; __path: string; [key: string]: any });
   }
 
   return results;

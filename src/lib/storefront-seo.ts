@@ -1,4 +1,25 @@
 import { initializeAdmin } from "@/firebase/admin";
+import {
+  isPermissionDeniedError,
+  restGetDoc,
+  restQueryCollection,
+} from "@/firebase/firestore-rest";
+import {
+  normalizeAnnouncementBar,
+  normalizeFooterConfig,
+  normalizeStoreCoupons,
+  normalizeStorePolicyConfig,
+  normalizeStoreShippingConfig,
+  normalizeStoreThemeConfig,
+  normalizeStoreTrackingConfig,
+  StoreAnnouncementBar,
+  StoreCoupon,
+  StoreFooterConfig,
+  StorePolicyConfig,
+  StoreShippingConfig,
+  StoreThemeConfig,
+  StoreTrackingConfig,
+} from "@/lib/storefront-engine";
 
 export interface StorefrontSeoData {
   businessId: string;
@@ -13,6 +34,7 @@ export interface StorefrontSeoData {
   faviconUrl?: string;
   logoUrl?: string;
   primaryColor?: string;
+  uiStyle?: string;
   customDomain?: string | null;
   customDomainStatus?: string | null;
   slug?: string | null;
@@ -21,8 +43,19 @@ export interface StorefrontSeoData {
   storeAddress?: string;
   currency?: string;
   status?: string;
+  websiteStatus?: string | null;
+  businessStatus?: string | null;
   whatsappOrderEnabled?: boolean;
+  codEnabled?: boolean;
   showDiscount?: boolean;
+  sections?: any[];
+  coupons?: StoreCoupon[];
+  shippingConfig?: StoreShippingConfig;
+  themeConfig?: StoreThemeConfig;
+  announcementBar?: StoreAnnouncementBar;
+  footerConfig?: StoreFooterConfig;
+  trackingConfig?: StoreTrackingConfig;
+  policyConfig?: StorePolicyConfig;
 }
 
 export interface ProductSeoData {
@@ -40,6 +73,7 @@ export interface ProductSeoData {
   isBestSeller?: boolean;
   showOnWebsite: boolean;
   isArchived?: boolean;
+  createdAt?: string | null;
 }
 
 /**
@@ -94,17 +128,31 @@ export function resolveCanonicalStorefrontUrl({
  */
 export async function getStorefrontSeoData(businessId: string): Promise<StorefrontSeoData | null> {
   try {
-    const { db } = initializeAdmin();
+    let bizExists = false;
+    let bizData: Record<string, any> = {};
+    let websiteData: Record<string, any> = {};
 
-    const [bizSnap, websiteSnap] = await Promise.all([
-      db.doc(`businesses/${businessId}`).get(),
-      db.doc(`businesses/${businessId}/websites/main`).get()
-    ]);
+    try {
+      const { db } = initializeAdmin();
+      const [bizSnap, websiteSnap] = await Promise.all([
+        db.doc(`businesses/${businessId}`).get(),
+        db.doc(`businesses/${businessId}/websites/main`).get()
+      ]);
+      bizExists = bizSnap.exists;
+      bizData = bizSnap.data() || {};
+      websiteData = websiteSnap.exists ? websiteSnap.data() || {} : {};
+    } catch (adminErr: any) {
+      if (!isPermissionDeniedError(adminErr)) throw adminErr;
+      const [bizSnap, websiteSnap] = await Promise.all([
+        restGetDoc(`businesses/${businessId}`),
+        restGetDoc(`businesses/${businessId}/websites/main`)
+      ]);
+      bizExists = bizSnap.exists;
+      bizData = (bizSnap.exists ? bizSnap.data() : undefined) || {};
+      websiteData = (websiteSnap.exists ? websiteSnap.data() : undefined) || {};
+    }
 
-    if (!bizSnap.exists) return null;
-
-    const bizData = bizSnap.data() || {};
-    const websiteData = websiteSnap.exists ? websiteSnap.data() || {} : {};
+    if (!bizExists) return null;
 
     // Only return if store is published or active
     const status = websiteData.status || bizData.status || 'draft';
@@ -120,18 +168,30 @@ export async function getStorefrontSeoData(businessId: string): Promise<Storefro
       ogImage: websiteData.ogImage,
       socialShareImage: websiteData.socialShareImage,
       faviconUrl: websiteData.faviconUrl || bizData.faviconUrl,
-      logoUrl: bizData.logoUrl,
+      logoUrl: websiteData.logoUrl || bizData.logoUrl,
       primaryColor: websiteData.primaryColor || "#0C83B3",
+      uiStyle: websiteData.uiStyle || "modern",
       customDomain: websiteData.customDomain || null,
       customDomainStatus: websiteData.customDomainStatus || null,
       slug: websiteData.slug || bizData.slug || null,
-      contactEmail: websiteData.contactEmail || "",
+      contactEmail: websiteData.contactEmail || bizData.email || "",
       contactPhone: websiteData.contactPhone || bizData.phone || "",
       storeAddress: websiteData.storeAddress || bizData.address || "",
       currency: bizData.currency || "INR",
       status,
+      websiteStatus: websiteData.status || null,
+      businessStatus: bizData.status || null,
       whatsappOrderEnabled: websiteData.whatsappOrderEnabled ?? true,
+      codEnabled: websiteData.codEnabled ?? true,
       showDiscount: websiteData.showDiscount ?? true,
+      sections: Array.isArray(websiteData.sections) ? websiteData.sections : undefined,
+      coupons: normalizeStoreCoupons(websiteData.coupons),
+      shippingConfig: normalizeStoreShippingConfig(websiteData.shippingConfig),
+      themeConfig: normalizeStoreThemeConfig(websiteData.themeConfig, websiteData.uiStyle),
+      announcementBar: normalizeAnnouncementBar(websiteData.announcementBar),
+      footerConfig: normalizeFooterConfig(websiteData.footerConfig),
+      trackingConfig: normalizeStoreTrackingConfig(websiteData.trackingConfig),
+      policyConfig: normalizeStorePolicyConfig(websiteData.policyConfig),
     };
   } catch (err) {
     console.error("[getStorefrontSeoData] error:", err);
@@ -145,13 +205,26 @@ export async function getStorefrontSeoData(businessId: string): Promise<Storefro
  */
 export async function getProductSeoData(businessId: string, productId: string): Promise<ProductSeoData | null> {
   try {
-    const { db } = initializeAdmin();
-    const productRef = db.doc(`businesses/${businessId}/products/${productId}`);
-    const snap = await productRef.get();
+    let exists = false;
+    let resolvedId = productId;
+    let p: Record<string, any> = {};
 
-    if (!snap.exists) return null;
+    try {
+      const { db } = initializeAdmin();
+      const productRef = db.doc(`businesses/${businessId}/products/${productId}`);
+      const snap = await productRef.get();
+      exists = snap.exists;
+      resolvedId = snap.id;
+      p = snap.data() || {};
+    } catch (adminErr: any) {
+      if (!isPermissionDeniedError(adminErr)) throw adminErr;
+      const restSnap = await restGetDoc(`businesses/${businessId}/products/${productId}`);
+      exists = restSnap.exists;
+      resolvedId = restSnap.id;
+      p = (restSnap.exists ? restSnap.data() : undefined) || {};
+    }
 
-    const p = snap.data() || {};
+    if (!exists) return null;
 
     // Security Gate: hidden or archived products are never exposed to search engines
     if (!p.showOnWebsite || p.isArchived) {
@@ -159,7 +232,7 @@ export async function getProductSeoData(businessId: string, productId: string): 
     }
 
     return {
-      id: snap.id,
+      id: resolvedId,
       name: p.name || "Product",
       description: p.description || "",
       price: parseFloat(p.price) || 0,
@@ -186,33 +259,48 @@ export async function getProductSeoData(businessId: string, productId: string): 
  */
 export async function getPublicStoreProductsForSeo(businessId: string, limitCount = 100): Promise<ProductSeoData[]> {
   try {
-    const { db } = initializeAdmin();
-    const q = db.collection(`businesses/${businessId}/products`)
-      .where("showOnWebsite", "==", true)
-      .limit(limitCount);
+    let rawItems: Array<{ id: string; data: Record<string, any> }> = [];
 
-    const snap = await q.get();
+    try {
+      const { db } = initializeAdmin();
+      const q = db.collection(`businesses/${businessId}/products`)
+        .where("showOnWebsite", "==", true)
+        .limit(limitCount);
 
-    return snap.docs
-      .map(doc => {
-        const p = doc.data();
-        return {
-          id: doc.id,
-          name: p.name || "Product",
-          description: p.description || "",
-          price: parseFloat(p.price) || 0,
-          onlinePrice: p.onlinePrice !== undefined ? parseFloat(p.onlinePrice) : undefined,
-          sku: p.sku || "",
-          stock: parseInt(p.stock, 10) || 0,
-          minThreshold: parseInt(p.minThreshold, 10) || 2,
-          category: p.category || "",
-          images: Array.isArray(p.images) ? p.images : [],
-          isFeatured: Boolean(p.isFeatured),
-          isBestSeller: Boolean(p.isBestSeller),
-          showOnWebsite: Boolean(p.showOnWebsite),
-          isArchived: Boolean(p.isArchived),
-        };
-      })
+      const snap = await q.get();
+      rawItems = snap.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+    } catch (adminErr: any) {
+      if (!isPermissionDeniedError(adminErr)) throw adminErr;
+      const docs = await restQueryCollection(`businesses/${businessId}`, 'products', {
+        where: [{ field: "showOnWebsite", op: "EQUAL", value: true }],
+        limit: limitCount,
+      });
+      rawItems = docs.map(doc => ({ id: doc.id, data: doc }));
+    }
+
+    return rawItems
+      .map(({ id, data: p }) => ({
+        id,
+        name: p.name || "Product",
+        description: p.description || "",
+        price: parseFloat(p.price) || 0,
+        onlinePrice: p.onlinePrice !== undefined ? parseFloat(p.onlinePrice) : undefined,
+        sku: p.sku || "",
+        stock: parseInt(p.stock, 10) || 0,
+        minThreshold: parseInt(p.minThreshold, 10) || 2,
+        category: p.category || "",
+        images: Array.isArray(p.images) ? p.images : [],
+        isFeatured: Boolean(p.isFeatured),
+        isBestSeller: Boolean(p.isBestSeller),
+        showOnWebsite: Boolean(p.showOnWebsite),
+        isArchived: Boolean(p.isArchived),
+        createdAt:
+          typeof p.createdAt === "string"
+            ? p.createdAt
+            : typeof p.createdAt?.toDate === "function"
+              ? p.createdAt.toDate().toISOString()
+              : null,
+      }))
       .filter(p => !p.isArchived);
   } catch (err) {
     console.error("[getPublicStoreProductsForSeo] error:", err);

@@ -2,17 +2,49 @@
 
 import { promises as dns } from "dns";
 import { initializeAdmin } from "@/firebase/admin";
+import {
+  incrementSentinel,
+  isPermissionDeniedError,
+  restCommit,
+  restGetDoc,
+  restQueryCollection,
+  restSetDoc,
+  restUpdateDoc,
+  SERVER_TIMESTAMP_SENTINEL,
+} from "@/firebase/firestore-rest";
+import { authenticateMerchantServer } from "@/firebase/server-auth";
+import {
+  normalizeAnnouncementBar,
+  normalizeFooterConfig,
+  normalizeFunnelConfig,
+  normalizeStoreCoupons,
+  normalizeStorePolicyConfig,
+  normalizeStoreSections,
+  normalizeStoreShippingConfig,
+  normalizeStoreThemeConfig,
+  normalizeStoreTrackingConfig,
+  sanitizeStoreSlug,
+  StoreAnnouncementBar,
+  StoreCoupon,
+  StoreFooterConfig,
+  StoreFunnelConfig,
+  StorePolicyConfig,
+  StoreShippingConfig,
+  StoreThemeConfig,
+  StoreTrackingConfig,
+} from "@/lib/storefront-engine";
+import { FieldValue } from "firebase-admin/firestore";
 import { revalidatePath } from "next/cache";
 
 /**
  * PHASE 4B: SECURE SERVER-SIDE CUSTOM DOMAIN VERIFICATION ENGINE
- * 
+ *
  * Enforces:
- * 1. User authentication & tenant isolation (never trust raw browser input)
+ * 1. User authentication & tenant isolation (strict idToken required)
  * 2. Role authorization (owner/admin/manager)
  * 3. Domain format validation
  * 4. Authentic server-side DNS lookup (CNAME resolution)
- * 5. Privileged state persistence in businesses/{businessId}/websites/main
+ * 5. State persistence in businesses/{businessId}/websites/main (Admin SDK + REST fallback)
  */
 
 const EXPECTED_CNAME_TARGET = "cname.biztrix.in";
@@ -32,26 +64,24 @@ export async function validateDomainFormat(domain: string): Promise<DomainValida
     return { isValid: false, error: "Domain name is required." };
   }
 
-  // Strip protocol if user pasted http:// or https://, and strip trailing slash or path
   const sanitized = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
 
   if (!sanitized) {
     return { isValid: false, error: "Domain name cannot be empty." };
   }
 
-  // Domain regex accepting standard hostnames and subdomains (e.g. shop.example.com, www.example.com, example.com)
   const domainRegex = /^(?!:\/\/)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$/;
   if (!domainRegex.test(sanitized)) {
-    return { 
-      isValid: false, 
-      error: "Invalid domain format. Please enter a valid domain like 'shop.yourbrand.com' or 'www.yourbrand.com'." 
+    return {
+      isValid: false,
+      error: "Invalid domain format. Please enter a valid domain like 'shop.yourbrand.com' or 'www.yourbrand.com'."
     };
   }
 
   if (BIZTRIX_RESERVED_DOMAINS.some(d => sanitized === d || sanitized.endsWith(`.${d}`))) {
-    return { 
-      isValid: false, 
-      error: "Biztrix platform domains cannot be configured as custom storefront domains." 
+    return {
+      isValid: false,
+      error: "Biztrix platform domains cannot be configured as custom storefront domains."
     };
   }
 
@@ -62,73 +92,45 @@ interface AuthContext {
   uid: string;
   businessId: string;
   role: string;
+  useRestFallback?: boolean;
 }
 
 /**
  * Authorizes user and resolves tenant context securely from the authenticated token.
- * Prevents cross-tenant attacks by never trusting unauthenticated client inputs.
  */
 async function authenticateTenantUser(
-  idToken?: string, 
+  idToken?: string,
   requestedBusinessId?: string
 ): Promise<{ authorized: boolean; authContext?: AuthContext; error?: string }> {
-  const { admin, db } = initializeAdmin();
+  const auth = await authenticateMerchantServer({
+    requestedBusinessId,
+    idToken,
+    allowedRoles: ["owner", "admin", "manager"],
+    requireIdToken: true,
+  });
 
-  if (!idToken) {
-    // Development / fallback support when ID token is unavailable
-    if (process.env.NODE_ENV !== "production" && requestedBusinessId) {
-      const bizSnap = await db.collection("businesses").doc(requestedBusinessId).get();
-      if (!bizSnap.exists) {
-        return { authorized: false, error: "Business node not found in registry." };
-      }
-      return { 
-        authorized: true, 
-        authContext: { uid: "dev-session", businessId: requestedBusinessId, role: "owner" } 
-      };
+  if (!auth.authorized || !auth.uid || !auth.businessId || !auth.role) {
+    if (auth.error === "AUTHENTICATION_TOKEN_REQUIRED") {
+      return { authorized: false, error: "Authentication required. Please sign in to manage domains." };
     }
-    return { authorized: false, error: "Authentication required. Please sign in to manage domains." };
-  }
-
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
-
-    const userDoc = await db.collection("users").doc(uid).get();
-    if (!userDoc.exists) {
-      return { authorized: false, error: "Authenticated user record not found." };
-    }
-
-    const userData = userDoc.data();
-    const tenantBusinessId = userData?.businessId;
-
-    if (!tenantBusinessId) {
-      return { authorized: false, error: "No business linked to your account." };
-    }
-
-    // Role check: Only owner, admin, or manager roles may configure custom domains
-    const userRole = (userData?.role || "user").toLowerCase();
-    const allowedRoles = ["owner", "admin", "manager"];
-    if (!allowedRoles.includes(userRole)) {
+    if (auth.error === "INSUFFICIENT_ROLE_PERMISSIONS") {
       return { authorized: false, error: "Permission denied: Only business administrators can manage custom domains." };
     }
-
-    // If client supplied a businessId, it MUST match the authenticated user's tenant businessId
-    if (requestedBusinessId && requestedBusinessId !== tenantBusinessId) {
+    if (auth.error === "TENANT_MISMATCH_SECURITY_VIOLATION") {
       return { authorized: false, error: "Security violation: Tenant mismatch detected." };
     }
-
-    return {
-      authorized: true,
-      authContext: {
-        uid,
-        businessId: tenantBusinessId,
-        role: userRole,
-      }
-    };
-  } catch (err: any) {
-    console.error("Custom domain auth error:", err?.message || err);
-    return { authorized: false, error: "Authentication session expired or invalid. Please refresh the page." };
+    return { authorized: false, error: auth.error || "Authentication session expired or invalid. Please refresh the page." };
   }
+
+  return {
+    authorized: true,
+    authContext: {
+      uid: auth.uid,
+      businessId: auth.businessId,
+      role: auth.role,
+      useRestFallback: auth.useRestFallback,
+    }
+  };
 }
 
 /**
@@ -146,7 +148,6 @@ export async function checkDomainDns(domain: string): Promise<{
     try {
       cnameRecords = await dns.resolveCname(cleanDomain);
     } catch (cnameErr: any) {
-      // ENODATA or ENOTFOUND are standard when record does not exist
       if (cnameErr.code !== "ENODATA" && cnameErr.code !== "ENOTFOUND") {
         throw cnameErr;
       }
@@ -173,7 +174,6 @@ export async function checkDomainDns(domain: string): Promise<{
       }
     }
 
-    // Check A records to provide informative feedback if user configured an IP instead of CNAME
     try {
       const aRecords = await dns.resolve4(cleanDomain);
       if (aRecords.length > 0) {
@@ -221,17 +221,38 @@ export async function verifyCustomDomain(params: {
     return { success: false, message: auth.error || "Unauthorized request." };
   }
 
-  const { businessId } = auth.authContext;
+  const { businessId, useRestFallback } = auth.authContext;
   const { db } = initializeAdmin();
+  const websitePath = `businesses/${businessId}/websites/main`;
+  const websiteRef = db.doc(websitePath);
 
-  const websiteRef = db.collection("businesses").doc(businessId).collection("websites").doc("main");
-  const websiteDoc = await websiteRef.get();
+  let websiteData: Record<string, any> | undefined;
+  let useRest = Boolean(useRestFallback);
 
-  if (!websiteDoc.exists) {
-    return { success: false, message: "Website configuration document not found." };
+  if (!useRest) {
+    try {
+      const websiteDoc = await websiteRef.get();
+      if (!websiteDoc.exists) {
+        return { success: false, message: "Website configuration document not found." };
+      }
+      websiteData = websiteDoc.data();
+    } catch (err: any) {
+      if (isPermissionDeniedError(err)) {
+        useRest = true;
+      } else {
+        throw err;
+      }
+    }
   }
 
-  const websiteData = websiteDoc.data();
+  if (useRest) {
+    const restSnap = await restGetDoc(websitePath, params.idToken);
+    if (!restSnap.exists) {
+      return { success: false, message: "Website configuration document not found." };
+    }
+    websiteData = restSnap.data();
+  }
+
   const domain = websiteData?.customDomain;
 
   if (!domain) {
@@ -246,53 +267,61 @@ export async function verifyCustomDomain(params: {
   const cleanDomain = validation.cleanedDomain;
   const nowIso = new Date().toISOString();
 
-  // Perform authentic server-side DNS verification
   const dnsResult = await checkDomainDns(cleanDomain);
 
+  const updateData = dnsResult.isVerified
+    ? {
+        customDomainStatus: "verified",
+        customDomainVerifiedAt: nowIso,
+        customDomainLastCheckedAt: nowIso,
+        customDomainVerificationError: null,
+        customDomainDnsRecord: dnsResult.recordsFound.join(", ") || EXPECTED_CNAME_TARGET,
+      }
+    : {
+        customDomainStatus: "failed",
+        customDomainVerifiedAt: null,
+        customDomainLastCheckedAt: nowIso,
+        customDomainVerificationError: dnsResult.errorMessage,
+        customDomainDnsRecord: dnsResult.recordsFound.join(", ") || null,
+      };
+
+  if (useRest) {
+    await restUpdateDoc(websitePath, updateData, params.idToken);
+  } else {
+    try {
+      await websiteRef.update(updateData);
+    } catch (err: any) {
+      if (isPermissionDeniedError(err)) {
+        await restUpdateDoc(websitePath, updateData, params.idToken);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  revalidatePath("/website");
+  revalidatePath("/website/domains");
+  revalidatePath("/shop");
+
   if (dnsResult.isVerified) {
-    await websiteRef.update({
-      customDomainStatus: "verified",
-      customDomainVerifiedAt: nowIso,
-      customDomainLastCheckedAt: nowIso,
-      customDomainVerificationError: null,
-      customDomainDnsRecord: dnsResult.recordsFound.join(", ") || EXPECTED_CNAME_TARGET,
-    });
-
-    revalidatePath("/website");
-    revalidatePath("/website/domains");
-    revalidatePath("/shop");
-
     return {
       success: true,
       status: "verified",
       message: `Domain ${cleanDomain} verified successfully! DNS CNAME correctly points to ${EXPECTED_CNAME_TARGET}.`,
       verifiedAt: nowIso,
     };
-  } else {
-    await websiteRef.update({
-      customDomainStatus: "failed",
-      customDomainVerifiedAt: null,
-      customDomainLastCheckedAt: nowIso,
-      customDomainVerificationError: dnsResult.errorMessage,
-      customDomainDnsRecord: dnsResult.recordsFound.join(", ") || null,
-    });
-
-    revalidatePath("/website");
-    revalidatePath("/website/domains");
-    revalidatePath("/shop");
-
-    return {
-      success: false,
-      status: "failed",
-      message: dnsResult.errorMessage || "DNS verification failed.",
-      lastCheckedAt: nowIso,
-    };
   }
+
+  return {
+    success: false,
+    status: "failed",
+    message: dnsResult.errorMessage || "DNS verification failed.",
+    lastCheckedAt: nowIso,
+  };
 }
 
 /**
  * Server Action: Link or update custom domain configuration for a business.
- * Fully backwards-compatible with (businessId, domain) signature.
  */
 export async function updateCustomDomain(
   businessIdOrParams: string | { businessId?: string; domain: string; idToken?: string },
@@ -318,7 +347,7 @@ export async function updateCustomDomain(
     return { success: false, message: auth.error || "Unauthorized request." };
   }
 
-  const tenantBusinessId = auth.authContext.businessId;
+  const { businessId: tenantBusinessId, useRestFallback } = auth.authContext;
   const validation = await validateDomainFormat(domain);
   if (!validation.isValid || !validation.cleanedDomain) {
     return { success: false, message: validation.error || "Invalid domain format." };
@@ -328,38 +357,84 @@ export async function updateCustomDomain(
 
   try {
     const { db } = initializeAdmin();
+    let useRest = Boolean(useRestFallback);
 
-    // Check if domain is already claimed by another business
-    const existingSnap = await db.collectionGroup("websites")
-      .where("customDomain", "==", cleanDomain)
-      .limit(1)
-      .get();
+    if (!useRest) {
+      try {
+        const existingSnap = await db.collectionGroup("websites")
+          .where("customDomain", "==", cleanDomain)
+          .limit(1)
+          .get();
 
-    if (!existingSnap.empty) {
-      const existingDoc = existingSnap.docs[0];
-      const existingBizId = existingDoc.ref.path.split("/")[1];
-      if (existingBizId !== tenantBusinessId) {
-        return { success: false, message: "This domain is already linked to another business storefront." };
+        if (!existingSnap.empty) {
+          const existingDoc = existingSnap.docs[0];
+          const existingBizId = existingDoc.ref.path.split("/")[1];
+          if (existingBizId !== tenantBusinessId) {
+            return { success: false, message: "This domain is already linked to another business storefront." };
+          }
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
       }
     }
 
-    const websiteRef = db.collection("businesses").doc(tenantBusinessId).collection("websites").doc("main");
-    const nowIso = new Date().toISOString();
+    if (useRest) {
+      try {
+        const existingDocs = await restQueryCollection(
+          "",
+          "websites",
+          {
+            allDescendants: true,
+            where: [{ field: "customDomain", value: cleanDomain }],
+            limit: 1,
+          },
+          idToken
+        );
+        if (existingDocs.length > 0) {
+          const existingBizId = existingDocs[0].__path.split("/")[1];
+          if (existingBizId !== tenantBusinessId) {
+            return { success: false, message: "This domain is already linked to another business storefront." };
+          }
+        }
+      } catch {
+        // Proceed if collectionGroup index is unavailable in REST mode
+      }
+    }
 
-    await websiteRef.update({
+    const websitePath = `businesses/${tenantBusinessId}/websites/main`;
+    const nowIso = new Date().toISOString();
+    const updatePayload = {
       customDomain: cleanDomain,
       customDomainStatus: "pending",
       customDomainVerifiedAt: null,
       customDomainLastCheckedAt: nowIso,
       customDomainVerificationError: null,
       customDomainDnsRecord: null,
-    });
+    };
+
+    if (useRest) {
+      await restUpdateDoc(websitePath, updatePayload, idToken);
+    } else {
+      try {
+        await db.doc(websitePath).update(updatePayload);
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restUpdateDoc(websitePath, updatePayload, idToken);
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/website");
     revalidatePath("/website/domains");
-    return { 
-      success: true, 
-      message: `Domain ${cleanDomain} linked successfully. Please configure your CNAME record and click Verify.` 
+    return {
+      success: true,
+      message: `Domain ${cleanDomain} linked successfully. Please configure your CNAME record and click Verify.`
     };
   } catch (error: any) {
     console.error("Error updating custom domain:", error);
@@ -369,7 +444,6 @@ export async function updateCustomDomain(
 
 /**
  * Server Action: Remove custom domain configuration.
- * Fully backwards-compatible with (businessId) signature.
  */
 export async function removeCustomDomain(
   businessIdOrParams: string | { businessId?: string; idToken?: string },
@@ -391,20 +465,33 @@ export async function removeCustomDomain(
     return { success: false, message: auth.error || "Unauthorized request." };
   }
 
-  const tenantBusinessId = auth.authContext.businessId;
+  const { businessId: tenantBusinessId, useRestFallback } = auth.authContext;
+  const websitePath = `businesses/${tenantBusinessId}/websites/main`;
+  const clearPayload = {
+    customDomain: null,
+    customDomainStatus: null,
+    customDomainVerifiedAt: null,
+    customDomainLastCheckedAt: null,
+    customDomainVerificationError: null,
+    customDomainDnsRecord: null,
+  };
 
   try {
     const { db } = initializeAdmin();
-    const websiteRef = db.collection("businesses").doc(tenantBusinessId).collection("websites").doc("main");
 
-    await websiteRef.update({
-      customDomain: null,
-      customDomainStatus: null,
-      customDomainVerifiedAt: null,
-      customDomainLastCheckedAt: null,
-      customDomainVerificationError: null,
-      customDomainDnsRecord: null,
-    });
+    if (useRestFallback) {
+      await restUpdateDoc(websitePath, clearPayload, idToken);
+    } else {
+      try {
+        await db.doc(websitePath).update(clearPayload);
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restUpdateDoc(websitePath, clearPayload, idToken);
+        } else {
+          throw err;
+        }
+      }
+    }
 
     revalidatePath("/website");
     revalidatePath("/website/domains");
@@ -415,3 +502,565 @@ export async function removeCustomDomain(
     return { success: false, message: "An unexpected error occurred while unlinking domain." };
   }
 }
+
+export interface SaveStorefrontConfigInput {
+  businessId?: string;
+  idToken?: string;
+  config: {
+    primaryColor?: string;
+    uiStyle?: string;
+    whatsappOrderEnabled?: boolean;
+    codEnabled?: boolean;
+    showDiscount?: boolean;
+    storeName?: string;
+    slug?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    storeAddress?: string;
+    sections?: any[];
+    seoTitle?: string;
+    seoDescription?: string;
+    seoKeywords?: string;
+    ogTitle?: string;
+    ogDescription?: string;
+    ogImage?: string;
+    socialShareImage?: string;
+    status?: "draft" | "published";
+    coupons?: StoreCoupon[];
+    shippingConfig?: Partial<StoreShippingConfig>;
+    themeConfig?: Partial<StoreThemeConfig>;
+    announcementBar?: Partial<StoreAnnouncementBar>;
+    footerConfig?: Partial<StoreFooterConfig>;
+    trackingConfig?: Partial<StoreTrackingConfig>;
+    policyConfig?: Partial<StorePolicyConfig>;
+  };
+}
+
+/**
+ * Server Action: Save & synchronize storefront configuration across
+ * `businesses/{businessId}/websites/main` AND `businesses/{businessId}` (slug, logo, favicon).
+ */
+export async function saveStorefrontConfig(input: SaveStorefrontConfigInput): Promise<{
+  success: boolean;
+  message: string;
+  slug?: string;
+}> {
+  const auth = await authenticateTenantUser(input.idToken, input.businessId);
+  if (!auth.authorized || !auth.authContext) {
+    return { success: false, message: auth.error || "Unauthorized request." };
+  }
+
+  const { businessId: tenantBusinessId, useRestFallback } = auth.authContext;
+  const { idToken, config } = input;
+  const cleanSlug = sanitizeStoreSlug(config.slug || "");
+
+  if (cleanSlug && ["www", "app", "admin", "api", "shop", "owner"].includes(cleanSlug)) {
+    return {
+      success: false,
+      message: `Subdomain "${cleanSlug}" is reserved by the platform. Please choose a different brand slug.`,
+    };
+  }
+
+  let useRest = Boolean(useRestFallback);
+  const { db } = initializeAdmin();
+
+  try {
+    // 1. Validate cross-tenant slug uniqueness if slug is provided
+    if (cleanSlug) {
+      if (!useRest) {
+        try {
+          const bizSlugSnap = await db
+            .collection("businesses")
+            .where("slug", "==", cleanSlug)
+            .limit(2)
+            .get();
+          const conflictBiz = bizSlugSnap.docs.find((d) => d.id !== tenantBusinessId);
+          if (conflictBiz) {
+            return {
+              success: false,
+              message: `Subdomain "${cleanSlug}.biztrix.in" is already claimed by another business.`,
+            };
+          }
+        } catch (err: any) {
+          if (isPermissionDeniedError(err)) {
+            useRest = true;
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      if (useRest) {
+        const existingBizDocs = await restQueryCollection(
+          "",
+          "businesses",
+          { where: [{ field: "slug", op: "EQUAL", value: cleanSlug }], limit: 2 },
+          idToken
+        );
+        const conflict = existingBizDocs.find((d) => d.id !== tenantBusinessId);
+        if (conflict) {
+          return {
+            success: false,
+            message: `Subdomain "${cleanSlug}.biztrix.in" is already claimed by another business.`,
+          };
+        }
+      }
+    }
+
+    const normalizedSections = config.sections
+      ? normalizeStoreSections(config.sections)
+      : undefined;
+
+    const websitePath = `businesses/${tenantBusinessId}/websites/main`;
+    const businessPath = `businesses/${tenantBusinessId}`;
+
+    const websitePayload: Record<string, any> = {
+      primaryColor: config.primaryColor || "#0C83B3",
+      uiStyle: config.uiStyle || "modern",
+      whatsappOrderEnabled: config.whatsappOrderEnabled ?? true,
+      codEnabled: config.codEnabled ?? true,
+      showDiscount: config.showDiscount ?? true,
+      storeName: (config.storeName || "").trim(),
+      slug: cleanSlug,
+      contactEmail: (config.contactEmail || "").trim().toLowerCase(),
+      contactPhone: (config.contactPhone || "").trim(),
+      storeAddress: (config.storeAddress || "").trim(),
+      seoTitle: (config.seoTitle || "").trim(),
+      seoDescription: (config.seoDescription || "").trim(),
+      seoKeywords: (config.seoKeywords || "").trim(),
+      ogTitle: (config.ogTitle || "").trim(),
+      ogDescription: (config.ogDescription || "").trim(),
+      ogImage: (config.ogImage || "").trim(),
+      socialShareImage: (config.socialShareImage || config.ogImage || "").trim(),
+      faviconUrl: (config.faviconUrl || "").trim(),
+      logoUrl: (config.logoUrl || "").trim(),
+      status: config.status || "draft",
+    };
+
+    if (normalizedSections) {
+      websitePayload.sections = normalizedSections;
+    }
+    if (config.coupons !== undefined) {
+      websitePayload.coupons = normalizeStoreCoupons(config.coupons);
+    }
+    if (config.shippingConfig !== undefined) {
+      websitePayload.shippingConfig = normalizeStoreShippingConfig(config.shippingConfig);
+    }
+    if (config.themeConfig !== undefined) {
+      websitePayload.themeConfig = normalizeStoreThemeConfig(
+        config.themeConfig,
+        config.uiStyle
+      );
+    }
+    if (config.announcementBar !== undefined) {
+      websitePayload.announcementBar = normalizeAnnouncementBar(config.announcementBar);
+    }
+    if (config.footerConfig !== undefined) {
+      websitePayload.footerConfig = normalizeFooterConfig(config.footerConfig);
+    }
+    if (config.trackingConfig !== undefined) {
+      websitePayload.trackingConfig = normalizeStoreTrackingConfig(config.trackingConfig);
+    }
+    if (config.policyConfig !== undefined) {
+      websitePayload.policyConfig = normalizeStorePolicyConfig(config.policyConfig);
+    }
+
+    const businessSyncPayload: Record<string, any> = {};
+    if (cleanSlug) {
+      businessSyncPayload.slug = cleanSlug;
+    }
+    if (config.logoUrl !== undefined && config.logoUrl.trim()) {
+      businessSyncPayload.logoUrl = config.logoUrl.trim();
+    }
+    if (config.faviconUrl !== undefined && config.faviconUrl.trim()) {
+      businessSyncPayload.faviconUrl = config.faviconUrl.trim();
+    }
+
+    const saveViaRest = async () => {
+      await restSetDoc(
+        websitePath,
+        { ...websitePayload, updatedAt: SERVER_TIMESTAMP_SENTINEL },
+        idToken,
+        { merge: true }
+      );
+      if (Object.keys(businessSyncPayload).length > 0) {
+        await restUpdateDoc(
+          businessPath,
+          { ...businessSyncPayload, updatedAt: SERVER_TIMESTAMP_SENTINEL },
+          idToken
+        );
+      }
+    };
+
+    if (useRest) {
+      await saveViaRest();
+    } else {
+      try {
+        await db.doc(websitePath).set(
+          { ...websitePayload, updatedAt: FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+        if (Object.keys(businessSyncPayload).length > 0) {
+          await db.doc(businessPath).update({
+            ...businessSyncPayload,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await saveViaRest();
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    revalidatePath("/website");
+    revalidatePath("/shop");
+    return {
+      success: true,
+      slug: cleanSlug,
+      message:
+        config.status === "published"
+          ? "Storefront published and live!"
+          : "Storefront draft saved.",
+    };
+  } catch (err: any) {
+    console.error("saveStorefrontConfig error:", err);
+    return {
+      success: false,
+      message: err.message || "Failed to save storefront configuration.",
+    };
+  }
+}
+
+/**
+ * Promotes any server-validated unauthenticated storefront order/event relays
+ * from `businesses/{businessId}/notifications` into `orders` and `storefront_events`
+ * when a merchant opens Store Builder in environments without Service Account IAM.
+ */
+export async function syncStorefrontRelays(params: {
+  businessId?: string;
+  idToken?: string;
+}): Promise<{ syncedOrders: number; syncedEvents: number }> {
+  const auth = await authenticateTenantUser(params.idToken, params.businessId);
+  if (!auth.authorized || !auth.authContext) {
+    return { syncedOrders: 0, syncedEvents: 0 };
+  }
+
+  const { businessId: tenantBusinessId } = auth.authContext;
+  const { idToken } = params;
+  let syncedOrders = 0;
+  let syncedEvents = 0;
+
+  try {
+    const relayDocs = await restQueryCollection(
+      `businesses/${tenantBusinessId}`,
+      "notifications",
+      {
+        where: [{ field: "relayed", op: "EQUAL", value: false }],
+        limit: 50,
+      },
+      idToken
+    );
+
+    if (relayDocs.length === 0) {
+      return { syncedOrders: 0, syncedEvents: 0 };
+    }
+
+    const ops: Parameters<typeof restCommit>[0] = [];
+    for (const docItem of relayDocs) {
+      if (docItem.relayKind === "storefront_order" && docItem.orderPayload?.id) {
+        const orderPayload = docItem.orderPayload;
+        const cleanPhone = String(orderPayload.customerData?.phone || "")
+          .replace(/\D/g, "")
+          .slice(-10);
+        const customerId = orderPayload.customerId || `c_${cleanPhone}`;
+
+        if (cleanPhone) {
+          ops.push({
+            type: "set",
+            path: `businesses/${tenantBusinessId}/customers/${customerId}`,
+            merge: true,
+            data: {
+              id: customerId,
+              tenantId: tenantBusinessId,
+              name: orderPayload.customerData?.name || "Online Shopper",
+              phone: orderPayload.customerData?.phone || "",
+              normalizedPhone: cleanPhone,
+              email: orderPayload.customerData?.email || "",
+              address: orderPayload.customerData?.address || "",
+              lastOrderDate: SERVER_TIMESTAMP_SENTINEL,
+              updatedAt: SERVER_TIMESTAMP_SENTINEL,
+            },
+          });
+        }
+
+        ops.push({
+          type: "set",
+          path: `businesses/${tenantBusinessId}/orders/${orderPayload.id}`,
+          merge: true,
+          data: {
+            ...orderPayload,
+            createdAt: orderPayload.createdAtIso
+              ? new Date(orderPayload.createdAtIso)
+              : SERVER_TIMESTAMP_SENTINEL,
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          },
+        });
+
+        ops.push({
+          type: "update",
+          path: `businesses/${tenantBusinessId}/notifications/${docItem.id}`,
+          data: { relayed: true },
+        });
+        syncedOrders += 1;
+      } else if (docItem.relayKind === "storefront_event" && docItem.eventPayload?.id) {
+        const ev = docItem.eventPayload;
+        ops.push({
+          type: "set",
+          path: `businesses/${tenantBusinessId}/storefront_events/${ev.id}`,
+          merge: true,
+          data: {
+            ...ev,
+            createdAt: ev.clientTimestamp
+              ? new Date(ev.clientTimestamp)
+              : SERVER_TIMESTAMP_SENTINEL,
+          },
+        });
+
+        if (ev.counterField) {
+          ops.push({
+            type: "set",
+            path: `businesses/${tenantBusinessId}/storefront_analytics/summary`,
+            merge: true,
+            data: {
+              [ev.counterField]: incrementSentinel(1),
+              lastEventAt: SERVER_TIMESTAMP_SENTINEL,
+              updatedAt: SERVER_TIMESTAMP_SENTINEL,
+            },
+          });
+        }
+
+        ops.push({
+          type: "update",
+          path: `businesses/${tenantBusinessId}/notifications/${docItem.id}`,
+          data: { relayed: true, read: true },
+        });
+        syncedEvents += 1;
+      } else if (docItem.relayKind === "storefront_lead" && docItem.leadPayload?.id) {
+        const lead = docItem.leadPayload;
+        ops.push({
+          type: "set",
+          path: `businesses/${tenantBusinessId}/storefront_leads/${lead.id}`,
+          merge: true,
+          data: {
+            ...lead,
+            createdAt: lead.subscribedAtIso
+              ? new Date(lead.subscribedAtIso)
+              : SERVER_TIMESTAMP_SENTINEL,
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          },
+        });
+        if (lead.contactType === "phone" && lead.phone) {
+          const customerId = `c_${lead.phone}`;
+          ops.push({
+            type: "set",
+            path: `businesses/${tenantBusinessId}/customers/${customerId}`,
+            merge: true,
+            data: {
+              id: customerId,
+              tenantId: tenantBusinessId,
+              name: lead.name || "VIP Subscriber",
+              phone: lead.phone,
+              normalizedPhone: lead.phone,
+              source: "storefront_vip_alerts",
+              vipAlertsOptIn: true,
+              updatedAt: SERVER_TIMESTAMP_SENTINEL,
+            },
+          });
+        }
+        ops.push({
+          type: "update",
+          path: `businesses/${tenantBusinessId}/notifications/${docItem.id}`,
+          data: { relayed: true },
+        });
+        syncedEvents += 1;
+      }
+    }
+
+    if (ops.length > 0) {
+      await restCommit(ops, idToken);
+    }
+  } catch (err) {
+    console.warn("[syncStorefrontRelays] skipped:", err);
+  }
+
+  return { syncedOrders, syncedEvents };
+}
+
+/**
+ * Saves or publishes a Sales Funnel document in `businesses/{businessId}/websites/{funnelId}`.
+ * Never modifies customDomain on `websites/main` so store domain routing stays isolated.
+ */
+export async function saveFunnelPage(params: {
+  idToken?: string;
+  businessId?: string;
+  funnel: Partial<StoreFunnelConfig> & { id: string };
+}): Promise<{ success: boolean; message: string; funnel?: StoreFunnelConfig }> {
+  const auth = await authenticateTenantUser(params.idToken, params.businessId);
+  if (!auth.authorized || !auth.authContext) {
+    return { success: false, message: auth.error || "Unauthorized request." };
+  }
+
+  const { businessId: tenantBusinessId, useRestFallback } = auth.authContext;
+  const cleanId = String(params.funnel?.id || "").trim();
+  if (!cleanId || cleanId === "main" || !cleanId.startsWith("funnel_")) {
+    return { success: false, message: "Invalid funnel document identifier." };
+  }
+
+  const normalized = normalizeFunnelConfig({ ...params.funnel, id: cleanId }, cleanId);
+  const { db } = initializeAdmin();
+  let useRest = Boolean(useRestFallback);
+
+  try {
+    // Check slug uniqueness within the same tenant's funnel documents
+    if (!useRest) {
+      try {
+        const existingSnap = await db
+          .collection(`businesses/${tenantBusinessId}/websites`)
+          .where("kind", "==", "funnel")
+          .where("slug", "==", normalized.slug)
+          .limit(3)
+          .get();
+        const conflict = existingSnap.docs.find((d) => d.id !== cleanId);
+        if (conflict) {
+          return {
+            success: false,
+            message: `Funnel slug "/${normalized.slug}" is already in use by another landing page.`,
+          };
+        }
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          useRest = true;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    if (useRest) {
+      const docs = await restQueryCollection(
+        `businesses/${tenantBusinessId}`,
+        "websites",
+        {
+          where: [
+            { field: "kind", op: "EQUAL", value: "funnel" },
+            { field: "slug", op: "EQUAL", value: normalized.slug },
+          ],
+          limit: 3,
+        },
+        params.idToken
+      );
+      const conflict = docs.find((d: any) => d.id !== cleanId);
+      if (conflict) {
+        return {
+          success: false,
+          message: `Funnel slug "/${normalized.slug}" is already in use by another landing page.`,
+        };
+      }
+    }
+
+    const docPath = `businesses/${tenantBusinessId}/websites/${cleanId}`;
+    if (useRest) {
+      await restSetDoc(
+        docPath,
+        { ...normalized, updatedAt: SERVER_TIMESTAMP_SENTINEL },
+        params.idToken,
+        { merge: true }
+      );
+    } else {
+      try {
+        await db.doc(docPath).set(
+          { ...normalized, updatedAt: FieldValue.serverTimestamp() },
+          { merge: true }
+        );
+      } catch (err: any) {
+        if (isPermissionDeniedError(err)) {
+          await restSetDoc(
+            docPath,
+            { ...normalized, updatedAt: SERVER_TIMESTAMP_SENTINEL },
+            params.idToken,
+            { merge: true }
+          );
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    revalidatePath("/website/funnels");
+    revalidatePath("/funnel");
+    return {
+      success: true,
+      funnel: normalized,
+      message:
+        normalized.status === "published"
+          ? `Funnel "${normalized.name}" published live!`
+          : `Funnel "${normalized.name}" draft saved.`,
+    };
+  } catch (err: any) {
+    console.error("saveFunnelPage error:", err);
+    return { success: false, message: err?.message || "Failed to save funnel." };
+  }
+}
+
+export async function deleteFunnelPage(params: {
+  idToken?: string;
+  businessId?: string;
+  funnelId: string;
+}): Promise<{ success: boolean; message: string }> {
+  const auth = await authenticateTenantUser(params.idToken, params.businessId);
+  if (!auth.authorized || !auth.authContext) {
+    return { success: false, message: auth.error || "Unauthorized request." };
+  }
+
+  const { businessId: tenantBusinessId } = auth.authContext;
+  const cleanId = String(params.funnelId || "").trim();
+  if (!cleanId || cleanId === "main" || !cleanId.startsWith("funnel_")) {
+    return { success: false, message: "Only funnel landing pages can be deleted." };
+  }
+
+  const docPath = `businesses/${tenantBusinessId}/websites/${cleanId}`;
+  try {
+    const { db } = initializeAdmin();
+    await db.doc(docPath).delete();
+  } catch (err: any) {
+    if (!isPermissionDeniedError(err)) {
+      console.error("deleteFunnelPage error:", err);
+      return { success: false, message: err?.message || "Failed to delete funnel." };
+    }
+    try {
+      await restSetDoc(
+        docPath,
+        {
+          id: cleanId,
+          kind: "funnel_deleted",
+          status: "draft",
+          deletedAt: SERVER_TIMESTAMP_SENTINEL,
+        },
+        params.idToken,
+        { merge: true }
+      );
+    } catch (restErr: any) {
+      return { success: false, message: restErr?.message || "Failed to delete funnel." };
+    }
+  }
+
+  revalidatePath("/website/funnels");
+  revalidatePath("/funnel");
+  return { success: true, message: "Funnel deleted successfully." };
+}
+
