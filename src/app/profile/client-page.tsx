@@ -1,38 +1,35 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  User, 
-  Mail, 
-  ShieldCheck, 
-  Building2, 
-  Calendar, 
-  Lock, 
-  Save, 
-  Loader2, 
+import {
+  User,
+  Mail,
+  ShieldCheck,
+  Building2,
+  Calendar,
+  Save,
+  Loader2,
   UserCircle,
   KeyRound,
   IdCard,
   LogOut,
-  BadgeCheck
+  BadgeCheck,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  useFirestore, 
-  useUser, 
-  useDoc, 
-  useMemoFirebase, 
-  updateDocumentNonBlocking, 
+import { PageHeader, SectionCard } from "@/components/ui/editorial";
+import {
+  useFirestore,
+  useUser,
+  useDoc,
+  useMemoFirebase,
+  updateDocumentNonBlocking,
   initiatePasswordReset,
   useAuth,
-  initiateSignOut
+  initiateSignOut,
 } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
@@ -44,16 +41,16 @@ export default function UserProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
 
-  // Load Firestore User Profile - Only when Auth is ready
-  const userProfileRef = useMemoFirebase(() => 
-    !isUserLoading && user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid, isUserLoading]);
+  const userProfileRef = useMemoFirebase(
+    () => (!isUserLoading && user?.uid ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid, isUserLoading]
+  );
   const { data: profile, isLoading: isDocLoading } = useDoc<any>(userProfileRef);
 
-  // Load Business Context
-  const businessRef = useMemoFirebase(() => 
-    profile?.businessId ? doc(firestore, 'businesses', profile.businessId) : null
-  , [firestore, profile?.businessId]);
+  const businessRef = useMemoFirebase(
+    () => (profile?.businessId ? doc(firestore, "businesses", profile.businessId) : null),
+    [firestore, profile?.businessId]
+  );
   const { data: business } = useDoc<any>(businessRef);
 
   const [name, setName] = useState("");
@@ -79,176 +76,229 @@ export default function UserProfilePage() {
       await initiatePasswordReset(auth, user.email);
       toast({ title: "Email Sent", description: "Password reset link sent to your email." });
     } catch (e: any) {
-    console.error(e);
+      console.error(e);
       toast({ variant: "destructive", title: "Error", description: e.message });
     }
   };
 
   const handleLogout = () => {
-    initiateSignOut(auth).then(() => router.push('/login'));
+    initiateSignOut(auth).then(() => router.push("/login"));
   };
 
-  // Wait for both Auth and Doc to load to prevent permission glitches
   if (isUserLoading || isDocLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 opacity-40">
-        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-xs font-bold uppercase tracking-widest text-primary">Loading Profile...</p>
+      <div className="flex flex-col items-center justify-center py-24 text-slate-500">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-900 mb-3" />
+        <p className="text-xs font-medium">Loading profile...</p>
       </div>
     );
   }
 
-  const initials = profile?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || user?.email?.[0].toUpperCase() || 'U';
+  const initials =
+    profile?.name
+      ?.split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .toUpperCase() ||
+    user?.email?.[0].toUpperCase() ||
+    "U";
+
+  const roleLabel = profile?.role ? String(profile.role) : "Admin";
+  const memberSince = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString("en-IN", {
+        month: "long",
+        year: "numeric",
+      })
+    : "Recently";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-10">
-      {/* 1. Profile Header Hero */}
-      <div className="relative h-40 rounded-[2.5rem] bg-slate-900 overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-          <UserCircle className="h-48 w-48 text-white" />
-        </div>
-        <div className="absolute -bottom-16 left-10 flex items-end gap-6">
-          <Avatar className="h-32 w-32 rounded-[2rem] border-8 border-background shadow-xl">
-            <AvatarFallback className="bg-primary text-white text-4xl font-black">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12 text-left">
+      <PageHeader
+        title="My Profile"
+        description="Manage your personal identity, business workspace details, and account security."
+        breadcrumb="Account · Profile"
+        icon={UserCircle}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleLogout}
+            className="h-10 px-4 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 text-xs font-semibold whitespace-nowrap shrink-0"
+          >
+            <LogOut className="mr-2 h-3.5 w-3.5" />
+            Sign Out
+          </Button>
+        }
+      />
+
+      {/* Identity Overview Strip */}
+      <div className="rounded-2xl bg-slate-900 text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div className="flex items-center gap-4 min-w-0">
+          <Avatar className="h-16 w-16 rounded-2xl border border-white/15 shrink-0">
+            <AvatarFallback className="bg-white/10 text-white text-xl font-bold rounded-2xl">
               {initials}
             </AvatarFallback>
           </Avatar>
-          <div className="mb-4 space-y-1">
-            <h1 className="text-2xl font-bold text-white md:text-slate-900 md:dark:text-white drop-shadow-sm md:drop-shadow-none">
-              {profile?.name || "User Name"}
-            </h1>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="bg-green-500 text-white border-none uppercase text-[9px] font-bold px-2 h-4">
-                {isDocLoading ? "Resolving..." : (profile?.role || "ADMIN")}
-              </Badge>
-              <span className="text-xs text-white/60 md:text-muted-foreground font-medium">
-                Member since {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) : 'recently'}
-              </span>
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-xl font-bold text-white truncate">
+              {profile?.name || "Workspace User"}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span className="font-semibold text-emerald-300 capitalize">{roleLabel}</span>
+              <span aria-hidden="true">·</span>
+              <span>Member since {memberSince}</span>
+              {user?.email && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-mono text-slate-200 truncate">{user.email}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
+        <div className="text-left sm:text-right shrink-0">
+          <p className="text-xs text-slate-400">Account ID</p>
+          <p className="text-xs font-mono tabular-nums text-white mt-0.5">
+            {user?.uid ? `${user.uid.slice(0, 12)}...` : "N/A"}
+          </p>
+        </div>
       </div>
 
-      <div className="pt-12 grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* Left: Main Form */}
-        <div className="md:col-span-8 space-y-6">
-          <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border">
-            <CardHeader className="bg-muted/30 border-b py-5">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                <IdCard className="h-4 w-4" /> Personal Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      value={name} 
-                      onChange={(e) => setName(e.target.value)}
-                      className="h-12 pl-10 rounded-xl bg-muted/20 border-none shadow-inner text-sm font-bold"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 opacity-70">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Email Address (Primary Identity)</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      disabled 
-                      value={user?.email || ""} 
-                      className="h-12 pl-10 rounded-xl bg-muted/40 border-none shadow-none text-sm"
-                    />
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="lg:col-span-8 space-y-6">
+          <SectionCard
+            title="Personal Information"
+            description="Update your display name used across invoices, leads, and team activity logs."
+          >
+            <div className="space-y-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-name" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <IdCard className="h-3.5 w-3.5 text-slate-400" />
+                  Full Name
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="profile-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm font-medium"
+                  />
                 </div>
               </div>
 
-              <Button 
-                onClick={handleUpdateProfile} 
-                disabled={isSaving}
-                className="w-full h-12 bg-primary hover:bg-primary/90 rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-xl"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="mr-2 h-4 w-4" /> Save Profile Changes</>}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border">
-            <CardHeader className="bg-muted/30 border-b py-5">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                <KeyRound className="h-4 w-4" /> Security & Privacy
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-muted/20 rounded-2xl border border-muted-foreground/10">
-                <div className="space-y-1 text-center sm:text-left">
-                  <p className="text-sm font-bold text-primary uppercase tracking-tight">Update Password</p>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed uppercase">Securely change your command access credentials.</p>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-email" className="text-xs font-semibold text-slate-700">
+                  Email Address (Primary Identity)
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="profile-email"
+                    disabled
+                    value={user?.email || ""}
+                    className="h-11 pl-10 rounded-xl bg-slate-50 border-slate-200 text-sm font-mono text-slate-600"
+                  />
                 </div>
-                <Button variant="outline" onClick={handleResetPassword} className="h-10 rounded-xl px-6 text-[10px] font-bold uppercase border-primary/20 text-primary hover:bg-primary/5 shadow-sm">
-                  Send Reset Link
+              </div>
+
+              <div className="pt-1 flex justify-end">
+                <Button
+                  type="button"
+                  onClick={handleUpdateProfile}
+                  disabled={isSaving || !name.trim()}
+                  className="h-10 px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold whitespace-nowrap shrink-0"
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save Profile Changes
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Security & Privacy"
+            description="Manage credentials and password recovery for your workspace login."
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-slate-500" />
+                  Update Password
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Receive a password reset link at your registered email address.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetPassword}
+                className="h-10 rounded-xl px-5 text-xs font-semibold border-slate-200 text-slate-800 hover:bg-slate-50 whitespace-nowrap shrink-0"
+              >
+                Send Reset Link
+              </Button>
+            </div>
+          </SectionCard>
         </div>
 
-        {/* Right: Sidebar Info */}
-        <div className="md:col-span-4 space-y-6">
-          <Card className="border-none shadow-md rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border">
-            <CardHeader className="bg-primary/5 border-b py-5 px-6">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                <Building2 className="h-4 w-4" /> Business Context
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-muted/20 border border-muted flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-white border shadow-sm flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Linked Business</p>
-                    <p className="text-sm font-bold text-primary truncate">{business?.name || "No Business Found"}</p>
-                  </div>
+        <div className="lg:col-span-4 space-y-6">
+          <SectionCard
+            title="Business Context"
+            description="Active organization and permission scope."
+          >
+            <div className="space-y-5">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                  <Building2 className="h-4 w-4 text-slate-700" />
                 </div>
-
-                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-white border shadow-sm flex items-center justify-center">
-                    <ShieldCheck className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Authority Level</p>
-                    <p className="text-sm font-bold text-primary uppercase">
-                      {isDocLoading ? "PENDING..." : (profile?.role || "ADMIN")}
-                    </p>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">Linked Business</p>
+                  <p className="text-sm font-semibold text-slate-900 truncate mt-0.5">
+                    {business?.name || "No Business Found"}
+                  </p>
                 </div>
               </div>
 
-              <Separator />
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                  <Calendar className="h-3.5 w-3.5" /> Account ID: {user?.uid.slice(0, 8)}...
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-4 w-4 text-emerald-700" />
                 </div>
-                <div className="flex items-center gap-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                  <BadgeCheck className="h-3.5 w-3.5 text-blue-500" /> Identity Verified
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-500">Access Role</p>
+                  <p className="text-sm font-semibold text-slate-900 capitalize mt-0.5">
+                    {isDocLoading ? "Loading..." : roleLabel}
+                  </p>
                 </div>
               </div>
-            </CardContent>
-            <CardFooter className="bg-muted/10 p-4 border-t">
-              <Button 
-                variant="ghost" 
-                onClick={handleLogout}
-                className="w-full h-10 rounded-xl text-destructive hover:bg-destructive/5 font-bold uppercase text-[10px] tracking-widest"
-              >
-                <LogOut className="mr-2 h-3.5 w-3.5" /> Sign Out from Device
-              </Button>
-            </CardFooter>
-          </Card>
+
+              <Separator className="bg-slate-100" />
+
+              <div className="space-y-2.5 text-xs text-slate-600">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <Calendar className="h-3.5 w-3.5" />
+                    Member ID
+                  </span>
+                  <span className="font-mono tabular-nums text-slate-900">
+                    {user?.uid ? `${user.uid.slice(0, 8)}...` : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-slate-500">
+                    <BadgeCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    Status
+                  </span>
+                  <span className="font-medium text-emerald-700">Identity Verified</span>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>

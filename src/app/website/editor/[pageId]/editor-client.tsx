@@ -165,7 +165,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
   const [sections, setSections] = useState<StoreSection[]>([]);
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"node" | "theme">("node");
+  const [activeTab, setActiveTab] = useState<"section" | "theme">("section");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
   const [hasInitialLoaded, setHasInitialLoaded] = useState(false);
 
@@ -337,8 +337,8 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
     return (
       <div className="fixed inset-0 bg-background flex flex-col items-center justify-center z-50">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-primary">
-          Establishing Editor Link...
+        <p className="text-xs font-semibold text-primary">
+          Loading Visual Editor...
         </p>
       </div>
     );
@@ -347,7 +347,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
   return (
     <div className="fixed inset-0 bg-background flex flex-col z-50 overflow-hidden">
       {/* Editor Header */}
-      <header className="min-h-14 py-2 border-b bg-white flex flex-wrap items-center justify-between gap-2 px-4 shrink-0">
+      <header className="min-h-14 py-2 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-2 px-4 shrink-0">
         <div className="flex items-center gap-4 text-left">
           <Button asChild variant="ghost" size="sm" className="h-8">
             <Link href={isFunnel ? "/website/funnels" : "/website"}>
@@ -356,16 +356,16 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
           </Button>
           <Separator orientation="vertical" className="h-6" />
           <div className="flex flex-col text-left">
-            <span className="text-xs font-bold text-primary">
+            <span className="text-sm font-bold text-slate-900">
               {isFunnel ? "Sales Funnel Visual Editor" : "Visual Store Editor"}
             </span>
-            <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-tighter">
-              Registry: {websiteData?.name || effectiveBrand?.storeName || "Main Store"} • Page: {pageId}
+            <span className="text-xs text-slate-500 font-medium">
+              {websiteData?.name || effectiveBrand?.storeName || "Main Store"} · Page: <span className="font-mono">{pageId}</span>
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
           <Button
             variant={previewMode === "desktop" ? "secondary" : "ghost"}
             size="icon"
@@ -387,16 +387,20 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge
-            variant={websiteData?.status === "published" ? "default" : "secondary"}
-            className="text-[9px] font-black uppercase rounded-lg"
+          <span
+            className={cn(
+              "text-xs font-semibold capitalize px-2.5 py-1 rounded-md border",
+              websiteData?.status === "published"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-slate-50 text-slate-600 border-slate-200"
+            )}
           >
             {websiteData?.status || "Draft"}
-          </Badge>
+          </span>
           <Button
             variant="outline"
             size="sm"
-            className="h-9 text-[10px] font-bold uppercase rounded-xl"
+            className="h-9 text-xs font-semibold rounded-xl border-slate-200"
             onClick={() => {
               if (!websiteRef) return;
               const newStatus =
@@ -417,7 +421,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 text-[10px] font-bold uppercase rounded-xl"
+            className="h-9 text-xs font-semibold rounded-xl border-slate-200"
             asChild
           >
             <Link href={previewUrl} target="_blank">
@@ -425,7 +429,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
             </Link>
           </Button>
           <Button
-            className="bg-primary h-9 text-[10px] font-bold uppercase shadow-lg rounded-xl"
+            className="bg-primary h-9 text-xs font-semibold rounded-xl"
             onClick={() => {
               persistSections(sections);
               toast({
@@ -441,10 +445,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden min-h-0">
         {/* Left Sidebar: Section List */}
-        <div className="w-full lg:w-68 border-b lg:border-b-0 lg:border-r bg-muted/10 flex flex-col shrink-0 text-left max-h-64 lg:max-h-none">
-          <div className="p-4 border-b bg-white flex justify-between items-center">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Layout Nodes ({sections.filter((s) => s.status === "Active").length}/{sections.length})
+        <div className="w-full lg:w-68 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/60 flex flex-col shrink-0 text-left max-h-64 lg:max-h-none">
+          <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
+            <h3 className="text-xs font-semibold text-slate-600 tabular-nums">
+              Page Sections ({sections.filter((s) => s.status === "Active").length}/{sections.length})
             </h3>
             <Sheet>
               <SheetTrigger asChild>
@@ -452,18 +456,18 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   variant="outline"
                   size="icon"
                   aria-label="Add Section"
-                  className="h-6 w-6 rounded-full border-primary/20 text-primary"
+                  className="h-7 w-7 rounded-lg border-slate-200 text-primary"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3.5 w-3.5" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-80 sm:w-96 p-0 text-left flex flex-col">
-                <SheetHeader className="p-6 border-b text-left shrink-0">
-                  <SheetTitle className="text-sm font-black uppercase tracking-tight">
-                    Add Storefront & Funnel Section
+                <SheetHeader className="p-6 border-b border-slate-200 text-left shrink-0">
+                  <SheetTitle className="text-base font-bold text-slate-900">
+                    Add Storefront &amp; Funnel Section
                   </SheetTitle>
-                  <SheetDescription className="text-[10px] font-bold uppercase">
-                    Select any of the {STORE_SECTION_CATALOG.length} storefront & conversion blocks to append to your layout.
+                  <SheetDescription className="text-xs text-slate-500">
+                    Select any of the {STORE_SECTION_CATALOG.length} storefront &amp; conversion blocks to append to your layout.
                   </SheetDescription>
                 </SheetHeader>
                 <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto flex-1">
@@ -473,11 +477,11 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                       <Button
                         key={entry.type}
                         variant="outline"
-                        className="h-24 p-3 flex-col gap-1.5 rounded-2xl border-primary/10 hover:border-primary/40 hover:bg-primary/5 text-center"
+                        className="h-24 p-3 flex-col gap-1.5 rounded-xl border-slate-200 hover:border-primary/40 hover:bg-primary/5 text-center"
                         onClick={() => addSection(entry.type)}
                       >
                         <IconComp className="h-5 w-5 text-primary shrink-0" />
-                        <span className="text-[9px] font-black uppercase leading-tight line-clamp-2">
+                        <span className="text-xs font-semibold leading-tight line-clamp-2 text-slate-800">
                           {entry.label}
                         </span>
                       </Button>
@@ -487,9 +491,9 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
               </SheetContent>
             </Sheet>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-2">
             {sections.length === 0 ? (
-              <div className="p-10 text-center opacity-30 italic text-[10px] font-black uppercase">
+              <div className="p-10 text-center text-slate-400 text-xs font-medium">
                 No sections yet.
               </div>
             ) : (
@@ -497,34 +501,34 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                 <div
                   key={s.id}
                   className={cn(
-                    "p-3 rounded-xl border group cursor-pointer transition-all",
+                    "p-3 rounded-xl border group cursor-pointer transition-colors",
                     activeSectionId === s.id
-                      ? "bg-primary text-white border-primary shadow-md"
-                      : "bg-white hover:border-primary/50",
+                      ? "bg-primary text-white border-primary"
+                      : "bg-white border-slate-200 hover:border-primary/50",
                     s.status === "Inactive" && activeSectionId !== s.id && "opacity-60"
                   )}
                   onClick={() => setActiveSectionId(s.id)}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[9px] font-black uppercase tracking-widest opacity-80">
-                        {s.type}
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-mono capitalize opacity-80">
+                        {s.type.replace(/_/g, " ")}
                       </span>
-                      <Badge
-                        variant="outline"
+                      <span aria-hidden="true">·</span>
+                      <span
                         className={cn(
-                          "text-[7px] h-4 px-1.5 border-none font-black uppercase",
+                          "font-semibold",
                           s.status === "Active"
                             ? activeSectionId === s.id
-                              ? "bg-white/20 text-white"
-                              : "bg-emerald-100 text-emerald-700"
+                              ? "text-white"
+                              : "text-emerald-700"
                             : activeSectionId === s.id
-                              ? "bg-white/10 text-white/80"
-                              : "bg-slate-100 text-slate-500"
+                              ? "text-white/75"
+                              : "text-slate-500"
                         )}
                       >
                         {s.status}
-                      </Badge>
+                      </span>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
@@ -569,7 +573,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <GripVertical className="h-3 w-3 opacity-50 shrink-0" />
-                    <span className="text-xs font-bold truncate">
+                    <span className="text-xs font-semibold truncate">
                       {s.content.title || s.label}
                     </span>
                   </div>
@@ -580,10 +584,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
         </div>
 
         {/* Center: Live Preview Canvas */}
-        <div className="flex-1 bg-muted/20 p-3 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden flex justify-center min-w-0">
+        <div className="flex-1 bg-slate-100/80 p-3 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden flex justify-center min-w-0">
           <div
             className={cn(
-              "shadow-2xl transition-all overflow-y-auto overflow-x-hidden border-8 border-gray-900 rounded-[2.5rem] min-w-0",
+              "transition-all overflow-y-auto overflow-x-hidden border-2 border-slate-800 rounded-2xl min-w-0",
               currentThemeConfig.themeSurface === "charcoal"
                 ? "bg-slate-950 text-slate-100"
                 : currentThemeConfig.themeSurface === "warm_paper"
@@ -594,32 +598,33 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
             style={{ fontFamily: currentFonts.bodyFont }}
           >
             {/* Storefront Header Preview */}
-            <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white z-10 text-left">
+            <div className="p-4 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white z-10 text-left">
               <div className="flex items-center gap-2">
                 {effectiveBrand?.logoUrl ? (
                   <img
                     src={effectiveBrand.logoUrl}
-                    alt=""
-                    className="h-6 w-6 rounded-md object-cover border"
+                    alt={effectiveBrand?.storeName || "Store Logo"}
+                    referrerPolicy="no-referrer"
+                    className="h-6 w-6 rounded-md object-cover border border-slate-200"
                   />
                 ) : (
                   <div
-                    className="h-6 w-6 rounded-md flex items-center justify-center text-white text-[10px] font-black"
+                    className="h-6 w-6 rounded-md flex items-center justify-center text-white text-xs font-bold"
                     style={{ backgroundColor: currentPrimaryColor }}
                   >
                     {(effectiveBrand?.storeName || "S").charAt(0)}
                   </div>
                 )}
                 <span
-                  className="font-black text-sm uppercase"
+                  className="font-bold text-sm"
                   style={{ color: currentPrimaryColor }}
                 >
-                  {effectiveBrand?.storeName || "MY BRAND"}
+                  {effectiveBrand?.storeName || "My Brand"}
                 </span>
               </div>
-              <Badge variant="outline" className="text-[8px] font-black uppercase">
+              <span className="text-xs font-medium text-slate-500 capitalize">
                 {isFunnel ? "Funnel Canvas" : `Style: ${currentUiStyle}`}
-              </Badge>
+              </span>
             </div>
 
             <div className="space-y-0">
@@ -630,7 +635,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     key={s.id}
                     onClick={() => setActiveSectionId(s.id)}
                     className={cn(
-                      "border-2 border-transparent transition-all cursor-pointer min-w-0",
+                      "border border-transparent transition-colors cursor-pointer min-w-0",
                       previewMode === "desktop" ? "p-6 md:p-8" : "p-4",
                       activeSectionId === s.id ? "border-primary/40 bg-primary/5" : ""
                     )}
@@ -641,7 +646,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           "text-center space-y-3 rounded-2xl min-w-0",
                           previewMode === "desktop" ? "py-10 px-6" : "py-7 px-4",
                           currentUiStyle === "minimal"
-                            ? "bg-slate-50 border text-slate-900"
+                            ? "bg-slate-50 border border-slate-200 text-slate-900"
                             : "text-white"
                         )}
                         style={
@@ -650,10 +655,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             : { backgroundColor: currentPrimaryColor }
                         }
                       >
-                        <Badge className="bg-white/20 border-none text-[9px] uppercase font-bold">
+                        <p className="text-xs font-semibold opacity-90">
                           {s.content.badgeText || "Verified Merchant Catalog"}
-                        </Badge>
-                        <h1 className={cn("font-black uppercase", previewMode === "desktop" ? "text-2xl md:text-3xl" : "text-xl")}>
+                        </p>
+                        <h1 className={cn("font-bold tracking-tight", previewMode === "desktop" ? "text-2xl md:text-3xl" : "text-xl")}>
                           {s.content.title || websiteData?.storeName || "Welcome to Our Store"}
                         </h1>
                         <p className="text-xs opacity-85 max-w-lg mx-auto">
@@ -661,7 +666,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         </p>
                         <Button
                           size="sm"
-                          className="rounded-xl px-6 bg-white text-slate-900 hover:bg-slate-100 font-black uppercase text-[10px]"
+                          className="rounded-xl px-6 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-xs"
                         >
                           {s.content.cta || "Explore Catalog"}
                         </Button>
@@ -676,20 +681,20 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         )}
                       >
                         <div className="text-left space-y-1 min-w-0">
-                          <Badge
-                            className="text-[8px] uppercase font-black border-none text-white"
+                          <span
+                            className="inline-block text-xs font-semibold px-2.5 py-0.5 rounded-md text-white"
                             style={{ backgroundColor: currentPrimaryColor }}
                           >
-                            {s.content.discountLabel || "FLASH SALE LIVE"}
-                          </Badge>
-                          <h3 className="text-base font-black uppercase">
+                            {s.content.discountLabel || "Flash Sale Live"}
+                          </span>
+                          <h3 className="text-base font-bold">
                             {s.content.title || "Limited-Time Storefront Offer"}
                           </h3>
-                          <p className="text-[11px] text-slate-300">
+                          <p className="text-xs text-slate-300">
                             {s.content.subtitle}
                           </p>
                         </div>
-                        <div className="font-mono text-sm font-black px-4 py-2 rounded-xl bg-white/10 shrink-0">
+                        <div className="font-mono tabular-nums text-sm font-bold px-4 py-2 rounded-xl bg-white/10 shrink-0">
                           05h : 42m : 18s
                         </div>
                       </div>
@@ -697,7 +702,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {(s.type === "products" || s.type === "featured" || s.type === "new_arrivals") && (
                       <div className="space-y-5">
-                        <h2 className="text-lg font-black text-center uppercase tracking-wider">
+                        <h2 className="text-lg font-bold text-center text-slate-900">
                           {s.content.title ||
                             (s.type === "featured"
                               ? "Featured Picks"
@@ -719,27 +724,28 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             return itemsToRender.map((p: any, i: number) => (
                               <div
                                 key={p?.id || i}
-                                className="bg-muted/30 border rounded-xl p-3 flex flex-col gap-2 text-left min-w-0"
+                                className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col gap-2 text-left min-w-0"
                               >
                                 <div className="aspect-square rounded-lg bg-slate-100 overflow-hidden">
                                   {p?.images?.[0] ? (
                                     <img
                                       src={p.images[0]}
-                                      alt={p.name}
+                                      alt={p.name || `Product ${i + 1}`}
+                                      referrerPolicy="no-referrer"
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">
+                                    <div className="w-full h-full flex items-center justify-center text-xs font-medium text-slate-400">
                                       Product Item
                                     </div>
                                   )}
                                 </div>
-                                <p className="text-xs font-black truncate uppercase">
+                                <p className="text-xs font-semibold truncate text-slate-900">
                                   {p?.name || `Sample Item ${i + 1}`}
                                 </p>
                                 {s.content.showPricing !== false && (
                                   <p
-                                    className="text-xs font-black"
+                                    className="text-xs font-bold font-mono tabular-nums"
                                     style={{ color: currentPrimaryColor }}
                                   >
                                     ₹{(p?.onlinePrice ?? p?.price ?? 499).toLocaleString()}
@@ -754,7 +760,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "trust_strip" && (
                       <div className="space-y-4">
-                        <h2 className="text-base font-black text-center uppercase">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "Why Shop Direct With Us"}
                         </h2>
                         <div className={cn("grid gap-3", previewMode === "desktop" ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2")}>
@@ -762,10 +768,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             ? s.content.trustItems
                             : DEFAULT_TRUST_ITEMS
                           ).map((item, idx) => (
-                            <div key={idx} className="p-3 rounded-xl border bg-slate-50 text-left space-y-1 min-w-0">
+                            <div key={idx} className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-left space-y-1 min-w-0">
                               <ShieldCheck className="h-4 w-4" style={{ color: currentPrimaryColor }} />
-                              <p className="text-xs font-black uppercase text-slate-900 truncate">{item.title}</p>
-                              <p className="text-[10px] text-slate-600 line-clamp-2">{item.subtitle}</p>
+                              <p className="text-xs font-bold text-slate-900 truncate">{item.title}</p>
+                              <p className="text-xs text-slate-600 line-clamp-2">{item.subtitle}</p>
                             </div>
                           ))}
                         </div>
@@ -774,15 +780,15 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "categories" && (
                       <div className="space-y-4">
-                        <h2 className="text-base font-black text-center uppercase">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "Shop by Category"}
                         </h2>
                         <div className={cn("grid gap-3", previewMode === "desktop" ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2")}>
                           {["Bestsellers", "New Drops", "Daily Essentials"].map((cat) => (
-                            <div key={cat} className="p-4 rounded-xl border bg-slate-50 text-left space-y-1 min-w-0">
+                            <div key={cat} className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-left space-y-1 min-w-0">
                               <LayoutGrid className="h-4 w-4" style={{ color: currentPrimaryColor }} />
-                              <p className="text-xs font-black uppercase text-slate-900 truncate">{cat}</p>
-                              <p className="text-[10px] text-slate-500 truncate">Filter live catalog</p>
+                              <p className="text-xs font-bold text-slate-900 truncate">{cat}</p>
+                              <p className="text-xs text-slate-500 truncate">Filter live catalog</p>
                             </div>
                           ))}
                         </div>
@@ -790,8 +796,8 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     )}
 
                     {s.type === "offers" && (
-                      <div className="p-5 rounded-2xl border bg-slate-50 space-y-3 text-left">
-                        <h2 className="text-base font-black uppercase flex items-center gap-2 text-slate-900">
+                      <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-3 text-left">
+                        <h2 className="text-base font-bold flex items-center gap-2 text-slate-900">
                           <Ticket className="h-4 w-4 shrink-0" style={{ color: currentPrimaryColor }} />
                           {s.content.title || "Active Offers & Promo Codes"}
                         </h2>
@@ -802,18 +808,18 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     )}
 
                     {s.type === "media_showcase" && (
-                      <div className={cn("grid gap-4 items-center p-5 rounded-2xl border bg-slate-50 text-left", previewMode === "desktop" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
+                      <div className={cn("grid gap-4 items-center p-5 rounded-2xl border border-slate-200 bg-slate-50 text-left", previewMode === "desktop" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
                         <div className="aspect-video rounded-xl bg-slate-900 text-white flex flex-col items-center justify-center gap-2">
                           <PlayCircle className="h-8 w-8 opacity-90" />
-                          <span className="text-[10px] font-black uppercase tracking-wider">
+                          <span className="text-xs font-semibold">
                             {s.content.mediaUrl ? "Media Linked" : "Demo Video / Photo"}
                           </span>
                         </div>
                         <div className="space-y-2 min-w-0">
-                          <Badge variant="outline" className="text-[9px] uppercase font-bold">
+                          <p className="text-xs font-semibold text-primary">
                             {s.content.badgeText || "Product Spotlight"}
-                          </Badge>
-                          <h3 className="text-base font-black uppercase text-slate-900">
+                          </p>
+                          <h3 className="text-base font-bold text-slate-900">
                             {s.content.title || "See Our Quality Up Close"}
                           </h3>
                           <p className="text-xs text-slate-600 line-clamp-3">
@@ -825,14 +831,14 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "testimonials" && (
                       <div className="space-y-4">
-                        <h2 className="text-lg font-black text-center uppercase">
+                        <h2 className="text-lg font-bold text-center text-slate-900">
                           {s.content.title || "Trusted by Verified Buyers"}
                         </h2>
                         <div className={cn("grid gap-3", previewMode === "desktop" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
                           {(s.content.testimonials || []).slice(0, 2).map((t, i) => (
                             <div
                               key={i}
-                              className="p-4 rounded-xl border bg-slate-50 text-left space-y-2"
+                              className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-left space-y-2"
                             >
                               <div className="flex gap-1 text-amber-500">
                                 <Star className="h-3 w-3 fill-current" />
@@ -844,7 +850,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                               <p className="text-xs text-slate-600 italic">
                                 &ldquo;{t.quote}&rdquo;
                               </p>
-                              <p className="text-[10px] font-black uppercase text-slate-900">
+                              <p className="text-xs font-semibold text-slate-900">
                                 — {t.name}
                               </p>
                             </div>
@@ -855,7 +861,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "faq" && (
                       <div className="space-y-3 text-left">
-                        <h2 className="text-base font-black text-center uppercase text-slate-900">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "Frequently Asked Questions"}
                         </h2>
                         {(Array.isArray(s.content.faqs) && s.content.faqs.length > 0
@@ -864,8 +870,8 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         )
                           .slice(0, 3)
                           .map((faq, idx) => (
-                            <div key={idx} className="p-3 rounded-xl border bg-slate-50 flex items-center justify-between gap-3">
-                              <span className="text-xs font-bold text-slate-900">{faq.question}</span>
+                            <div key={idx} className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                              <span className="text-xs font-semibold text-slate-900">{faq.question}</span>
                               <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
                             </div>
                           ))}
@@ -873,8 +879,8 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     )}
 
                     {s.type === "store_location" && (
-                      <div className="p-5 rounded-2xl border bg-slate-50 text-left space-y-2">
-                        <h2 className="text-base font-black uppercase flex items-center gap-2 text-slate-900">
+                      <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 text-left space-y-2">
+                        <h2 className="text-base font-bold flex items-center gap-2 text-slate-900">
                           <MapPin className="h-4 w-4" style={{ color: currentPrimaryColor }} />
                           {s.content.title || "Visit Our Store & Dispatch Desk"}
                         </h2>
@@ -886,10 +892,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "newsletter" && (
                       <div className="py-6 px-6 bg-slate-900 text-white rounded-2xl text-left space-y-2">
-                        <Badge className="bg-white/15 border-none text-[8px] uppercase font-black">
-                          {s.content.discountLabel || "VIP RESTOCK & OFFER ALERTS"}
-                        </Badge>
-                        <h2 className="text-base font-black uppercase">
+                        <p className="text-xs font-medium text-slate-300">
+                          {s.content.discountLabel || "VIP Restock & Offer Alerts"}
+                        </p>
+                        <h2 className="text-base font-bold">
                           {s.content.title || "Get Early Access to New Drops & Promo Codes"}
                         </h2>
                         <p className="text-xs text-slate-300">
@@ -900,7 +906,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "about" && (
                       <div className="py-6 px-6 bg-slate-900 text-white rounded-2xl text-left space-y-2">
-                        <h2 className="text-lg font-black uppercase">
+                        <h2 className="text-lg font-bold">
                           {s.content.title || "Direct From the Merchant"}
                         </h2>
                         <p className="text-xs text-slate-300 leading-relaxed">
@@ -912,7 +918,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {(s.type === "contact" || s.type === "whatsapp") && (
                       <div className="py-6 px-6 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
-                        <h2 className="text-base font-black uppercase text-emerald-950">
+                        <h2 className="text-base font-bold text-emerald-950">
                           {s.content.title || "Reach Out Directly"}
                         </h2>
                         <p className="text-xs text-emerald-800">
@@ -925,12 +931,12 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "problem_solution" && (
                       <div className="space-y-4 text-left">
-                        <h2 className="text-base font-black text-center uppercase">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "Why Switch From Ordinary Alternatives"}
                         </h2>
                         <div className={cn("grid gap-3", previewMode === "desktop" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
                           <div className="p-4 rounded-xl border border-rose-200 bg-rose-50/70 space-y-2 min-w-0">
-                            <p className="text-xs font-black uppercase text-rose-900">
+                            <p className="text-xs font-bold text-rose-900">
                               {s.content.painTitle || "Common Market Frustrations"}
                             </p>
                             <ul className="space-y-1 text-xs text-rose-800">
@@ -940,7 +946,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             </ul>
                           </div>
                           <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/70 space-y-2 min-w-0">
-                            <p className="text-xs font-black uppercase text-emerald-900">
+                            <p className="text-xs font-bold text-emerald-900">
                               {s.content.solutionTitle || "Our Verified Advantage"}
                             </p>
                             <ul className="space-y-1 text-xs text-emerald-800">
@@ -954,15 +960,15 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     )}
 
                     {s.type === "comparison_table" && (
-                      <div className="p-5 rounded-2xl border bg-slate-50 space-y-3 text-left">
-                        <h2 className="text-base font-black text-center uppercase text-slate-900">
+                      <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 space-y-3 text-left">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "Compare Before You Buy"}
                         </h2>
                         <div className="space-y-1.5">
                           {(s.content.comparisonRows || DEFAULT_COMPARISON_ROWS).slice(0, 4).map((row, idx) => (
-                            <div key={idx} className="p-2.5 rounded-lg bg-white border flex items-center justify-between gap-2 text-xs min-w-0">
-                              <span className="font-bold text-slate-800 truncate">{row.feature}</span>
-                              <div className="flex items-center gap-3 font-black shrink-0">
+                            <div key={idx} className="p-2.5 rounded-lg bg-white border border-slate-200 flex items-center justify-between gap-2 text-xs min-w-0">
+                              <span className="font-semibold text-slate-800 truncate">{row.feature}</span>
+                              <div className="flex items-center gap-3 font-semibold shrink-0">
                                 <span className="text-emerald-600">{row.us ? "✓ Us" : "✕"}</span>
                                 <span className="text-slate-400">{row.others ? "✓" : "✕ Others"}</span>
                               </div>
@@ -974,17 +980,17 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "how_it_works" && (
                       <div className="space-y-4 text-left">
-                        <h2 className="text-base font-black text-center uppercase">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "How Your Order Works in 3 Steps"}
                         </h2>
                         <div className={cn("grid gap-3", previewMode === "desktop" ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1")}>
                           {(s.content.steps || DEFAULT_HOW_IT_WORKS_STEPS).map((step, idx) => (
-                            <div key={idx} className="p-4 rounded-xl border bg-slate-50 space-y-1 min-w-0">
-                              <span className="text-xs font-mono font-black" style={{ color: currentPrimaryColor }}>
-                                STEP {step.stepNumber}
+                            <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1 min-w-0">
+                              <span className="text-xs font-mono tabular-nums font-semibold" style={{ color: currentPrimaryColor }}>
+                                Step {step.stepNumber}
                               </span>
-                              <p className="text-xs font-black uppercase text-slate-900">{step.title}</p>
-                              <p className="text-[11px] text-slate-600">{step.description}</p>
+                              <p className="text-xs font-bold text-slate-900">{step.title}</p>
+                              <p className="text-xs text-slate-600">{step.description}</p>
                             </div>
                           ))}
                         </div>
@@ -993,22 +999,22 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "offer_stack" && (
                       <div className="p-5 sm:p-6 rounded-2xl border-2 bg-white space-y-3 text-left" style={{ borderColor: currentPrimaryColor }}>
-                        <h2 className="text-base font-black uppercase text-slate-900">
+                        <h2 className="text-base font-bold text-slate-900">
                           {s.content.title || "Everything Included in Today's Offer"}
                         </h2>
                         <div className="space-y-1.5">
                           {(s.content.stackItems || DEFAULT_STACK_ITEMS).map((item, idx) => (
-                            <div key={idx} className="flex justify-between gap-2 text-xs border-b border-dashed pb-1 min-w-0">
+                            <div key={idx} className="flex justify-between gap-2 text-xs border-b border-dashed border-slate-200 pb-1 min-w-0">
                               <span className="font-semibold text-slate-700 truncate">✓ {item.title}</span>
-                              <span className="font-mono text-slate-500 shrink-0">₹{item.value}</span>
+                              <span className="font-mono tabular-nums text-slate-500 shrink-0">₹{item.value}</span>
                             </div>
                           ))}
                         </div>
                         <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-xs line-through text-slate-400 font-bold">
+                          <span className="text-xs line-through text-slate-400 font-medium font-mono tabular-nums">
                             Total Value: ₹{(s.content.regularPrice ?? 2996).toLocaleString()}
                           </span>
-                          <span className="text-base font-black" style={{ color: currentPrimaryColor }}>
+                          <span className="text-base font-bold font-mono tabular-nums" style={{ color: currentPrimaryColor }}>
                             Today Only: ₹{(s.content.offerPrice ?? 999).toLocaleString()}
                           </span>
                         </div>
@@ -1017,7 +1023,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "pricing_tiers" && (
                       <div className="space-y-4 text-left">
-                        <h2 className="text-base font-black text-center uppercase">
+                        <h2 className="text-base font-bold text-center text-slate-900">
                           {s.content.title || "Choose Your Combo & Save"}
                         </h2>
                         <div className={cn("grid gap-3", previewMode === "desktop" ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1")}>
@@ -1026,14 +1032,14 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                               key={tier.id}
                               className={cn(
                                 "p-4 rounded-xl border space-y-1.5",
-                                tier.highlight ? "border-2 bg-primary/5 border-primary" : "bg-slate-50"
+                                tier.highlight ? "border-2 bg-primary/5 border-primary" : "bg-slate-50 border-slate-200"
                               )}
                             >
                               {tier.badge && (
-                                <Badge className="text-[8px] font-black uppercase">{tier.badge}</Badge>
+                                <p className="text-xs font-semibold text-primary">{tier.badge}</p>
                               )}
-                              <p className="text-xs font-black uppercase text-slate-900">{tier.name}</p>
-                              <p className="text-lg font-black" style={{ color: currentPrimaryColor }}>
+                              <p className="text-xs font-bold text-slate-900">{tier.name}</p>
+                              <p className="text-lg font-bold font-mono tabular-nums" style={{ color: currentPrimaryColor }}>
                                 ₹{tier.price.toLocaleString()}
                               </p>
                             </div>
@@ -1046,10 +1052,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                       <div className="p-5 rounded-2xl bg-emerald-950 text-white flex items-center gap-4 text-left">
                         <Award className="h-10 w-10 text-amber-400 shrink-0" />
                         <div className="space-y-1">
-                          <Badge className="bg-amber-400 text-slate-950 border-none text-[8px] font-black uppercase">
+                          <p className="text-xs font-semibold text-amber-300 font-mono tabular-nums">
                             {s.content.guaranteeDays ?? 7}-Day Protection
-                          </Badge>
-                          <h3 className="text-base font-black uppercase">{s.content.title || "Zero-Risk Merchant Guarantee"}</h3>
+                          </p>
+                          <h3 className="text-base font-bold">{s.content.title || "Zero-Risk Merchant Guarantee"}</h3>
                           <p className="text-xs text-emerald-200 line-clamp-2">{s.content.body || s.content.subtitle}</p>
                         </div>
                       </div>
@@ -1057,16 +1063,16 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                     {s.type === "express_checkout" && (
                       <div className="p-6 rounded-2xl border-2 bg-slate-50 space-y-3 text-left" style={{ borderColor: currentPrimaryColor }}>
-                        <h2 className="text-base font-black uppercase flex items-center gap-2 text-slate-900">
+                        <h2 className="text-base font-bold flex items-center gap-2 text-slate-900">
                           <Zap className="h-4 w-4" style={{ color: currentPrimaryColor }} />
                           {s.content.title || "Complete Your Express Order"}
                         </h2>
                         {s.content.orderBumpEnabled !== false && (
-                          <div className="p-3 rounded-xl border border-dashed border-amber-400 bg-amber-50 text-xs font-bold text-amber-900">
+                          <div className="p-3 rounded-xl border border-dashed border-amber-400 bg-amber-50 text-xs font-semibold text-amber-900 tabular-nums">
                             ☑ {s.content.orderBumpTitle || "Add Express Order Bump"} (+₹{s.content.orderBumpPrice ?? 199})
                           </div>
                         )}
-                        <div className="py-2.5 px-4 rounded-xl text-center text-xs font-black uppercase text-white" style={{ backgroundColor: currentPrimaryColor }}>
+                        <div className="py-2.5 px-4 rounded-xl text-center text-xs font-semibold text-white" style={{ backgroundColor: currentPrimaryColor }}>
                           {s.content.cta || "Confirm My Order Now"}
                         </div>
                       </div>
@@ -1075,50 +1081,50 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                 ))}
             </div>
 
-            <div className="p-6 bg-primary/5 text-center text-[10px] text-muted-foreground uppercase font-bold">
+            <div className="p-6 bg-slate-50 border-t border-slate-200 text-center text-xs text-slate-500 font-medium">
               © {new Date().getFullYear()} {websiteData?.storeName || "Brand"}.
             </div>
           </div>
         </div>
 
         {/* Right Sidebar: Contextual Editor */}
-        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l bg-white flex flex-col shrink-0 text-left">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-              <Settings2 className="h-4 w-4" /> Node Settings
+        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col shrink-0 text-left">
+          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-primary" /> Section Settings
             </h3>
             {activeSection && (
-              <Badge variant="outline" className="text-[8px] font-black uppercase">
-                {activeSection.type}
-              </Badge>
+              <span className="text-xs font-mono text-slate-500 capitalize">
+                {activeSection.type.replace(/_/g, " ")}
+              </span>
             )}
           </div>
 
           {activeSection ? (
             <div className="flex-1 overflow-y-auto p-4 space-y-5">
-              <div className="flex bg-muted/20 p-1 rounded-xl">
+              <div className="flex bg-slate-100 p-1 rounded-xl">
                 <Button
-                  variant={activeTab === "node" ? "secondary" : "ghost"}
+                  variant={activeTab === "section" ? "secondary" : "ghost"}
                   size="sm"
-                  className="flex-1 h-8 text-[9px] font-black uppercase rounded-lg"
-                  onClick={() => setActiveTab("node")}
+                  className="flex-1 h-8 text-xs font-semibold rounded-lg"
+                  onClick={() => setActiveTab("section")}
                 >
                   Section Content
                 </Button>
                 <Button
                   variant={activeTab === "theme" ? "secondary" : "ghost"}
                   size="sm"
-                  className="flex-1 h-8 text-[9px] font-black uppercase rounded-lg"
+                  className="flex-1 h-8 text-xs font-semibold rounded-lg"
                   onClick={() => setActiveTab("theme")}
                 >
-                  Theme & Style
+                  Theme &amp; Style
                 </Button>
               </div>
 
               {activeTab === "theme" ? (
                 <div className="space-y-5">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       Primary Brand Color
                     </Label>
                     <div className="flex gap-2">
@@ -1145,13 +1151,13 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             { merge: true }
                           )
                         }
-                        className="text-sm font-mono font-black h-11 rounded-xl flex-1 uppercase"
+                        className="text-sm font-mono font-bold h-11 rounded-xl flex-1 uppercase"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       UI Layout Style
                     </Label>
                     <div className="grid grid-cols-1 gap-2">
@@ -1163,17 +1169,17 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           size="sm"
                           onClick={() => persistUiStyle(st)}
                           className={cn(
-                            "h-10 text-[10px] font-black uppercase justify-between px-4 rounded-xl",
+                            "h-10 text-xs font-semibold capitalize justify-between px-4 rounded-xl",
                             currentUiStyle === st
                               ? "bg-primary/10 border-primary text-primary"
-                              : "text-slate-600"
+                              : "text-slate-600 border-slate-200"
                           )}
                         >
-                          <span>{st} Node</span>
+                          <span>{st} Style</span>
                           {currentUiStyle === st && (
-                            <Badge className="bg-primary text-white text-[8px] h-4 px-1.5">
-                              ACTIVE
-                            </Badge>
+                            <span className="text-xs font-semibold text-primary">
+                              Active
+                            </span>
                           )}
                         </Button>
                       ))}
@@ -1181,7 +1187,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       Hero Layout
                     </Label>
                     <div className="grid grid-cols-1 gap-1.5">
@@ -1199,10 +1205,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           size="sm"
                           onClick={() => persistThemeConfig({ heroLayout: hl.id })}
                           className={cn(
-                            "h-9 text-[10px] font-bold justify-start px-3 rounded-xl",
+                            "h-9 text-xs font-medium justify-start px-3 rounded-xl",
                             currentThemeConfig.heroLayout === hl.id
                               ? "bg-primary/10 border-primary text-primary"
-                              : "text-slate-600"
+                              : "text-slate-600 border-slate-200"
                           )}
                         >
                           {hl.label}
@@ -1212,7 +1218,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       Typography Pairing
                     </Label>
                     <div className="grid grid-cols-1 gap-1.5">
@@ -1230,10 +1236,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           size="sm"
                           onClick={() => persistThemeConfig({ fontPair: fp.id })}
                           className={cn(
-                            "h-9 text-[10px] font-bold justify-start px-3 rounded-xl",
+                            "h-9 text-xs font-medium justify-start px-3 rounded-xl",
                             currentThemeConfig.fontPair === fp.id
                               ? "bg-primary/10 border-primary text-primary"
-                              : "text-slate-600"
+                              : "text-slate-600 border-slate-200"
                           )}
                         >
                           {fp.label}
@@ -1243,8 +1249,8 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                      Surface Palette & Button Shape
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
+                      Surface Palette &amp; Button Shape
                     </Label>
                     <div className="grid grid-cols-3 gap-1.5">
                       {(
@@ -1261,10 +1267,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           size="sm"
                           onClick={() => persistThemeConfig({ themeSurface: sf.id })}
                           className={cn(
-                            "h-8 text-[10px] font-bold rounded-lg",
+                            "h-8 text-xs font-medium rounded-lg",
                             currentThemeConfig.themeSurface === sf.id
                               ? "bg-primary/10 border-primary text-primary"
-                              : "text-slate-600"
+                              : "text-slate-600 border-slate-200"
                           )}
                         >
                           {sf.label}
@@ -1286,10 +1292,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           size="sm"
                           onClick={() => persistThemeConfig({ buttonStyle: bs.id })}
                           className={cn(
-                            "h-8 text-[10px] font-bold rounded-lg",
+                            "h-8 text-xs font-medium rounded-lg",
                             currentThemeConfig.buttonStyle === bs.id
                               ? "bg-primary/10 border-primary text-primary"
-                              : "text-slate-600"
+                              : "text-slate-600 border-slate-200"
                           )}
                         >
                           {bs.label}
@@ -1301,12 +1307,12 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
               ) : (
                 <>
                   {/* Active Visibility Toggle */}
-                  <div className="flex items-center justify-between p-3.5 bg-muted/20 rounded-2xl border">
+                  <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                     <div>
-                      <Label className="text-[11px] font-black uppercase text-slate-900">
+                      <Label className="text-xs font-semibold text-slate-900">
                         Visible on Storefront
                       </Label>
-                      <p className="text-[9px] text-muted-foreground font-bold uppercase">
+                      <p className="text-xs text-slate-500">
                         Status: {activeSection.status}
                       </p>
                     </div>
@@ -1319,7 +1325,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
 
                   {/* Common Title Input */}
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       Section Heading
                     </Label>
                     <Input
@@ -1328,15 +1334,15 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         updateActiveSectionContent("title", e.target.value)
                       }
                       placeholder={activeSection.label}
-                      className="text-sm font-bold h-11 rounded-xl"
+                      className="text-sm font-medium h-11 rounded-xl"
                     />
                   </div>
 
                   {activeSection.type === "hero" && (
                     <>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                          Top Badge Label
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
+                          Top Label
                         </Label>
                         <Input
                           value={activeSection.content.badgeText || ""}
@@ -1344,11 +1350,11 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             updateActiveSectionContent("badgeText", e.target.value)
                           }
                           placeholder="Verified Merchant Catalog"
-                          className="text-xs font-bold h-10 rounded-xl"
+                          className="text-xs font-medium h-10 rounded-xl"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Sub-heading
                         </Label>
                         <Textarea
@@ -1356,11 +1362,11 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("subtitle", e.target.value)
                           }
-                          className="text-xs min-h-[90px] rounded-xl bg-muted/10"
+                          className="text-xs min-h-[90px] rounded-xl bg-slate-50"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Primary CTA Button
                         </Label>
                         <Input
@@ -1378,7 +1384,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   {activeSection.type === "timer" && (
                     <>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Offer Badge Text
                         </Label>
                         <Input
@@ -1386,12 +1392,12 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("discountLabel", e.target.value)
                           }
-                          placeholder="FLASH SALE LIVE"
-                          className="text-xs font-bold h-10 rounded-xl"
+                          placeholder="Flash Sale Live"
+                          className="text-xs font-medium h-10 rounded-xl"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Offer Description
                         </Label>
                         <Textarea
@@ -1399,11 +1405,11 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("subtitle", e.target.value)
                           }
-                          className="text-xs min-h-[80px] rounded-xl bg-muted/10"
+                          className="text-xs min-h-[80px] rounded-xl bg-slate-50"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           CTA Button Label
                         </Label>
                         <Input
@@ -1411,7 +1417,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("cta", e.target.value)
                           }
-                          className="text-xs font-bold h-10 rounded-xl"
+                          className="text-xs font-medium h-10 rounded-xl"
                         />
                       </div>
                     </>
@@ -1421,12 +1427,12 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     activeSection.type === "featured" ||
                     activeSection.type === "new_arrivals") && (
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3.5 bg-muted/20 rounded-2xl border">
+                      <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                         <div className="space-y-0.5 text-left">
-                          <Label className="text-[11px] font-black uppercase text-slate-900">
+                          <Label className="text-xs font-semibold text-slate-900">
                             Show Pricing
                           </Label>
-                          <p className="text-[9px] text-muted-foreground font-bold uppercase">
+                          <p className="text-xs text-slate-500">
                             Display item rates
                           </p>
                         </div>
@@ -1439,7 +1445,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Max Items Shown
                         </Label>
                         <Input
@@ -1453,13 +1459,13 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                               Math.max(1, parseInt(e.target.value, 10) || 4)
                             )
                           }
-                          className="text-sm font-black h-10 rounded-xl bg-muted/10"
+                          className="text-sm font-mono tabular-nums font-bold h-10 rounded-xl bg-slate-50"
                         />
                       </div>
                       {activeSection.type === "new_arrivals" && (
                         <>
                           <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">
                               Subtitle
                             </Label>
                             <Input
@@ -1471,7 +1477,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             />
                           </div>
                           <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                            <Label className="text-xs font-semibold text-slate-600 ml-1">
                               CTA Button Label
                             </Label>
                             <Input
@@ -1490,7 +1496,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   {activeSection.type === "categories" && (
                     <div className="space-y-4">
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Subtitle
                         </Label>
                         <Input
@@ -1502,7 +1508,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Max Categories Shown
                         </Label>
                         <Input
@@ -1516,7 +1522,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                               Math.max(2, parseInt(e.target.value, 10) || 6)
                             )
                           }
-                          className="text-sm font-black h-10 rounded-xl bg-muted/10"
+                          className="text-sm font-mono tabular-nums font-bold h-10 rounded-xl bg-slate-50"
                         />
                       </div>
                     </div>
@@ -1525,19 +1531,19 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   {activeSection.type === "media_showcase" && (
                     <div className="space-y-4">
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                          Spotlight Badge
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
+                          Spotlight Label
                         </Label>
                         <Input
                           value={activeSection.content.badgeText || ""}
                           onChange={(e) =>
                             updateActiveSectionContent("badgeText", e.target.value)
                           }
-                          className="text-xs font-bold h-10 rounded-xl"
+                          className="text-xs font-medium h-10 rounded-xl"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           YouTube or Image URL
                         </Label>
                         <Input
@@ -1550,7 +1556,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Story Description
                         </Label>
                         <Textarea
@@ -1558,11 +1564,11 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("body", e.target.value)
                           }
-                          className="text-xs min-h-[80px] rounded-xl bg-muted/10"
+                          className="text-xs min-h-[80px] rounded-xl bg-slate-50"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           CTA Button Label
                         </Label>
                         <Input
@@ -1570,7 +1576,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("cta", e.target.value)
                           }
-                          className="text-xs font-bold h-10 rounded-xl"
+                          className="text-xs font-medium h-10 rounded-xl"
                         />
                       </div>
                     </div>
@@ -1579,7 +1585,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   {activeSection.type === "store_location" && (
                     <div className="space-y-4">
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Delivery Zones Summary
                         </Label>
                         <Input
@@ -1591,7 +1597,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Google Maps Link (Optional)
                         </Label>
                         <Input
@@ -1603,8 +1609,8 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           className="text-xs font-mono h-10 rounded-xl"
                         />
                       </div>
-                      <div className="flex items-center justify-between p-3.5 bg-muted/20 rounded-2xl border">
-                        <Label className="text-[11px] font-black uppercase text-slate-900">
+                      <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <Label className="text-xs font-semibold text-slate-900">
                           Self-Pickup Enabled
                         </Label>
                         <Switch
@@ -1622,20 +1628,20 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     <div className="space-y-4">
                       {activeSection.type === "newsletter" && (
                         <div className="space-y-2 text-left">
-                          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                            Badge Text
+                          <Label className="text-xs font-semibold text-slate-600 ml-1">
+                            Highlight Label
                           </Label>
                           <Input
                             value={activeSection.content.discountLabel || ""}
                             onChange={(e) =>
                               updateActiveSectionContent("discountLabel", e.target.value)
                             }
-                            className="text-xs font-bold h-10 rounded-xl"
+                            className="text-xs font-medium h-10 rounded-xl"
                           />
                         </div>
                       )}
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Subtitle
                         </Label>
                         <Textarea
@@ -1643,11 +1649,11 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("subtitle", e.target.value)
                           }
-                          className="text-xs min-h-[70px] rounded-xl bg-muted/10"
+                          className="text-xs min-h-[70px] rounded-xl bg-slate-50"
                         />
                       </div>
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           CTA Button Label
                         </Label>
                         <Input
@@ -1655,7 +1661,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("cta", e.target.value)
                           }
-                          className="text-xs font-bold h-10 rounded-xl"
+                          className="text-xs font-medium h-10 rounded-xl"
                         />
                       </div>
                     </div>
@@ -1664,7 +1670,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                   {(activeSection.type === "trust_strip" || activeSection.type === "faq") && (
                     <div className="space-y-3">
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Subtitle
                         </Label>
                         <Input
@@ -1675,15 +1681,15 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           className="text-xs rounded-xl h-10"
                         />
                       </div>
-                      <p className="text-[10px] text-muted-foreground bg-muted/20 p-3 rounded-xl leading-relaxed">
-                        Customize individual {activeSection.type === "faq" ? "FAQ questions & answers" : "trust pillars"} in Storefront Manager → Design & Theme → Section & Layout Controls.
+                      <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 p-3 rounded-xl leading-relaxed">
+                        Customize individual {activeSection.type === "faq" ? "FAQ questions & answers" : "trust pillars"} in Storefront Manager → Design &amp; Theme → Section &amp; Layout Controls.
                       </p>
                     </div>
                   )}
 
                   {activeSection.type === "about" && (
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">
                         Brand Story / Description
                       </Label>
                       <Textarea
@@ -1692,7 +1698,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           updateActiveSectionContent("body", e.target.value)
                         }
                         placeholder="Describe your store quality guarantee, history, and customer commitment..."
-                        className="text-xs min-h-[120px] rounded-xl bg-muted/10 leading-relaxed"
+                        className="text-xs min-h-[120px] rounded-xl bg-slate-50 leading-relaxed"
                       />
                     </div>
                   )}
@@ -1701,7 +1707,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     activeSection.type === "whatsapp" ||
                     activeSection.type === "testimonials") && (
                     <div className="space-y-2 text-left">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">
                         Subtitle / Support Note
                       </Label>
                       <Textarea
@@ -1709,7 +1715,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                         onChange={(e) =>
                           updateActiveSectionContent("subtitle", e.target.value)
                         }
-                        className="text-xs min-h-[80px] rounded-xl bg-muted/10"
+                        className="text-xs min-h-[80px] rounded-xl bg-slate-50"
                       />
                     </div>
                   )}
@@ -1723,7 +1729,7 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                     activeSection.type === "express_checkout") && (
                     <div className="space-y-3">
                       <div className="space-y-2 text-left">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Subtitle
                         </Label>
                         <Textarea
@@ -1731,47 +1737,47 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           onChange={(e) =>
                             updateActiveSectionContent("subtitle", e.target.value)
                           }
-                          className="text-xs min-h-[70px] rounded-xl bg-muted/10"
+                          className="text-xs min-h-[70px] rounded-xl bg-slate-50"
                         />
                       </div>
                       {activeSection.type === "offer_stack" && (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <Label className="text-[9px] font-black uppercase text-muted-foreground">Anchor Value (₹)</Label>
+                            <Label className="text-xs font-semibold text-slate-600">Anchor Value (₹)</Label>
                             <Input
                               type="number"
                               value={activeSection.content.regularPrice ?? 2996}
                               onChange={(e) => updateActiveSectionContent("regularPrice", Math.max(0, Number(e.target.value) || 0))}
-                              className="h-9 text-xs font-bold rounded-xl"
+                              className="h-9 text-xs font-mono tabular-nums font-bold rounded-xl"
                             />
                           </div>
                           <div>
-                            <Label className="text-[9px] font-black uppercase text-muted-foreground">Offer Price (₹)</Label>
+                            <Label className="text-xs font-semibold text-slate-600">Offer Price (₹)</Label>
                             <Input
                               type="number"
                               value={activeSection.content.offerPrice ?? 999}
                               onChange={(e) => updateActiveSectionContent("offerPrice", Math.max(0, Number(e.target.value) || 0))}
-                              className="h-9 text-xs font-bold rounded-xl"
+                              className="h-9 text-xs font-mono tabular-nums font-bold rounded-xl"
                             />
                           </div>
                         </div>
                       )}
                       {activeSection.type === "guarantee_seal" && (
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-black uppercase text-muted-foreground">Guarantee Days</Label>
+                          <Label className="text-xs font-semibold text-slate-600">Guarantee Days</Label>
                           <Input
                             type="number"
                             min={1}
                             value={activeSection.content.guaranteeDays ?? 7}
                             onChange={(e) => updateActiveSectionContent("guaranteeDays", Math.max(1, parseInt(e.target.value, 10) || 7))}
-                            className="h-9 text-xs font-bold rounded-xl"
+                            className="h-9 text-xs font-mono tabular-nums font-bold rounded-xl"
                           />
                         </div>
                       )}
                       {activeSection.type === "express_checkout" && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border">
-                            <Label className="text-[10px] font-black uppercase">Order Bump Enabled</Label>
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <Label className="text-xs font-semibold text-slate-800">Order Bump Enabled</Label>
                             <Switch
                               checked={activeSection.content.orderBumpEnabled !== false}
                               onCheckedChange={(v) => updateActiveSectionContent("orderBumpEnabled", v)}
@@ -1781,26 +1787,26 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                             value={activeSection.content.orderBumpTitle || ""}
                             onChange={(e) => updateActiveSectionContent("orderBumpTitle", e.target.value)}
                             placeholder="Order Bump Headline"
-                            className="h-9 text-xs font-bold rounded-xl"
+                            className="h-9 text-xs font-medium rounded-xl"
                           />
                           <Input
                             type="number"
                             value={activeSection.content.orderBumpPrice ?? 199}
                             onChange={(e) => updateActiveSectionContent("orderBumpPrice", Math.max(0, Number(e.target.value) || 0))}
                             placeholder="Bump Price (₹)"
-                            className="h-9 text-xs font-bold rounded-xl"
+                            className="h-9 text-xs font-mono tabular-nums font-bold rounded-xl"
                           />
                         </div>
                       )}
-                      <p className="text-[10px] text-muted-foreground bg-muted/20 p-3 rounded-xl leading-relaxed">
-                        Edit individual rows, pricing tiers, stack items & pain points inside Landing Page Builder → Edit Section modal.
+                      <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 p-3 rounded-xl leading-relaxed">
+                        Edit individual rows, pricing tiers, stack items &amp; pain points inside Landing Page Builder → Edit Section modal.
                       </p>
                     </div>
                   )}
 
-                  <div className="pt-5 border-t">
-                    <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">
-                      Global Design Protocol
+                  <div className="pt-5 border-t border-slate-200">
+                    <h4 className="text-xs font-semibold text-slate-600 mb-3">
+                      Global Design Style
                     </h4>
                     <div className="grid grid-cols-3 gap-2">
                       {(["modern", "minimal", "classic"] as StoreUiStyle[]).map((st) => (
@@ -1811,10 +1817,10 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
                           size="sm"
                           onClick={() => persistUiStyle(st)}
                           className={cn(
-                            "h-9 text-[9px] font-black uppercase",
+                            "h-9 text-xs font-semibold capitalize",
                             currentUiStyle === st
                               ? "bg-primary/10 border-primary text-primary"
-                              : "text-slate-500"
+                              : "text-slate-600 border-slate-200"
                           )}
                         >
                           {st}
@@ -1826,12 +1832,12 @@ export function PageEditorClient({ pageId }: { pageId: string }) {
               )}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-30">
-              <div className="h-14 w-14 rounded-2xl bg-muted/20 flex items-center justify-center mb-6 shadow-inner">
-                <Layout className="h-7 w-7 text-slate-400" />
+            <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-5">
+                <Layout className="h-6 w-6 text-slate-400" />
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed">
-                Select a layout node to initialize content editing.
+              <p className="text-xs font-medium text-slate-500 leading-relaxed">
+                Select a section from the left panel to edit its content.
               </p>
             </div>
           )}

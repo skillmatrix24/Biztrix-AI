@@ -110,13 +110,15 @@ export function QuickActionFAB() {
         )}>
           {dynamicActions.map((action: any, i: number) => (
             <div key={i} className={cn("flex items-center gap-3 group", isCentered ? "flex-col-reverse" : "flex-row")}>
-              <span className="bg-slate-900 text-white text-[10px] font-black uppercase px-3 py-2 rounded-xl shadow-2xl opacity-95">
+              <span className="bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-800">
                 {action.label}
               </span>
               <Link href={action.href} onClick={() => setIsOpen(false)}>
                 <Button 
+                  type="button"
                   size="icon" 
-                  className={cn("h-12 w-12 rounded-2xl shadow-2xl text-white", action.color)}
+                  aria-label={action.label}
+                  className={cn("h-12 w-12 rounded-2xl border border-white/20 text-white", action.color)}
                 >
                   <action.icon className="h-5 w-5" />
                 </Button>
@@ -128,11 +130,13 @@ export function QuickActionFAB() {
 
       {/* Main Toggle Button */}
       <Button 
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         size="icon" 
+        aria-label={isOpen ? "Close quick actions" : "Open quick actions"}
         className={cn(
-          "h-14 w-14 rounded-full shadow-2xl transition-all duration-300 active:scale-90",
-          isOpen ? "bg-slate-900 rotate-0" : "bg-primary shadow-primary/40",
+          "h-14 w-14 rounded-full border border-white/20 transition-all duration-300 active:scale-95",
+          isOpen ? "bg-slate-900 rotate-0" : "bg-primary",
           isCentered && !isOpen && "ring-4 ring-white"
         )}
       >

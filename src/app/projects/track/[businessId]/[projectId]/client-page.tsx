@@ -1,130 +1,161 @@
-
 "use client";
 
-import { useMemo, use, useState, useEffect } from "react";
-import { 
-  Headset, 
-  ArrowLeft, 
-  CheckCircle2, 
-  Clock, 
-  User, 
-  Bot, 
-  History, 
-  ShieldCheck, 
-  Building2, 
-  Star, 
-  Send, 
-  SmartphoneNfc, 
-  Loader2, 
-  Reply, 
-  Info, 
-  ExternalLink, 
-  ChevronRight, 
-  BadgeCheck, 
-  Zap, 
-  Activity, 
-  Phone, 
-  MessageSquare, 
-  AlertTriangle, 
-  ShieldAlert, 
-  Smartphone, 
-  ImageIcon, 
-  X, 
-  Lock, 
-  MessageCircle, 
-  PhoneCall, 
-  Users,
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  User,
+  History,
+  ShieldCheck,
+  Send,
+  Loader2,
+  BadgeCheck,
+  Zap,
+  Activity,
+  ShieldAlert,
   Wallet,
   DollarSign,
-  Tag,
   Circle,
-  Briefcase,
-  Handshake,
   LayoutList,
   Target,
   Sparkles,
   Scale,
-  FileText
+  FileText,
+  Lock,
+  MessageSquare,
+  MessageCircle,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking, useCollection, addDocumentNonBlocking } from "@/firebase";
-import { doc, serverTimestamp, collection, query, orderBy, where, getDoc } from "firebase/firestore";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  KpiStatCard,
+  SectionCard,
+  EmptyStatePanel,
+} from "@/components/ui/editorial";
+import {
+  useFirestore,
+  useDoc,
+  useMemoFirebase,
+  updateDocumentNonBlocking,
+  useCollection,
+  addDocumentNonBlocking,
+} from "@/firebase";
+import {
+  doc,
+  serverTimestamp,
+  collection,
+  query,
+  orderBy,
+  where,
+} from "firebase/firestore";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import Link from "next/link";
 import { toast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
 
-const STATUS_CONFIG: any = {
-  'planning': { label: 'Planning', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100', icon: Zap },
-  'in-progress': { label: 'In Queue', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-100', icon: Clock },
-  'on-hold': { label: 'Hold', color: 'text-slate-600', bg: 'bg-slate-50 border-slate-100', icon: Clock },
-  'completed': { label: 'Resolved', color: 'text-green-600', bg: 'bg-green-50 border-green-100', icon: CheckCircle2 },
-  'closed': { label: 'Case Closed', color: 'text-slate-500', bg: 'bg-slate-100 border-slate-200', icon: ShieldCheck },
-  'rejected': { label: 'Rejected', color: 'text-red-600', bg: 'bg-red-50 border-red-100', icon: AlertTriangle },
+const PROJECT_STATUS_CONFIG: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    bg: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
+  planning: {
+    label: "Planning",
+    color: "text-sky-700",
+    bg: "bg-sky-50 border-sky-200",
+    icon: Zap,
+  },
+  "in-progress": {
+    label: "In Progress",
+    color: "text-amber-700",
+    bg: "bg-amber-50 border-amber-200",
+    icon: Activity,
+  },
+  "on-hold": {
+    label: "On Hold",
+    color: "text-slate-700",
+    bg: "bg-slate-100 border-slate-200",
+    icon: Clock,
+  },
+  completed: {
+    label: "Completed",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200",
+    icon: BadgeCheck,
+  },
 };
 
-const PROJECT_STATUS_CONFIG: any = {
-  'planning': { label: 'Strategy Node', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100', icon: Zap },
-  'in-progress': { label: 'Active Execution', color: 'text-orange-600', bg: 'bg-orange-50 border-orange-100', icon: Activity },
-  'on-hold': { label: 'Lifecycle Hold', color: 'text-gray-600', bg: 'bg-gray-50 border-gray-100', icon: Clock },
-  'completed': { label: 'Fully Delivered', color: 'text-green-600', bg: 'bg-green-50 border-green-100', icon: BadgeCheck },
-};
-
-export default function PublicProjectTrackingPage(props: { params: { businessId: string, projectId: string } }) {
+export default function PublicProjectTrackingPage(props: {
+  params: { businessId: string; projectId: string };
+}) {
   const { businessId, projectId } = props.params;
   const firestore = useFirestore();
 
-  // 1. Project Data
-  const projectRef = useMemoFirebase(() => 
-    businessId && projectId ? doc(firestore, 'businesses', businessId, 'projects', projectId) : null
-  , [firestore, businessId, projectId]);
+  const projectRef = useMemoFirebase(
+    () =>
+      businessId && projectId
+        ? doc(firestore, "businesses", businessId, "projects", projectId)
+        : null,
+    [firestore, businessId, projectId]
+  );
   const { data: project, isLoading: isProjectLoading, error } = useDoc<any>(projectRef);
 
-  // 2. Tasks
-  const tasksQuery = useMemoFirebase(() => 
-    businessId && projectId ? query(collection(firestore, 'businesses', businessId, 'tasks'), where('projectId', '==', projectId)) : null
-  , [firestore, businessId, projectId]);
+  const tasksQuery = useMemoFirebase(
+    () =>
+      businessId && projectId
+        ? query(
+            collection(firestore, "businesses", businessId, "tasks"),
+            where("projectId", "==", projectId)
+          )
+        : null,
+    [firestore, businessId, projectId]
+  );
   const { data: tasksData } = useCollection<any>(tasksQuery);
-  const projectTasks = tasksData || [];
+  const projectTasks = useMemo(() => tasksData || [], [tasksData]);
 
-  // 3. Client Messages
-  const messagesQuery = useMemoFirebase(() => 
-    businessId && projectId ? query(collection(firestore, 'businesses', businessId, 'projects', projectId, 'clientMessages'), orderBy('timestamp', 'asc')) : null
-  , [firestore, businessId, projectId]);
-  const { data: messagesData } = useCollection<any>(messagesQuery);
-  const clientMessages = messagesData || [];
-
-  // 4. Financials (Ledger)
   const transactionsQuery = useMemoFirebase(() => {
     if (!businessId || !projectId) return null;
-    return query(collection(firestore, 'businesses', businessId, 'cashbook'), where('projectId', '==', projectId))
+    return query(
+      collection(firestore, "businesses", businessId, "cashbook"),
+      where("projectId", "==", projectId)
+    );
   }, [firestore, businessId, projectId]);
   const { data: projectTransactions } = useCollection<any>(transactionsQuery);
 
-  // 5. Business Info
-  const bizRef = useMemoFirebase(() => businessId ? doc(firestore, 'businesses', businessId) : null, [firestore, businessId]);
+  const bizRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
   const { data: business } = useDoc<any>(bizRef);
 
   const [clientRequest, setClientRequest] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState("roadmap");
   const [agreementChecked, setAgreementChecked] = useState(false);
 
   const finStats = useMemo(() => {
-    const revenue = (projectTransactions || []).filter((t: any) => t.type === 'credit').reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0);
+    const revenue = (projectTransactions || [])
+      .filter((t: any) => t.type === "credit")
+      .reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0);
     const baseValue = parseFloat(project?.estimatedValue) || 0;
-    const addonsValue = (project?.addons || []).reduce((sum: number, a: any) => sum + (parseFloat(a.price) || 0), 0);
+    const addonsValue = (project?.addons || []).reduce(
+      (sum: number, a: any) => sum + (parseFloat(a.price) || 0),
+      0
+    );
     const totalProjectValue = baseValue + addonsValue;
     const remainBalance = totalProjectValue - revenue;
 
@@ -133,7 +164,7 @@ export default function PublicProjectTrackingPage(props: { params: { businessId:
 
   const taskStats = useMemo(() => {
     const total = projectTasks.length;
-    const completed = projectTasks.filter(t => t.status === 'completed').length;
+    const completed = projectTasks.filter((t) => t.status === "completed").length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { total, completed, progress };
   }, [projectTasks]);
@@ -151,253 +182,606 @@ export default function PublicProjectTrackingPage(props: { params: { businessId:
   const handleSubmitRequest = () => {
     if (!clientRequest.trim() || !businessId || !project) return;
     setIsSubmitting(true);
-    addDocumentNonBlocking(collection(firestore, 'businesses', businessId, 'projects', projectId, 'clientMessages'), {
-      text: clientRequest, timestamp: new Date().toISOString(), status: 'pending', isRead: false
-    });
-    setClientRequest(""); setIsSubmitting(false);
-    toast({ title: "Request Sent" });
+    addDocumentNonBlocking(
+      collection(
+        firestore,
+        "businesses",
+        businessId,
+        "projects",
+        projectId,
+        "clientMessages"
+      ),
+      {
+        text: clientRequest,
+        timestamp: new Date().toISOString(),
+        status: "pending",
+        isRead: false,
+      }
+    );
+    setClientRequest("");
+    setIsSubmitting(false);
+    toast({ title: "Message sent", description: "The project team has been notified." });
   };
 
   const handleApproveMilestone = (milestoneId: string) => {
     if (!projectRef || !project) return;
-    const updatedMilestones = (project.milestones || []).map((m: any) => 
-      m.id === milestoneId ? { ...m, status: 'approved_by_client', approvedAt: new Date().toISOString() } : m
+    const updatedMilestones = (project.milestones || []).map((m: any) =>
+      m.id === milestoneId
+        ? {
+            ...m,
+            status: "approved_by_client",
+            approvedAt: new Date().toISOString(),
+          }
+        : m
     );
-    updateDocumentNonBlocking(projectRef, { milestones: updatedMilestones, lastClientUpdate: serverTimestamp() });
-    
-    addDocumentNonBlocking(collection(firestore, 'businesses', businessId, 'notifications'), {
-      recipientId: project.ownerId || business?.ownerId,
-      projectId,
-      title: "Milestone Approved",
-      message: `${project.clientName} has approved a milestone.`,
-      type: 'payment',
-      isRead: false,
-      createdAt: serverTimestamp(),
-      businessId
+    updateDocumentNonBlocking(projectRef, {
+      milestones: updatedMilestones,
+      lastClientUpdate: serverTimestamp(),
     });
-    toast({ title: "Stage Approved" });
+
+    addDocumentNonBlocking(
+      collection(firestore, "businesses", businessId, "notifications"),
+      {
+        recipientId: project.ownerId || business?.ownerId,
+        projectId,
+        title: "Milestone Approved",
+        message: `${project.clientName} has approved a milestone.`,
+        type: "payment",
+        isRead: false,
+        createdAt: serverTimestamp(),
+        businessId,
+      }
+    );
+    toast({ title: "Milestone approved" });
   };
 
   const handleAcceptAgreement = () => {
     if (!projectRef || !agreementChecked || !project) return;
-    updateDocumentNonBlocking(projectRef, { isAgreed: true, agreedAt: serverTimestamp(), lastClientUpdate: serverTimestamp() });
-    toast({ title: "Agreements Accepted" });
+    updateDocumentNonBlocking(projectRef, {
+      isAgreed: true,
+      agreedAt: serverTimestamp(),
+      lastClientUpdate: serverTimestamp(),
+    });
+    toast({ title: "Agreement accepted" });
   };
 
   const currencySymbol = getCurrencySymbol(business?.currency);
 
-  if (isProjectLoading) return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50"><Loader2 className="h-8 w-8 animate-spin text-primary mb-4" /></div>;
-  if (error || !project || project.sharePublic === false) return <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center"><ShieldAlert className="h-8 w-8 text-red-600 mb-6" /><h1 className="text-2xl font-bold">Private Project</h1><p className="text-muted-foreground mt-2">This tracking page is private.</p></div>;
+  if (isProjectLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+      </div>
+    );
+  }
 
-  const statusInfo = PROJECT_STATUS_CONFIG[project.status] || PROJECT_STATUS_CONFIG['planning'];
+  if (error || !project || project.sharePublic === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="h-12 w-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center mb-4">
+          <ShieldAlert className="h-6 w-6 text-rose-600" />
+        </div>
+        <h1 className="text-xl font-bold text-slate-900">Private Project</h1>
+        <p className="text-sm text-slate-600 mt-1">
+          This client progress page is currently private or unavailable.
+        </p>
+        <Button asChild variant="outline" className="mt-5 rounded-xl border-slate-200">
+          <Link href="/">Return Home</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const statusInfo =
+    PROJECT_STATUS_CONFIG[project.status] || PROJECT_STATUS_CONFIG["planning"];
+  const whatsappDigits = business?.phone?.replace(/\D/g, "") || "";
+  const whatsappUrl = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(
+        `Hi! I need an update on Project ${projectId.slice(-6).toUpperCase()}`
+      )}`
+    : null;
+
+  const creditTransactions = (projectTransactions || []).filter(
+    (t: any) => t.type === "credit"
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 font-body pb-20 overflow-x-hidden text-left">
-      <header className="sticky top-0 z-50 bg-white border-b shadow-sm h-16 sm:h-20 flex items-center">
-        <div className="max-w-6xl mx-auto px-4 w-full flex items-center justify-between text-left">
-          <div className="flex items-center gap-4">
-             <div className="h-10 w-10 sm:h-12 sm:w-12 bg-white rounded-2xl flex items-center justify-center shadow-xl border border-border/10 shrink-0 overflow-hidden text-left">
-                {business?.logoUrl ? <img src={business.logoUrl} className="h-full w-full object-contain p-1" alt="" /> : <div className="h-full w-full bg-primary flex items-center justify-center text-white font-black text-xs sm:text-sm">{business?.name?.charAt(0) || 'B'}</div>}
-             </div>
-             <div className="flex flex-col min-w-0">
-                <span className="text-xs sm:text-sm md:text-base font-black text-slate-900 truncate">{business?.name}</span>
-                <span className="text-[8px] sm:text-[9px] font-bold text-green-600 uppercase tracking-widest">Live Progress Node</span>
-             </div>
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex items-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 w-full flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden">
+              {business?.logoUrl ? (
+                <img
+                  src={business.logoUrl}
+                  referrerPolicy="no-referrer"
+                  className="h-full w-full object-contain p-1"
+                  alt={business?.name || "Business"}
+                />
+              ) : (
+                <div className="h-full w-full bg-slate-900 flex items-center justify-center text-white font-bold text-sm">
+                  {business?.name?.charAt(0) || "B"}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-bold text-slate-900 truncate">
+                {business?.name || "Client Portal"}
+              </span>
+              <span className="text-xs font-medium text-emerald-700">
+                Client Progress Portal
+              </span>
+            </div>
           </div>
-          <Button asChild variant="ghost" size="sm" className="h-8 rounded-xl text-[9px] font-black uppercase text-primary px-2">
-            <Link href="/"><ArrowLeft className="h-3.5 w-3.5 mr-1" /> Home</Link>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-xl border-slate-200 text-xs font-semibold text-slate-700"
+          >
+            <Link href="/">
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Home
+            </Link>
           </Button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 md:pt-12 space-y-10">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-8">
-           <div className="space-y-2 w-full md:w-auto text-left">
-              <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary h-5 px-3">Tracking ID: {projectId.slice(-6).toUpperCase()}</Badge>
-              <h1 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight leading-tight">{project.title}</h1>
-              <p className="text-xs md:text-sm text-muted-foreground font-medium flex items-center gap-2"><User className="h-3.5 w-3.5" /> Client Identity: {project.clientName}</p>
-           </div>
-           <div className={cn("w-full md:w-auto px-6 md:px-8 py-4 md:py-5 rounded-[2rem] border-2 flex items-center gap-4 md:gap-5 transition-all shadow-xl", statusInfo.bg)}>
-              <statusInfo.icon className={cn("h-6 w-6 md:h-7 md:w-7", statusInfo.color)} />
-              <div>
-                <p className="text-[9px] font-black uppercase text-muted-foreground opacity-60">Live Status</p>
-                <p className={cn("text-lg font-black leading-none mt-1", statusInfo.color)}>{statusInfo.label}</p>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 space-y-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-6">
+          <div className="space-y-1.5 min-w-0">
+            <span className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-700 font-mono tabular-nums">
+              Project ID: {projectId.slice(-6).toUpperCase()}
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              {project.title}
+            </h1>
+            <p className="text-sm text-slate-600 flex items-center gap-1.5">
+              <User className="h-4 w-4 text-slate-400" /> Client:{" "}
+              <span className="font-semibold text-slate-900">{project.clientName}</span>
+            </p>
+          </div>
+          <div
+            className={cn(
+              "w-full md:w-auto px-5 py-3.5 rounded-xl border flex items-center gap-3.5 shrink-0",
+              statusInfo.bg
+            )}
+          >
+            <statusInfo.icon className={cn("h-6 w-6", statusInfo.color)} />
+            <div>
+              <p className="text-xs font-medium text-slate-600">Current Status</p>
+              <p className={cn("text-base font-bold leading-tight", statusInfo.color)}>
+                {statusInfo.label}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiStatCard
+            label="Contract Value"
+            value={`${currencySymbol}${finStats.totalProjectValue.toLocaleString()}`}
+            icon={DollarSign}
+            tone="dark"
+          />
+          <KpiStatCard
+            label="Settled Amount"
+            value={`${currencySymbol}${finStats.revenue.toLocaleString()}`}
+            icon={CheckCircle2}
+            tone="positive"
+          />
+          <KpiStatCard
+            label="Balance Due"
+            value={`${currencySymbol}${Math.max(0, finStats.remainBalance).toLocaleString()}`}
+            icon={Wallet}
+            tone={finStats.remainBalance > 0 ? "warning" : "positive"}
+          />
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-600">Completion</span>
+              <Target className="h-4 w-4 text-slate-400" />
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums">
+                  {taskStats.progress}%
+                </span>
+                <span className="text-xs font-semibold text-slate-500 font-mono tabular-nums">
+                  {taskStats.completed}/{taskStats.total} tasks
+                </span>
               </div>
-           </div>
+              <Progress value={taskStats.progress} className="h-1.5 mt-2.5" />
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <Card className="border-none shadow-sm bg-slate-900 text-white rounded-3xl p-6">
-            <div className="flex items-center justify-between pb-1 opacity-60"><span className="text-[9px] font-bold uppercase tracking-widest text-accent">Contract Value</span><DollarSign className="h-4 w-4 text-accent" /></div>
-            <div className="text-2xl font-black">{currencySymbol}{finStats.totalProjectValue.toLocaleString()}</div>
-          </Card>
-          <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-green-500">
-            <div className="flex items-center justify-between pb-1 opacity-60"><span className="text-[9px] font-bold uppercase tracking-widest text-green-600">Settled Amount</span><CheckCircle2 className="h-4 w-4 text-green-600" /></div>
-            <div className="text-2xl font-black text-green-600">{currencySymbol}{finStats.revenue.toLocaleString()}</div>
-          </Card>
-          <Card className={cn("border-none shadow-sm rounded-2xl p-6 border-l-4", finStats.remainBalance > 0 ? "border-l-orange-500 bg-orange-50/30" : "border-l-green-500 bg-green-50/30")}>
-            <div className="flex items-center justify-between pb-1 opacity-60"><span className={cn("text-[9px] font-bold uppercase tracking-widest", finStats.remainBalance > 0 ? "text-orange-600" : "text-green-600")}>Balance Due</span><Wallet className="h-4 w-4" /></div>
-            <div className={cn("text-2xl font-black", finStats.remainBalance > 0 ? "text-orange-600" : "text-green-600")}>{currencySymbol}{Math.max(0, finStats.remainBalance).toLocaleString()}</div>
-          </Card>
-          <Card className="border-none shadow-sm bg-white rounded-3xl p-6">
-            <div className="flex items-center justify-between pb-1 opacity-60"><span className="text-[9px] font-bold uppercase tracking-widest">Efficiency</span><Target className="h-4 w-4 text-primary" /></div>
-            <div className="flex items-baseline justify-between mt-1"><span className="text-2xl font-black text-primary">{taskStats.progress}%</span><span className="text-[9px] font-bold text-muted-foreground uppercase">{taskStats.completed}/{taskStats.total} TASKS</span></div>
-            <Progress value={taskStats.progress} className="h-1 mt-2" />
-          </Card>
-        </div>
-
-        <Tabs defaultValue="roadmap" className="w-full">
-          <TabsList className="bg-white border h-14 p-1.5 rounded-2xl shadow-sm mb-10 flex overflow-x-auto scrollbar-hide">
-            <TabsTrigger value="roadmap" className="flex-1 text-[10px] font-black uppercase px-8 gap-2"><LayoutList className="h-4 w-4" /> Execution Roadmap</TabsTrigger>
-            <TabsTrigger value="milestones" className="flex-1 text-[10px] font-black uppercase px-8 gap-2 text-primary"><Sparkles className="h-4 w-4" /> Milestones & Approval</TabsTrigger>
-            <TabsTrigger value="legal" className="flex-1 text-[10px] font-black uppercase px-8 gap-2"><Scale className="h-4 w-4" /> Agreements</TabsTrigger>
-            <TabsTrigger value="ledger" className="flex-1 text-[10px] font-black uppercase px-8 gap-2"><History className="h-4 w-4" /> Ledger</TabsTrigger>
+        <Tabs defaultValue="roadmap" className="w-full space-y-6">
+          <TabsList className="bg-white border border-slate-200 h-12 p-1 rounded-xl flex overflow-x-auto scrollbar-hide w-full sm:w-fit">
+            <TabsTrigger
+              value="roadmap"
+              className="rounded-lg px-4 text-xs font-semibold gap-2 data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+            >
+              <LayoutList className="h-4 w-4" /> Execution Roadmap
+            </TabsTrigger>
+            <TabsTrigger
+              value="milestones"
+              className="rounded-lg px-4 text-xs font-semibold gap-2 data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+            >
+              <Sparkles className="h-4 w-4" /> Milestones & Sign-off
+            </TabsTrigger>
+            <TabsTrigger
+              value="legal"
+              className="rounded-lg px-4 text-xs font-semibold gap-2 data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+            >
+              <Scale className="h-4 w-4" /> Agreements
+            </TabsTrigger>
+            <TabsTrigger
+              value="ledger"
+              className="rounded-lg px-4 text-xs font-semibold gap-2 data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+            >
+              <History className="h-4 w-4" /> Payment Ledger
+            </TabsTrigger>
           </TabsList>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            <div className="lg:col-span-8 space-y-10">
-              <TabsContent value="roadmap" className="m-0 space-y-10 text-left">
-                {Object.entries(groupedTasks).map(([section, sectionTasks], sIdx) => (
-                  <div key={section} className="relative pl-8 animate-in slide-in-from-left-2 duration-500" style={{ animationDelay: `${sIdx * 100}ms` }}>
-                    <div className="absolute left-[11px] top-0 bottom-0 w-0.5 bg-muted/40" />
-                    <div className="mb-6 flex items-center gap-4 text-left">
-                      <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-xs font-black text-white z-10 shadow-lg">{sIdx + 1}</div>
-                      <h4 className="text-xs font-black uppercase tracking-widest text-primary/60">{section}</h4>
-                    </div>
-                    <div className="space-y-4">
-                      {sectionTasks.map((task: any) => (
-                        <div key={task.id} className={cn("p-5 rounded-[2rem] border flex items-center gap-5 bg-white shadow-sm transition-all text-left", task.status === 'completed' ? "border-green-100 opacity-70" : "border-border/50")}>
-                          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border transition-all", task.status === 'completed' ? "bg-green-500 border-green-500 text-white" : "bg-muted/30")}>
-                            {task.status === 'completed' ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5 opacity-10" />}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="lg:col-span-8 space-y-6">
+              <TabsContent value="roadmap" className="m-0 space-y-6">
+                {Object.keys(groupedTasks).length === 0 ? (
+                  <EmptyStatePanel
+                    icon={LayoutList}
+                    title="No roadmap tasks published yet"
+                    description="Deliverables and task stages added by the project team will appear here."
+                  />
+                ) : (
+                  Object.entries(groupedTasks).map(([section, sectionTasks], sIdx) => (
+                    <SectionCard
+                      key={section}
+                      title={`${sIdx + 1}. ${section}`}
+                      description={`${sectionTasks.filter((t) => t.status === "completed").length} of ${sectionTasks.length} completed`}
+                    >
+                      <div className="space-y-2.5">
+                        {sectionTasks.map((task: any) => (
+                          <div
+                            key={task.id}
+                            className={cn(
+                              "p-3.5 rounded-xl border flex items-center gap-3.5 transition-colors",
+                              task.status === "completed"
+                                ? "border-emerald-200 bg-emerald-50/40"
+                                : "border-slate-200 bg-white"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "h-8 w-8 rounded-lg flex items-center justify-center shrink-0 border",
+                                task.status === "completed"
+                                  ? "bg-emerald-600 border-emerald-600 text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-400"
+                              )}
+                            >
+                              {task.status === "completed" ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : (
+                                <Circle className="h-4 w-4" />
+                              )}
+                            </div>
+                            <span
+                              className={cn(
+                                "text-sm font-medium truncate",
+                                task.status === "completed"
+                                  ? "text-slate-500 line-through"
+                                  : "text-slate-900"
+                              )}
+                            >
+                              {task.title}
+                            </span>
                           </div>
-                          <span className={cn("text-sm font-bold uppercase tracking-tight truncate text-left", task.status === 'completed' ? "text-slate-400 line-through" : "text-slate-900")}>{task.title}</span>
+                        ))}
+                      </div>
+                    </SectionCard>
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="milestones" className="m-0 space-y-6">
+                <SectionCard
+                  title="Financial Stages & Client Sign-off"
+                  description="Review completed project stages and approve delivery milestones."
+                >
+                  {!project.milestones || project.milestones.length === 0 ? (
+                    <EmptyStatePanel
+                      icon={Sparkles}
+                      title="No milestones defined"
+                      description="Payment and delivery stages will appear here once configured."
+                    />
+                  ) : (
+                    <div className="divide-y divide-slate-200 -mx-6 -my-5">
+                      {project.milestones.map((m: any) => (
+                        <div
+                          key={m.id}
+                          className={cn(
+                            "p-5 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4",
+                            m.status === "approved_by_client"
+                              ? "bg-emerald-50/40"
+                              : "bg-white"
+                          )}
+                        >
+                          <div className="flex items-center gap-4 min-w-0">
+                            <div
+                              className={cn(
+                                "h-10 w-10 rounded-xl border flex items-center justify-center shrink-0",
+                                m.status === "approved_by_client" ||
+                                  m.status === "invoiced"
+                                  ? "bg-emerald-600 border-emerald-600 text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-400"
+                              )}
+                            >
+                              {m.status === "approved_by_client" ||
+                              m.status === "invoiced" ? (
+                                <BadgeCheck className="h-5 w-5" />
+                              ) : (
+                                <Clock className="h-5 w-5" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-base font-bold text-slate-900 truncate">
+                                {m.label}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-3 mt-1">
+                                <span className="text-xs font-semibold text-slate-700 font-mono tabular-nums">
+                                  Stage Amount: {currencySymbol}
+                                  {parseFloat(m.amount || 0).toLocaleString()}
+                                </span>
+                                {m.status === "approved_by_client" && (
+                                  <span className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
+                                    <CheckCircle2 className="h-3.5 w-3.5" /> Signed off by
+                                    you
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {m.status === "completed" && (
+                              <Button
+                                onClick={() => handleApproveMilestone(m.id)}
+                                className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-5 rounded-xl"
+                              >
+                                Approve Stage
+                              </Button>
+                            )}
+                            {m.status === "approved_by_client" && (
+                              <span className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white">
+                                Approved
+                              </span>
+                            )}
+                            {m.status === "invoiced" && (
+                              <span className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">
+                                Settled
+                              </span>
+                            )}
+                            {m.status === "pending" && (
+                              <span className="inline-flex items-center rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500">
+                                Awaiting Team
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </SectionCard>
               </TabsContent>
 
-              <TabsContent value="milestones" className="m-0 space-y-8 animate-in fade-in">
-                 <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                    <CardHeader className="bg-primary/5 border-b py-6 px-8"><CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-4 w-4" /> Financial Stages & Sign-off</CardTitle></CardHeader>
-                    <div className="divide-y">
-                       {(!project.milestones || project.milestones.length === 0) ? <div className="p-20 text-center opacity-30 italic text-xs font-black uppercase">No milestones defined by team.</div> : project.milestones.map((m: any) => (
-                          <div key={m.id} className={cn("p-8 flex flex-col sm:flex-row items-center justify-between gap-8 transition-all text-left", m.status === 'approved_by_client' ? "bg-green-50/50" : m.status === 'completed' ? "bg-primary/5" : "bg-white")}>
-                             <div className="flex items-center gap-6 flex-1 text-left">
-                                <div className={cn("h-12 w-12 rounded-full border-4 flex items-center justify-center shrink-0 transition-all", m.status === 'approved_by_client' || m.status === 'invoiced' ? "bg-green-500 border-green-100 text-white" : "bg-slate-100 border-white shadow-inner")}>
-                                   {m.status === 'approved_by_client' || m.status === 'invoiced' ? <BadgeCheck className="h-6 w-6" /> : <Clock className="h-6 w-6 opacity-20" />}
-                                </div>
-                                <div className="min-w-0 text-left">
-                                   <p className="text-lg font-black text-slate-900 uppercase tracking-tight">{m.label}</p>
-                                   <div className="flex items-center gap-2 mt-1">
-                                      <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary h-5 px-3">Stage Node: {currencySymbol}{parseFloat(m.amount).toLocaleString()}</Badge>
-                                      {m.status === 'approved_by_client' && <span className="text-[9px] font-bold text-green-600 uppercase flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Signed off by you</span>}
-                                   </div>
-                                </div>
-                             </div>
-                             <div className="shrink-0">
-                                {m.status === 'completed' && (
-                                  <Button onClick={() => handleApproveMilestone(m.id)} className="h-12 bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] px-10 rounded-2xl shadow-xl transition-all active:scale-95">Approve Stage</Button>
-                                )}
-                                {m.status === 'approved_by_client' && <Badge className="bg-slate-900 text-accent border-none font-black text-[9px] h-8 px-6 uppercase rounded-full shadow-lg">APPROVED</Badge>}
-                                {m.status === 'invoiced' && <Badge className="bg-green-600 text-white border-none font-black text-[9px] h-8 px-6 uppercase rounded-full shadow-lg">SETTLED</Badge>}
-                                {m.status === 'pending' && <Badge variant="outline" className="text-[9px] font-black uppercase h-8 px-6 border-dashed opacity-40">Awaiting Team</Badge>}
-                             </div>
-                          </div>
-                       ))}
+              <TabsContent value="legal" className="m-0 space-y-6">
+                <SectionCard
+                  title="Service Agreements"
+                  description="Review delivery terms and payment policy for this engagement."
+                >
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                        <FileText className="h-4 w-4 text-slate-500" /> Scope & Delivery
+                        Terms
+                      </h4>
+                      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                        {project.terms || "Standard project terms apply."}
+                      </p>
                     </div>
-                 </Card>
-              </TabsContent>
+                    <div className="border-t border-slate-200 pt-5">
+                      <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2 mb-2">
+                        <Wallet className="h-4 w-4 text-slate-500" /> Financial & Refund
+                        Policy
+                      </h4>
+                      <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                        {project.policy ||
+                          "Payments are non-refundable after milestone approval."}
+                      </p>
+                    </div>
 
-              <TabsContent value="legal" className="m-0 space-y-8 animate-in fade-in">
-                <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                  <CardHeader className="bg-muted/30 border-b py-6 px-8"><CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2"><Scale className="h-4 w-4" /> Service Agreements</CardTitle></CardHeader>
-                  <CardContent className="p-8 space-y-10 text-left">
-                    <div className="space-y-8">
-                       <div><h5 className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2 mb-3"><FileText className="h-3.5 w-3.5" /> Scope & Delivery Terms</h5><p className="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">{project.terms || "Standard project terms apply."}</p></div>
-                       <Separator className="opacity-40" />
-                       <div><h5 className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2 mb-3"><Wallet className="h-3.5 w-3.5" /> Financial & Refund Policy</h5><p className="text-sm font-medium text-slate-600 leading-relaxed whitespace-pre-wrap">{project.policy || "Payments are non-refundable after milestone approval."}</p></div>
-                    </div>
                     {!project.isAgreed ? (
-                      <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-dashed border-primary/20 space-y-8 mt-10">
-                        <div className="flex items-start gap-4"><Checkbox id="accept-terms" checked={agreementChecked} onCheckedChange={(v) => setAgreementChecked(!!v)} className="mt-1" /><Label htmlFor="accept-terms" className="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed cursor-pointer">I verify that I have reviewed the roadmap and financial nodes. I accept the project agreement for <span className="font-black">"{project.title}"</span>.</Label></div>
-                        <Button onClick={handleAcceptAgreement} disabled={!agreementChecked} className="w-full h-16 bg-primary text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl">Confirm & Sign-off</Button>
+                      <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            id="accept-terms"
+                            checked={agreementChecked}
+                            onCheckedChange={(v) => setAgreementChecked(!!v)}
+                            className="mt-0.5"
+                          />
+                          <Label
+                            htmlFor="accept-terms"
+                            className="text-sm font-medium text-slate-700 leading-relaxed cursor-pointer"
+                          >
+                            I confirm that I have reviewed the roadmap and financial terms,
+                            and I accept the agreement for{" "}
+                            <span className="font-bold text-slate-900">
+                              &ldquo;{project.title}&rdquo;
+                            </span>
+                            .
+                          </Label>
+                        </div>
+                        <Button
+                          onClick={handleAcceptAgreement}
+                          disabled={!agreementChecked}
+                          className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-xl"
+                        >
+                          Confirm & Sign Off
+                        </Button>
                       </div>
                     ) : (
-                      <div className="p-8 bg-green-50 rounded-[2.5rem] border-2 border-green-100 flex items-center gap-5 mt-10 shadow-inner">
-                        <CheckCircle2 className="h-10 w-10 text-green-600" />
-                        <div><p className="text-lg font-black text-green-800 uppercase tracking-tight">Contract Active</p><p className="text-[9px] text-green-600 font-bold uppercase tracking-widest">Verified on {project.agreedAt?.toDate?.()?.toLocaleDateString() || 'Recently'}</p></div>
+                      <div className="p-5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-4">
+                        <CheckCircle2 className="h-7 w-7 text-emerald-600 shrink-0" />
+                        <div>
+                          <p className="text-base font-bold text-emerald-900">
+                            Agreement Accepted
+                          </p>
+                          <p className="text-xs font-medium text-emerald-700 font-mono tabular-nums mt-0.5">
+                            Signed on{" "}
+                            {project.agreedAt?.toDate?.()?.toLocaleDateString() ||
+                              "Recently"}
+                          </p>
+                        </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </SectionCard>
               </TabsContent>
 
-              <TabsContent value="ledger" className="m-0 animate-in fade-in">
+              <TabsContent value="ledger" className="m-0">
                 {project.shareLedger ? (
-                  <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                    <CardHeader className="bg-muted/30 border-b py-6 px-8"><CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2"><History className="h-4 w-4" /> Financial Node Ledger</CardTitle></CardHeader>
-                    <div className="overflow-x-auto">
-                      <Table className="min-w-[700px]">
-                        <TableHeader><TableRow className="bg-muted/10"><TableHead className="pl-8 text-[10px] font-black uppercase h-12">Date</TableHead><TableHead className="text-[10px] font-black uppercase h-12">Transaction Node</TableHead><TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12">Inflow (+)</TableHead></TableRow></TableHeader>
-                        <TableBody>{(!projectTransactions || projectTransactions.filter((t:any)=>t.type === 'credit').length === 0) ? <TableRow><TableCell colSpan={3} className="h-60 text-center opacity-30 italic text-sm">No transaction records found.</TableCell></TableRow> : projectTransactions.filter((t:any)=>t.type==='credit').map((trans: any) => (
-                          <TableRow key={trans.id} className="hover:bg-muted/5 transition-colors border-b last:border-0"><TableCell className="pl-8 py-5"><span className="text-[10px] font-black text-slate-400 uppercase">{trans.date}</span></TableCell><TableCell><span className="text-xs font-bold text-slate-700 uppercase tracking-tight">{trans.particulars.split(' (')[0]}</span></TableCell><TableCell className="text-right pr-8 font-black text-sm text-green-600">₹{parseFloat(trans.amount).toLocaleString()}</TableCell></TableRow>
-                        ))}</TableBody>
-                      </Table>
-                    </div>
-                  </Card>
+                  <SectionCard
+                    title="Payment Ledger"
+                    description="Verified inflow entries recorded against this project."
+                  >
+                    {creditTransactions.length === 0 ? (
+                      <EmptyStatePanel
+                        icon={History}
+                        title="No payment entries yet"
+                        description="Payments received for this project will be itemized here."
+                      />
+                    ) : (
+                      <div className="overflow-x-auto -mx-6 -my-5">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-50 border-b border-slate-200">
+                              <TableHead className="pl-6 text-xs font-semibold text-slate-700 h-11">
+                                Date
+                              </TableHead>
+                              <TableHead className="text-xs font-semibold text-slate-700 h-11">
+                                Particulars
+                              </TableHead>
+                              <TableHead className="text-right pr-6 text-xs font-semibold text-slate-700 h-11">
+                                Amount Received
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {creditTransactions.map((trans: any) => (
+                              <TableRow
+                                key={trans.id}
+                                className="hover:bg-slate-50/80 border-b border-slate-200 last:border-0"
+                              >
+                                <TableCell className="pl-6 py-4 text-xs font-mono tabular-nums text-slate-500">
+                                  {trans.date}
+                                </TableCell>
+                                <TableCell className="text-sm font-medium text-slate-800">
+                                  {trans.particulars?.split(" (")[0]}
+                                </TableCell>
+                                <TableCell className="text-right pr-6 font-bold font-mono tabular-nums text-sm text-emerald-700">
+                                  {currencySymbol}
+                                  {parseFloat(trans.amount || 0).toLocaleString()}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </SectionCard>
                 ) : (
-                  <div className="p-24 text-center bg-white rounded-[3rem] border border-dashed flex flex-col items-center gap-6 opacity-40">
-                    <Lock className="h-12 w-12 text-slate-300" />
-                    <p className="text-xs font-black uppercase tracking-widest">Financial Ledger Restricted</p>
-                  </div>
+                  <EmptyStatePanel
+                    icon={Lock}
+                    title="Payment ledger is private"
+                    description="The service team has restricted public access to the financial ledger."
+                  />
                 )}
               </TabsContent>
             </div>
 
-            <div className="lg:col-span-4 space-y-8 text-left">
-              <Card className="border-none shadow-xl bg-white rounded-[2.5rem] border overflow-hidden">
-                <CardHeader className="bg-primary/5 border-b py-6 px-8 text-left">
-                   <CardTitle className="text-[10px] font-black uppercase text-primary flex items-center gap-2 tracking-widest">
-                     <MessageSquare className="h-4 w-4" /> Message specialist team
-                   </CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 space-y-6">
-                  <Textarea placeholder="Need clarification or want to request a change?" className="min-h-[140px] rounded-[1.5rem] text-sm border-none bg-muted/20 shadow-inner p-5 font-medium" value={clientRequest} onChange={(e) => setClientRequest(e.target.value)} />
-                  <Button onClick={handleSubmitRequest} disabled={!clientRequest.trim() || isSubmitting} className="w-full bg-primary hover:bg-primary/90 text-white font-black h-16 rounded-2xl uppercase text-[10px] tracking-[0.2em] shadow-xl active:scale-95 transition-all">
-                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5 mr-3" />} Shoot Message
+            <div className="lg:col-span-4 space-y-6">
+              <SectionCard
+                title="Message Project Team"
+                description="Ask a question or request a revision."
+              >
+                <div className="space-y-4">
+                  <Textarea
+                    placeholder="Need clarification or want to request a change?"
+                    className="min-h-[120px] rounded-xl text-sm border-slate-200 bg-slate-50 p-3.5"
+                    value={clientRequest}
+                    onChange={(e) => setClientRequest(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleSubmitRequest}
+                    disabled={!clientRequest.trim() || isSubmitting}
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Send Message
                   </Button>
-                </CardContent>
-              </Card>
+                </div>
+              </SectionCard>
 
-              <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white space-y-10 shadow-2xl relative overflow-hidden text-left">
-                 <div className="absolute top-0 right-0 p-4 opacity-5 rotate-12"><SmartphoneNfc className="h-60 w-60" /></div>
-                 <div className="relative z-10 space-y-6">
-                    <div className="flex items-center gap-4">
-                       <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner"><SmartphoneNfc className="h-7 w-7 text-accent" /></div>
-                       <div><h4 className="text-xl font-bold uppercase leading-none">Global Hub</h4><p className="text-[9px] font-bold text-slate-400 uppercase mt-2 tracking-widest">Immediate Escalation Node</p></div>
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium italic">"Connect with our central support desk for project-level emergencies or general billing queries."</p>
-                    <div className="grid grid-cols-1 gap-3 pt-2">
-                       <Button variant="outline" className="w-full h-12 bg-white/5 border-white/10 text-white font-black uppercase text-[10px] rounded-xl hover:bg-white/10" onClick={() => window.open(`https://wa.me/${business?.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I need urgent update on Project ${projectId.slice(-6).toUpperCase()}`)}`)}>Connect via WhatsApp</Button>
-                    </div>
-                 </div>
-                 <div className="p-6 bg-white/5 rounded-2xl border border-white/10 flex items-start gap-4 shadow-inner relative z-10">
-                    <ShieldCheck className="h-5 w-5 text-accent shrink-0 mt-0.5 opacity-60" />
-                    <p className="text-[10px] font-black uppercase text-slate-300 leading-relaxed tracking-tighter">Your tracking node is encrypted and isolated per tenant security protocol v3.5</p>
-                 </div>
+              <div className="p-6 bg-slate-900 rounded-2xl border border-slate-800 text-white space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+                    <MessageCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-bold text-white">Direct Support</h4>
+                    <p className="text-xs text-slate-400">Priority Client Desk</p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Connect directly with our team for urgent project updates or billing questions.
+                </p>
+                {whatsappUrl && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full h-10 bg-white/10 border-white/15 text-white hover:bg-white/20 hover:text-white font-semibold text-xs rounded-xl"
+                  >
+                    <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                      Message on WhatsApp
+                    </a>
+                  </Button>
+                )}
+                <div className="p-3.5 bg-white/5 rounded-xl border border-white/10 flex items-start gap-3">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Encrypted, workspace-isolated client progress link.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </Tabs>
       </main>
 
-      <footer className="mt-32 py-16 bg-white border-t text-center px-4">
-         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-3"><div className="h-10 w-10 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-xl">B</div><span className="text-sm font-black uppercase tracking-[0.3em] text-slate-900">Biztrix AI OS</span></div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Secured Multi-tenant Project Tracking Port • Verified v3.5</p>
-         </div>
+      <footer className="mt-20 py-8 bg-white border-t border-slate-200 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+              B
+            </div>
+            <span className="text-sm font-bold text-slate-900">Biztrix AI</span>
+          </div>
+          <p className="text-xs text-slate-500">
+            Secure Client Project Portal · {business?.name || "Biztrix Workspace"}
+          </p>
+        </div>
       </footer>
     </div>
   );

@@ -60,7 +60,7 @@ export default function VendorDetailPage(props: { params: { vendorId: string } }
     const initialEntry = {
       id: 'opening',
       date: vendor.createdAt?.toDate ? format(vendor.createdAt.toDate(), 'yyyy-MM-dd') : 'Original',
-      particulars: 'Opening Balance Node',
+      particulars: 'Opening Balance',
       type: 'credit',
       amount: currentBalance,
       balance: currentBalance
@@ -80,60 +80,72 @@ export default function VendorDetailPage(props: { params: { vendorId: string } }
   }, [ledgerData, vendor]);
 
   if (isVendorLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!vendor) return <div className="p-20 text-center">Vendor not found.</div>;
+  if (!vendor) return <div className="p-20 text-center text-sm text-slate-500">Vendor not found.</div>;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-10">
+    <div className="max-w-5xl mx-auto space-y-6 pb-10">
       <div className="flex items-center gap-4">
-        <Button asChild variant="ghost" size="icon" className="h-10 w-10 rounded-full"><Link href="/vendors"><ArrowLeft className="h-5 w-5" /></Link></Button>
-        <h1 className="text-3xl font-black tracking-tight">{vendor.name}</h1>
-      </div>
-
-      <div className="p-8 bg-primary text-white rounded-3xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10"><Building2 className="h-40 w-40" /></div>
-        <div className="relative z-10 flex items-center gap-6">
-            <div className="h-20 w-20 rounded-3xl bg-white flex items-center justify-center text-primary font-black text-3xl shrink-0 shadow-2xl">
-              {vendor.name?.charAt(0)}
-            </div>
-            <div className="space-y-1">
-              <h2 className="text-2xl font-black">{vendor.name}</h2>
-              <div className="flex items-center gap-3">
-                <span className="text-accent text-[10px] font-bold uppercase tracking-widest">{vendor.phone}</span>
-                <Badge className="bg-green-500 text-white border-none font-black text-[9px] h-5 uppercase px-2">{vendor.status}</Badge>
-              </div>
-            </div>
+        <Button asChild variant="outline" size="icon" className="h-10 w-10 rounded-xl border-slate-200 bg-white shadow-none" aria-label="Back to vendors">
+          <Link href="/vendors"><ArrowLeft className="h-4 w-4" /></Link>
+        </Button>
+        <div>
+          <p className="text-xs font-medium text-slate-500">Supplier Profile</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{vendor.name}</h1>
         </div>
       </div>
 
-      <div className="space-y-6 pt-6">
-         <div className="grid grid-cols-2 gap-6">
-            <Card className="p-6 rounded-[2rem] border-none shadow-sm">
-               <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Total Liability</p>
-               <p className="text-2xl font-black text-red-600 mt-1">{currencySymbol}{vendor.pendingBalance?.toLocaleString()}</p>
-            </Card>
-            <Card className="p-6 rounded-[2rem] border-none shadow-sm">
-               <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Trading Volume</p>
-               <p className="text-2xl font-black text-slate-900 mt-1">{currencySymbol}{vendor.totalPurchase?.toLocaleString()}</p>
-            </Card>
-         </div>
+      <div className="p-6 sm:p-8 bg-slate-900 text-white rounded-2xl border border-slate-800 relative overflow-hidden">
+        <div className="relative z-10 flex items-center gap-5">
+          <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center text-slate-900 font-semibold text-2xl shrink-0">
+            {vendor.name?.charAt(0)}
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-semibold tracking-tight">{vendor.name}</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-slate-300 text-xs font-mono tabular-nums">{vendor.phone}</span>
+              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium text-xs px-2.5 py-0.5">{vendor.status}</Badge>
+            </div>
+          </div>
+        </div>
+      </div>
 
-         <Card className="border-none shadow-sm rounded-[2rem] p-6">
-            <h2 className="text-lg font-black mb-4">Node Ledger</h2>
-            <Table>
-               <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Particulars</TableHead><TableHead className="text-right">Outflow (-)</TableHead><TableHead className="text-right">Inflow (+)</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
-               <TableBody>
-                  {calculatedLedger.map((entry: any) => (
-                    <TableRow key={entry.id}>
-                       <TableCell className="text-[10px] font-black text-slate-400 uppercase">{entry.date}</TableCell>
-                       <TableCell className="font-bold">{entry.particulars}</TableCell>
-                       <TableCell className="text-right text-green-600 font-black">{entry.type === 'debit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}</TableCell>
-                       <TableCell className="text-right text-red-600 font-black">{entry.type === 'credit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}</TableCell>
-                       <TableCell className="text-right font-black">{currencySymbol}{entry.balance.toLocaleString()}</TableCell>
-                    </TableRow>
-                  ))}
-               </TableBody>
-            </Table>
-         </Card>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Card className="p-6 rounded-2xl border border-slate-200 bg-white shadow-none">
+            <p className="text-xs font-medium text-slate-500">Total Liability</p>
+            <p className="text-2xl font-semibold font-mono tabular-nums text-red-600 mt-1">{currencySymbol}{vendor.pendingBalance?.toLocaleString()}</p>
+          </Card>
+          <Card className="p-6 rounded-2xl border border-slate-200 bg-white shadow-none">
+            <p className="text-xs font-medium text-slate-500">Trading Volume</p>
+            <p className="text-2xl font-semibold font-mono tabular-nums text-slate-900 mt-1">{currencySymbol}{vendor.totalPurchase?.toLocaleString()}</p>
+          </Card>
+        </div>
+
+        <Card className="border border-slate-200 bg-white shadow-none rounded-2xl p-6">
+          <h2 className="text-base font-semibold text-slate-900 mb-4">Account Ledger</h2>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs font-medium text-slate-500">Date</TableHead>
+                <TableHead className="text-xs font-medium text-slate-500">Particulars</TableHead>
+                <TableHead className="text-right text-xs font-medium text-slate-500">Outflow (-)</TableHead>
+                <TableHead className="text-right text-xs font-medium text-slate-500">Inflow (+)</TableHead>
+                <TableHead className="text-right text-xs font-medium text-slate-500">Balance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {calculatedLedger.map((entry: any) => (
+                <TableRow key={entry.id}>
+                  <TableCell className="text-xs font-mono tabular-nums text-slate-500">{entry.date}</TableCell>
+                  <TableCell className="text-sm font-medium text-slate-900">{entry.particulars}</TableCell>
+                  <TableCell className="text-right text-emerald-600 font-mono tabular-nums font-medium">{entry.type === 'debit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}</TableCell>
+                  <TableCell className="text-right text-red-600 font-mono tabular-nums font-medium">{entry.type === 'credit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums font-semibold text-slate-900">{currencySymbol}{entry.balance.toLocaleString()}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       </div>
     </div>
   );

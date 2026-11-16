@@ -1,10 +1,9 @@
 "use client";
 
-import { Lock, Smartphone, Loader2, BadgeCheck } from "lucide-react";
+import { Lock, Smartphone, Loader2, BadgeCheck, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface IdentityGateProps {
@@ -16,57 +15,90 @@ interface IdentityGateProps {
   authError: string | null;
 }
 
-export function IdentityGate({ foundMember, onSendOtp, onDirectAccess, isAdminOrStaff, state, authError }: IdentityGateProps) {
+export function IdentityGate({
+  foundMember,
+  onSendOtp,
+  onDirectAccess,
+  isAdminOrStaff,
+  state,
+  authError,
+}: IdentityGateProps) {
   return (
-    <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden border animate-in zoom-in-95 duration-500 mx-2 text-left">
-      <CardHeader className="p-8 sm:p-12 bg-slate-900 text-white text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12"><Lock className="h-40 w-40" /></div>
-        <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-6 border border-white/10 relative z-10">
-          <Smartphone className="h-8 w-8 md:h-10 md:w-10 text-accent" />
+    <Card className="border border-slate-200 bg-white rounded-2xl overflow-hidden text-left shadow-none">
+      <CardHeader className="p-6 sm:p-8 bg-slate-900 text-white text-center border-b border-slate-800">
+        <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/15">
+          <Smartphone className="h-7 w-7 text-white" />
         </div>
-        <CardTitle className="text-xl md:text-2xl font-black uppercase relative z-10">Identity Gate</CardTitle>
+        <CardTitle className="text-xl font-bold">Member Verification</CardTitle>
       </CardHeader>
-      <CardContent className="p-8 sm:p-12 space-y-8">
+      <CardContent className="p-6 sm:p-8 space-y-6">
         {authError && (
-          <Alert variant="destructive" className="rounded-2xl bg-red-50 border-red-100 text-red-600 animate-in slide-in-from-top-2">
+          <Alert
+            variant="destructive"
+            className="rounded-xl bg-red-50 border-red-200 text-red-700"
+          >
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-[10px] font-black uppercase ml-2">{authError}</AlertDescription>
+            <AlertDescription className="text-xs font-medium ml-1">
+              {authError}
+            </AlertDescription>
           </Alert>
         )}
 
-        <div className="text-center space-y-8 py-6">
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-slate-600 leading-relaxed uppercase tracking-tight">
-              Security Protocol: Verify ownership for member <span className="font-black text-primary">{foundMember?.customerName}</span>.
+        <div className="text-center space-y-6 py-2">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-700 leading-relaxed">
+              Verify ownership for member{" "}
+              <span className="font-bold text-primary">
+                {foundMember?.customerName}
+              </span>
+              .
             </p>
-            <p className="text-[10px] text-muted-foreground font-bold uppercase">Phone node ending in ...{foundMember?.phone?.slice(-4) || 'XXXX'}</p>
+            <p className="text-xs text-slate-500 font-mono tabular-nums">
+              Registered phone ending in ...
+              {foundMember?.phone?.slice(-4) || "XXXX"}
+            </p>
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {isAdminOrStaff && (
-              <div className="p-6 bg-green-50 rounded-[2rem] border-2 border-dashed border-green-200 space-y-4">
-                 <div className="flex items-center gap-3 justify-center">
-                    <BadgeCheck className="h-5 w-5 text-green-600" />
-                    <span className="text-[10px] font-black uppercase text-green-700">Admin Bypass Node Active</span>
-                 </div>
-                 <Button 
-                    onClick={onDirectAccess}
-                    className="w-full h-14 bg-green-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl hover:bg-green-700 transition-all active:scale-95"
-                  >
-                    Direct Access (No OTP)
-                  </Button>
+              <div className="p-5 bg-emerald-50 rounded-xl border border-emerald-200 space-y-3">
+                <div className="flex items-center gap-2 justify-center text-emerald-800">
+                  <BadgeCheck className="h-4 w-4 text-emerald-600" />
+                  <span className="text-xs font-semibold">
+                    Staff Verification Shortcut Active
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  onClick={onDirectAccess}
+                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl"
+                >
+                  Open Member Portal Directly
+                </Button>
               </div>
             )}
 
-            <Button 
-              onClick={onSendOtp} 
-              disabled={state === "verifying-otp"} 
+            <Button
+              type="button"
+              onClick={onSendOtp}
+              disabled={state === "verifying-otp"}
               className={cn(
-                "w-full h-16 font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl transition-all active:scale-95",
-                isAdminOrStaff ? "bg-white text-primary border-2 border-primary/20 hover:bg-primary/5" : "bg-primary text-white"
+                "w-full h-12 font-semibold text-xs rounded-xl",
+                isAdminOrStaff
+                  ? "bg-white text-primary border border-slate-200 hover:bg-slate-50"
+                  : "bg-primary text-white"
               )}
             >
-              {state === "verifying-otp" ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify with OTP"}
+              {state === "verifying-otp" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" /> Sending
+                  OTP...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" /> Send Verification OTP
+                </>
+              )}
             </Button>
           </div>
         </div>

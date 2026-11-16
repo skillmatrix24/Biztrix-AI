@@ -27,10 +27,10 @@ import {
   Notebook,
   Loader2
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { KpiStatCard, PageHeader, SectionCard } from "@/components/ui/editorial";
 import { 
   Table, 
   TableBody, 
@@ -187,135 +187,167 @@ export default function FixedExpensesPage() {
   if (isProfileLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-10">
+    <div className="space-y-6 pb-16 text-left">
       <CoreQuotaBanner quota={fixedExpenseQuota} />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-            <Coins className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Fixed Overheads</h2>
-            <p className="text-xs md:text-sm text-muted-foreground">Manage recurring bills, rent, and monthly subscriptions.</p>
-          </div>
-        </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button disabled={fixedExpenseQuota.isReached} className="bg-primary hover:bg-primary/90 shadow-lg h-10 px-6 font-bold uppercase text-xs tracking-widest">
-              <Plus className="mr-2 h-4 w-4" /> Add Recurring
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[450px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
-            <DialogHeader className="p-6 bg-primary text-white">
-              <DialogTitle className="text-xl">Add Fixed Expense</DialogTitle>
-              <DialogDescription className="text-white/70 text-xs font-medium uppercase tracking-wider">Configure recurring commitments.</DialogDescription>
-            </DialogHeader>
-            <div className="p-6 space-y-5">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground">Expense Name *</Label>
-                <Input placeholder="e.g. Shop Rent" value={name} onChange={(e) => setName(e.target.value)} className="h-11 rounded-xl" />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Amount ({currencySymbol}) *</Label>
-                  <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-11 rounded-xl font-bold" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Category</Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {EXPENSE_CATEGORIES.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Cycle</Label>
-                  <Select value={frequency} onValueChange={setFrequency}>
-                    <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="Weekly">Weekly</SelectItem>
-                      <SelectItem value="Monthly">Monthly</SelectItem>
-                      <SelectItem value="Quarterly">Quarterly</SelectItem>
-                      <SelectItem value="Yearly">Yearly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Start Date</Label>
-                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-11 rounded-xl" />
-                </div>
-              </div>
-
-              {category === 'Other' && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2">
-                    <Notebook className="h-3 w-3" /> Note
-                  </Label>
-                  <Textarea 
-                    placeholder="Specific details about this expense..." 
-                    value={notes} 
-                    onChange={(e) => setNotes(e.target.value)} 
-                    className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner text-xs" 
-                  />
-                </div>
-              )}
-            </div>
-            <DialogFooter className="p-6 bg-muted/10 border-t">
-              <Button className="w-full h-12 bg-primary font-bold uppercase text-xs tracking-widest shadow-xl rounded-xl" onClick={handleAddExpense}>
-                Initialize Recurring Entry
+      <PageHeader
+        breadcrumb="Back Office / Fixed Expenses"
+        title="Fixed Overheads"
+        description="Manage recurring bills, rent, salaries, and monthly subscriptions."
+        icon={Coins}
+        actions={
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button disabled={fixedExpenseQuota.isReached} className="h-10 px-5 text-xs font-semibold rounded-xl">
+                <Plus className="mr-1.5 h-4 w-4" /> Add Recurring
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[460px] rounded-2xl border border-slate-200 bg-white shadow-lg p-0 overflow-hidden">
+              <DialogHeader className="p-6 bg-slate-900 text-white text-left">
+                <DialogTitle className="text-lg font-bold text-white">Add Fixed Expense</DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs">Configure recurring commitments and auto-post to Cashbook.</DialogDescription>
+              </DialogHeader>
+              <div className="p-6 space-y-4 text-left">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700">Expense Name *</Label>
+                  <Input placeholder="e.g. Shop Rent" value={name} onChange={(e) => setName(e.target.value)} className="h-10 rounded-xl" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Amount ({currencySymbol}) *</Label>
+                    <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-xl font-mono tabular-nums font-semibold" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Category</Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {EXPENSE_CATEGORIES.map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Cycle</Label>
+                    <Select value={frequency} onValueChange={setFrequency}>
+                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="Weekly">Weekly</SelectItem>
+                        <SelectItem value="Monthly">Monthly</SelectItem>
+                        <SelectItem value="Quarterly">Quarterly</SelectItem>
+                        <SelectItem value="Yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">Start Date</Label>
+                    <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-10 rounded-xl font-mono tabular-nums" />
+                  </div>
+                </div>
+
+                {category === 'Other' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Notebook className="h-3.5 w-3.5 text-slate-500" /> Note
+                    </Label>
+                    <Textarea 
+                      placeholder="Specific details about this expense..." 
+                      value={notes} 
+                      onChange={(e) => setNotes(e.target.value)} 
+                      className="min-h-[80px] rounded-xl border-slate-200 text-xs" 
+                    />
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200">
+                <Button className="w-full h-11 text-xs font-semibold rounded-xl" onClick={handleAddExpense}>
+                  Save Recurring Expense
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
+      />
+
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiStatCard
+          label="Monthly Budget"
+          value={`${currencySymbol}${Math.round(totalMonthly).toLocaleString("en-IN")}`}
+          subtext="Normalized monthly commitment"
+          tone="dark"
+          icon={Coins}
+        />
+        <KpiStatCard
+          label="Active Schedules"
+          value={expenses.length}
+          subtext="Configured recurring commitments"
+          icon={Calendar}
+        />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-6 bg-white rounded-2xl shadow-sm border-none">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Monthly Budget</p>
-          <div className="text-2xl font-bold text-primary">{currencySymbol}{totalMonthly.toLocaleString()}</div>
-        </Card>
-      </div>
-
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-2xl border">
+      <SectionCard
+        title="Recurring Commitments"
+        description="Search or review scheduled fixed expenses"
+        bodyClassName="p-0"
+        headerRight={
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search expenses..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-9 pl-9 rounded-xl bg-slate-50 border-slate-200 text-xs w-full"
+            />
+          </div>
+        }
+      >
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/10">
-              <TableHead className="pl-6 text-[10px] font-bold uppercase">Expense Name</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase">Category</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase">Frequency</TableHead>
-              <TableHead className="text-right text-[10px] font-bold uppercase">Amount</TableHead>
-              <TableHead className="text-right pr-6 text-[10px] font-bold uppercase">Next Due</TableHead>
+            <TableRow>
+              <TableHead className="pl-6">Expense Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Frequency</TableHead>
+              <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="text-right pr-6">Next Due</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredExpenses.map((exp) => (
-              <TableRow key={exp.id} className="hover:bg-muted/5 group">
-                <TableCell className="pl-6 py-4">
-                  <span className="text-sm font-bold text-primary">{exp.name}</span>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-[8px] font-bold h-4 uppercase">{exp.category}</Badge>
-                </TableCell>
-                <TableCell className="text-xs font-medium text-muted-foreground">{exp.frequency}</TableCell>
-                <TableCell className="text-right font-bold text-sm text-primary">{currencySymbol}{exp.amount.toLocaleString()}</TableCell>
-                <TableCell className="text-right pr-6">
-                  <div className="flex items-end flex-col">
-                    <span className="text-xs font-bold">{exp.nextDueDate}</span>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase">Scheduled</span>
-                  </div>
+            {filteredExpenses.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="h-32 text-center text-sm text-slate-500">
+                  No fixed expenses match your search.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredExpenses.map((exp) => (
+                <TableRow key={exp.id}>
+                  <TableCell className="pl-6 py-4">
+                    <span className="text-sm font-semibold text-slate-900">{exp.name}</span>
+                  </TableCell>
+                  <TableCell className="text-xs font-medium text-slate-600">
+                    {exp.category}
+                  </TableCell>
+                  <TableCell className="text-xs text-slate-600">{exp.frequency}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums font-bold text-sm text-slate-900">
+                    {currencySymbol}{exp.amount.toLocaleString("en-IN")}
+                  </TableCell>
+                  <TableCell className="text-right pr-6">
+                    <div className="flex items-end flex-col">
+                      <span className="text-xs font-mono tabular-nums font-semibold text-slate-900">{exp.nextDueDate}</span>
+                      <span className="text-[11px] text-slate-500">Scheduled</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
-      </Card>
+      </SectionCard>
     </div>
   );
 }

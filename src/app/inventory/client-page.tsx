@@ -133,6 +133,7 @@ import {
 import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
 import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
 import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
+import { PageHeader, KpiStatCard, SectionCard } from "@/components/ui/editorial";
 
 const DEFAULT_UNITS = ["pcs", "kg", "box", "packet", "unit", "litre", "meter"];
 const DEFAULT_GST_SLABS = [0, 5, 12, 18, 28];
@@ -728,36 +729,27 @@ export default function InventoryPage() {
       {!isTrialExpired && <CoreQuotaBanner quota={inventoryQuota} />}
 
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
-        <div className="flex items-center gap-4 text-left">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-            <Package className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-none uppercase">Master Inventory</h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">
-              Catalog, Stock Safety & Storefront Controls
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title="Master Inventory"
+        description="Catalog, stock safety thresholds, and storefront catalog controls."
+        icon={Package}
+        actions={
           <Dialog open={isAddProductOpen} onOpenChange={(o) => { setIsAddProductOpen(o); if(!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button disabled={isTrialExpired || isLimitReached} className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
-                <Plus className="mr-1.5 h-4 w-4" /> Add Product
+              <Button disabled={isTrialExpired || isLimitReached} className="bg-slate-900 hover:bg-slate-800 h-10 px-4 font-semibold text-xs rounded-xl text-white">
+                <Plus className="mr-1.5 h-4 w-4" /> Add product
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col p-0 overflow-hidden w-[95vw] rounded-3xl border-none shadow-2xl">
-              <DialogHeader className="p-6 md:p-8 bg-primary text-white text-left shrink-0">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
-                    <PlusSquare className="h-6 w-6" />
+            <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col p-0 overflow-hidden w-[95vw] rounded-2xl border border-slate-200 bg-white">
+              <DialogHeader className="p-6 bg-slate-900 text-white text-left shrink-0">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                    <PlusSquare className="h-5 w-5 text-white" />
                   </div>
                   <div className="text-left">
-                    <DialogTitle className="text-xl font-black uppercase">Create Catalog Product</DialogTitle>
-                    <DialogDescription className="text-white/80 text-[10px] font-bold uppercase tracking-widest mt-1">
-                      Authoritative Ledger • Storefront Visibility • Safe Stock Thresholds
+                    <DialogTitle className="text-lg font-bold tracking-tight">Create catalog product</DialogTitle>
+                    <DialogDescription className="text-slate-300 text-xs mt-0.5">
+                      Add pricing, storefront visibility, and minimum stock safety thresholds.
                     </DialogDescription>
                   </div>
                 </div>
@@ -767,91 +759,79 @@ export default function InventoryPage() {
                 {renderProductFormBody()}
               </ScrollArea>
 
-              <DialogFooter className="p-6 bg-muted/10 border-t shrink-0">
-                <Button 
-                  onClick={handleSubmitProduct} 
-                  disabled={isSubmittingForm} 
-                  className="w-full h-14 bg-primary font-black uppercase text-xs tracking-wider rounded-xl shadow-xl text-white"
+              <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200 shrink-0">
+                <Button
+                  onClick={handleSubmitProduct}
+                  disabled={isSubmittingForm}
+                  className="w-full h-11 bg-slate-900 hover:bg-slate-800 font-semibold text-sm rounded-xl text-white"
                 >
                   {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                  Save Product to Catalog
+                  Save product to catalog
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+        }
+      />
 
       {/* Metrics Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border border-border/50 text-left">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Catalog Items</p>
-          <div className="text-2xl font-black text-slate-900">{stats.totalItems} SKUs</div>
-          <p className="text-[10px] text-muted-foreground font-semibold mt-1">
-            <span className="text-primary font-bold">{stats.onlineCatalogCount}</span> visible on storefront
-          </p>
-        </Card>
-
-        <Card className={cn(
-          "border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 text-left transition-all", 
-          stats.lowStockCount > 0 ? "border-l-amber-500 bg-amber-50/40" : "border-l-emerald-500"
-        )}>
-          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", stats.lowStockCount > 0 ? "text-amber-700 font-bold" : "text-muted-foreground")}>
-            Low Stock Alerts
-          </p>
-          <div className={cn("text-2xl font-black", stats.lowStockCount > 0 ? "text-amber-800" : "text-slate-900")}>
-            {stats.lowStockCount} Products
-          </div>
-          <p className="text-[10px] text-muted-foreground font-semibold mt-1">Below safety threshold</p>
-        </Card>
-
-        <Card className={cn(
-          "border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 text-left transition-all", 
-          stats.outOfStockCount > 0 ? "border-l-rose-500 bg-rose-50/40" : "border-l-indigo-500"
-        )}>
-          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", stats.outOfStockCount > 0 ? "text-rose-700 font-bold" : "text-indigo-600")}>
-            Out of Stock
-          </p>
-          <div className={cn("text-2xl font-black", stats.outOfStockCount > 0 ? "text-rose-800" : "text-indigo-900")}>
-            {stats.outOfStockCount} Depleted
-          </div>
-          <p className="text-[10px] text-muted-foreground font-semibold mt-1">Cannot fulfill online orders</p>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-slate-900 text-white rounded-3xl p-6 text-left">
-          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Asset Valuation</p>
-          <div className="text-2xl font-black text-white">{currencySymbol}{stats.totalValuation.toLocaleString()}</div>
-          <p className="text-[10px] text-slate-400 font-semibold mt-1">{stats.activeItems} active catalog products</p>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiStatCard
+          label="Total Catalog Items"
+          value={`${stats.totalItems} SKUs`}
+          subtext={`${stats.onlineCatalogCount} visible on storefront`}
+          icon={Package}
+        />
+        <KpiStatCard
+          label="Low Stock Alerts"
+          value={`${stats.lowStockCount} Products`}
+          subtext="Below safety threshold"
+          tone={stats.lowStockCount > 0 ? "warning" : "positive"}
+          icon={AlertTriangle}
+        />
+        <KpiStatCard
+          label="Out of Stock"
+          value={`${stats.outOfStockCount} Depleted`}
+          subtext="Cannot fulfill online orders"
+          tone={stats.outOfStockCount > 0 ? "danger" : "default"}
+          icon={AlertCircle}
+        />
+        <KpiStatCard
+          label="Total Asset Valuation"
+          value={`${currencySymbol}${stats.totalValuation.toLocaleString()}`}
+          subtext={`${stats.activeItems} active catalog products`}
+          tone="dark"
+          icon={Coins}
+        />
       </div>
 
       {/* Main Catalog & Inventory Table Card */}
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border text-left">
+      <SectionCard bodyClassName="p-0">
         {/* Filter Controls Bar */}
-        <div className="p-5 border-b bg-muted/20 space-y-4">
+        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
             {/* Search */}
             <div className="lg:col-span-4 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-              <Input 
-                placeholder="Search product name, SKU, category..." 
-                className="h-11 pl-10 text-xs bg-white border-none shadow-inner rounded-xl w-full font-bold" 
-                value={searchTerm} 
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search product name, SKU, category..."
+                className="h-10 pl-10 text-sm bg-white border-slate-200 rounded-xl w-full"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </div>
 
             {/* Stock Level Filter */}
             <div className="lg:col-span-2">
               <Select value={stockFilter} onValueChange={(v) => { setStockFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-primary">
-                  <SelectValue placeholder="Stock Level" />
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
+                  <SelectValue placeholder="Stock level" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-[10px] font-bold uppercase">All Stock Levels</SelectItem>
-                  <SelectItem value="in_stock" className="text-[10px] font-bold uppercase text-emerald-700">In Stock</SelectItem>
-                  <SelectItem value="low" className="text-[10px] font-bold uppercase text-amber-700">Low Stock</SelectItem>
-                  <SelectItem value="out_of_stock" className="text-[10px] font-bold uppercase text-rose-700">Out of Stock</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="all" className="text-xs font-medium">All stock levels</SelectItem>
+                  <SelectItem value="in_stock" className="text-xs font-medium text-emerald-700">In stock</SelectItem>
+                  <SelectItem value="low" className="text-xs font-medium text-amber-700">Low stock</SelectItem>
+                  <SelectItem value="out_of_stock" className="text-xs font-medium text-rose-700">Out of stock</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -859,13 +839,13 @@ export default function InventoryPage() {
             {/* Category Filter */}
             <div className="lg:col-span-2">
               <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-[10px] font-bold uppercase">All Categories</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="all" className="text-xs font-medium">All categories</SelectItem>
                   {existingCategories.map(cat => (
-                    <SelectItem key={cat} value={cat} className="text-[10px] font-bold uppercase">{cat}</SelectItem>
+                    <SelectItem key={cat} value={cat} className="text-xs font-medium">{cat}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -874,14 +854,14 @@ export default function InventoryPage() {
             {/* Storefront Visibility Filter */}
             <div className="lg:col-span-2">
               <Select value={storefrontFilter} onValueChange={(v) => { setStorefrontFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Storefront" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-[10px] font-bold uppercase">All Channels</SelectItem>
-                  <SelectItem value="visible" className="text-[10px] font-bold uppercase text-teal-700">Storefront Visible</SelectItem>
-                  <SelectItem value="featured" className="text-[10px] font-bold uppercase text-primary">Featured Items</SelectItem>
-                  <SelectItem value="bestseller" className="text-[10px] font-bold uppercase text-purple-700">Best Sellers</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="all" className="text-xs font-medium">All channels</SelectItem>
+                  <SelectItem value="visible" className="text-xs font-medium text-teal-700">Storefront visible</SelectItem>
+                  <SelectItem value="featured" className="text-xs font-medium text-slate-900">Featured items</SelectItem>
+                  <SelectItem value="bestseller" className="text-xs font-medium text-purple-700">Best sellers</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -889,16 +869,16 @@ export default function InventoryPage() {
             {/* Sort Dropdown */}
             <div className="lg:col-span-2">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="newest" className="text-[10px] font-bold uppercase">Newest First</SelectItem>
-                  <SelectItem value="name" className="text-[10px] font-bold uppercase">Name (A-Z)</SelectItem>
-                  <SelectItem value="stock_low" className="text-[10px] font-bold uppercase">Stock: Low to High</SelectItem>
-                  <SelectItem value="stock_high" className="text-[10px] font-bold uppercase">Stock: High to Low</SelectItem>
-                  <SelectItem value="price_high" className="text-[10px] font-bold uppercase">Price: High to Low</SelectItem>
-                  <SelectItem value="price_low" className="text-[10px] font-bold uppercase">Price: Low to High</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="newest" className="text-xs font-medium">Newest first</SelectItem>
+                  <SelectItem value="name" className="text-xs font-medium">Name (A–Z)</SelectItem>
+                  <SelectItem value="stock_low" className="text-xs font-medium">Stock: Low to high</SelectItem>
+                  <SelectItem value="stock_high" className="text-xs font-medium">Stock: High to low</SelectItem>
+                  <SelectItem value="price_high" className="text-xs font-medium">Price: High to low</SelectItem>
+                  <SelectItem value="price_low" className="text-xs font-medium">Price: Low to high</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -907,28 +887,28 @@ export default function InventoryPage() {
 
         {/* Products Table */}
         <div className="overflow-x-auto scrollbar-hide">
-          <Table className="min-w-[1050px]">
+          <Table className="min-w-[1000px]">
             <TableHeader>
-              <TableRow className="bg-muted/10 border-b">
-                <TableHead className="pl-8 text-[10px] font-black uppercase h-12">Product / SKU</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Category</TableHead>
-                <TableHead className="text-right text-[10px] font-black uppercase h-12">Pricing (MRP / Online)</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase h-12">Stock Level</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase h-12">Storefront</TableHead>
-                <TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12 w-56">Actions</TableHead>
+              <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
+                <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11">Product / SKU</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 h-11">Category</TableHead>
+                <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">Pricing (MRP / Online)</TableHead>
+                <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">Stock level</TableHead>
+                <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">Storefront</TableHead>
+                <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11 w-48">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-44 text-center">
-                    <Loader2 className="h-7 w-7 animate-spin mx-auto mb-2 text-primary opacity-30" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading Master Inventory...</span>
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-slate-400" />
+                    <span className="text-xs font-medium text-slate-500">Loading master inventory...</span>
                   </TableCell>
                 </TableRow>
               ) : paginatedProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-44 text-center opacity-40 italic text-sm">
+                  <TableCell colSpan={6} className="h-44 text-center text-slate-500 text-sm">
                     No products found matching your filter criteria.
                   </TableCell>
                 </TableRow>
@@ -937,55 +917,54 @@ export default function InventoryPage() {
                   const isLow = product.stock <= product.minThreshold && product.stock > 0;
                   const isOut = product.stock <= 0;
                   const isArchived = Boolean(product.isArchived);
-                  const effectiveOnlinePrice = product.onlinePrice !== undefined ? product.onlinePrice : product.price;
 
                   return (
-                    <TableRow 
-                      key={product.id} 
+                    <TableRow
+                      key={product.id}
                       className={cn(
-                        "hover:bg-muted/5 cursor-pointer group transition-colors border-b",
+                        "hover:bg-slate-50/80 cursor-pointer group transition-colors border-b border-slate-100",
                         isArchived && "opacity-60 bg-slate-50/50"
-                      )} 
+                      )}
                       onClick={() => handleSelectProductForDrawer(product)}
                     >
                       {/* Name & SKU */}
-                      <TableCell className="pl-8 py-4">
+                      <TableCell className="pl-6 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="h-11 w-11 rounded-xl bg-slate-100 overflow-hidden shrink-0 border shadow-inner flex items-center justify-center">
+                          <div className="h-10 w-10 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
                             {product.images && product.images[0] ? (
-                              <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
+                              <img src={product.images[0]} referrerPolicy="no-referrer" alt={product.name} className="h-full w-full object-cover" />
                             ) : (
-                              <Package className="h-5 w-5 text-muted-foreground opacity-40" />
+                              <Package className="h-4 w-4 text-slate-400" />
                             )}
                           </div>
                           <div className="flex flex-col text-left min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-black text-slate-900 text-sm group-hover:text-primary transition-colors truncate uppercase tracking-tight">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-slate-900 text-sm group-hover:text-slate-950 transition-colors truncate">
                                 {product.name}
                               </span>
                               {product.isFeatured && (
-                                <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-[8px] font-black px-1.5 py-0 h-4">
-                                  <Star className="h-2.5 w-2.5 mr-0.5 fill-amber-500" /> Featured
-                                </Badge>
+                                <span className="inline-flex items-center rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-medium px-1.5 py-0.5">
+                                  <Star className="h-2.5 w-2.5 mr-1 fill-amber-500" /> Featured
+                                </span>
                               )}
                               {product.isBestSeller && (
-                                <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-[8px] font-black px-1.5 py-0 h-4">
-                                  <Award className="h-2.5 w-2.5 mr-0.5" /> Best Seller
-                                </Badge>
+                                <span className="inline-flex items-center rounded-md bg-purple-50 text-purple-800 border border-purple-200 text-[11px] font-medium px-1.5 py-0.5">
+                                  <Award className="h-2.5 w-2.5 mr-1" /> Best seller
+                                </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                              <span className="text-[9px] text-muted-foreground font-mono font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-slate-500">
+                              <span className="font-mono tabular-nums">
                                 SKU: {product.sku}
                               </span>
-                              <Separator orientation="vertical" className="h-2.5" />
-                              <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                              <Separator orientation="vertical" className="h-3" />
+                              <span className="font-mono tabular-nums">
                                 GST: {product.gstRate}%
                               </span>
                               {isArchived && (
                                 <>
-                                  <Separator orientation="vertical" className="h-2.5" />
-                                  <span className="text-[8px] font-black text-rose-600 uppercase">Archived</span>
+                                  <Separator orientation="vertical" className="h-3" />
+                                  <span className="font-medium text-rose-600">Archived</span>
                                 </>
                               )}
                             </div>
@@ -995,21 +974,21 @@ export default function InventoryPage() {
 
                       {/* Category */}
                       <TableCell className="text-left">
-                        <Badge variant="outline" className="text-[9px] font-black uppercase bg-slate-50 border-slate-200 text-slate-700">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-slate-100 border border-slate-200 text-slate-700">
                           {product.category || "General"}
-                        </Badge>
+                        </span>
                       </TableCell>
 
                       {/* Pricing */}
                       <TableCell className="text-right">
                         <div className="space-y-0.5">
-                          <p className="font-black text-sm text-slate-900">
+                          <p className="font-mono tabular-nums font-semibold text-sm text-slate-900">
                             {currencySymbol}{product.price.toLocaleString()}
                           </p>
                           {product.onlinePrice !== undefined && product.onlinePrice < product.price && (
-                            <p className="text-[10px] text-emerald-600 font-bold">
-                              Store: {currencySymbol}{product.onlinePrice.toLocaleString()} 
-                              <span className="ml-1 text-[8px] bg-emerald-50 px-1 rounded border border-emerald-200">
+                            <p className="text-xs font-mono tabular-nums text-emerald-700 font-medium">
+                              Store: {currencySymbol}{product.onlinePrice.toLocaleString()}
+                              <span className="ml-1 text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                                 {Math.round(((product.price - product.onlinePrice) / product.price) * 100)}% off
                               </span>
                             </p>
@@ -1020,20 +999,21 @@ export default function InventoryPage() {
                       {/* Stock Level */}
                       <TableCell className="px-6 text-center">
                         <div className="space-y-1.5 max-w-[140px] mx-auto">
-                          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                          <div className="flex justify-between items-center text-xs font-mono tabular-nums">
                             <span className={cn(
-                              isOut ? "text-rose-700 font-bold" : isLow ? "text-amber-700 font-bold" : "text-emerald-700"
+                              "font-semibold",
+                              isOut ? "text-rose-700" : isLow ? "text-amber-700" : "text-emerald-700"
                             )}>
                               {product.stock} {product.unit}
                             </span>
-                            <span className="text-[9px] text-muted-foreground opacity-60">Min: {product.minThreshold}</span>
+                            <span className="text-[11px] text-slate-500">Min: {product.minThreshold}</span>
                           </div>
-                          <Progress 
-                            value={isOut ? 0 : Math.min((product.stock / Math.max(1, product.minThreshold * 3)) * 100, 100)} 
+                          <Progress
+                            value={isOut ? 0 : Math.min((product.stock / Math.max(1, product.minThreshold * 3)) * 100, 100)}
                             className={cn(
-                              "h-1.5", 
+                              "h-1.5",
                               isOut ? "bg-rose-100 [&>div]:bg-rose-600" : isLow ? "bg-amber-100 [&>div]:bg-amber-500" : "bg-emerald-100 [&>div]:bg-emerald-600"
-                            )} 
+                            )}
                           />
                         </div>
                       </TableCell>
@@ -1041,66 +1021,71 @@ export default function InventoryPage() {
                       {/* Storefront Status */}
                       <TableCell className="text-center">
                         {product.showOnWebsite ? (
-                          <Badge className="bg-teal-50 text-teal-700 border-teal-200 text-[8px] font-black uppercase h-5 px-2">
-                            <Eye className="h-2.5 w-2.5 mr-1" /> Visible
-                          </Badge>
+                          <span className="inline-flex items-center rounded-md bg-teal-50 text-teal-800 border border-teal-200 text-xs font-medium px-2 py-0.5">
+                            <Eye className="h-3 w-3 mr-1" /> Visible
+                          </span>
                         ) : (
-                          <Badge variant="outline" className="text-slate-400 border-slate-200 text-[8px] font-black uppercase h-5 px-2">
-                            <EyeOff className="h-2.5 w-2.5 mr-1" /> Hidden
-                          </Badge>
+                          <span className="inline-flex items-center rounded-md bg-slate-50 text-slate-500 border border-slate-200 text-xs font-medium px-2 py-0.5">
+                            <EyeOff className="h-3 w-3 mr-1" /> Hidden
+                          </span>
                         )}
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell className="text-right pr-8" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Stock Adjust button */}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="h-8 px-2.5 text-[9px] font-black uppercase text-primary border-primary/20 hover:bg-primary/5 rounded-lg"
+                      <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2.5 text-xs font-medium text-slate-700 border-slate-200 hover:bg-slate-100 rounded-lg"
                             title="Adjust Stock"
+                            aria-label={`Adjust stock for ${product.name}`}
                             onClick={(e) => openQuickStockAdjust(e, product)}
                           >
                             <ArrowRightLeft className="h-3 w-3 mr-1" /> Stock
                           </Button>
 
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-slate-600 hover:bg-slate-100" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                            title="Edit Product"
+                            aria-label={`Edit ${product.name}`}
                             onClick={(e) => handleOpenEdit(e, product)}
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
 
                           {isArchived ? (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 rounded-lg text-emerald-600 hover:bg-emerald-50" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-emerald-600 hover:bg-emerald-50"
                               title="Restore Product"
+                              aria-label={`Restore ${product.name}`}
                               onClick={() => handleRestoreProduct(product)}
                             >
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
                           ) : (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 rounded-lg text-amber-600 hover:bg-amber-50" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-amber-600 hover:bg-amber-50"
                               title="Archive Product"
+                              aria-label={`Archive ${product.name}`}
                               onClick={(e) => openArchiveDialog(e, product)}
                             >
                               <Archive className="h-3.5 w-3.5" />
                             </Button>
                           )}
 
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-50" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-50"
                             title="Delete Product Permanently"
+                            aria-label={`Delete ${product.name}`}
                             onClick={(e) => openDeleteDialog(e, product)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -1116,51 +1101,51 @@ export default function InventoryPage() {
         </div>
 
         {/* Bounded Pagination Footer */}
-        <div className="p-4 border-t bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-          <div className="text-muted-foreground font-semibold text-[11px]">
-            Showing <span className="font-bold text-slate-900">{filteredProducts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to{" "}
-            <span className="font-bold text-slate-900">{Math.min(currentPage * pageSize, filteredProducts.length)}</span> of{" "}
-            <span className="font-bold text-slate-900">{filteredProducts.length}</span> items
+        <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="text-slate-500 font-medium tabular-nums">
+            Showing <span className="font-semibold text-slate-900">{filteredProducts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to{" "}
+            <span className="font-semibold text-slate-900">{Math.min(currentPage * pageSize, filteredProducts.length)}</span> of{" "}
+            <span className="font-semibold text-slate-900">{filteredProducts.length}</span> items
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 rounded-lg text-xs font-bold"
+              className="h-8 px-3 rounded-lg text-xs font-medium border-slate-200 bg-white"
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
             </Button>
-            <span className="text-[11px] font-mono font-bold px-2">
+            <span className="text-xs font-mono tabular-nums font-medium text-slate-600 px-2">
               Page {currentPage} of {totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 rounded-lg text-xs font-bold"
+              className="h-8 px-3 rounded-lg text-xs font-medium border-slate-200 bg-white"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             >
-              Next <ChevronRight className="h-4 w-4 ml-1" />
+              Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </Button>
           </div>
         </div>
-      </Card>
+      </SectionCard>
 
       {/* EDIT PRODUCT DIALOG */}
       <Dialog open={isEditProductOpen} onOpenChange={(o) => { setIsEditProductOpen(o); if(!o) { resetForm(); setSelectedProduct(null); } }}>
-        <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col p-0 overflow-hidden w-[95vw] rounded-3xl border-none shadow-2xl">
-          <DialogHeader className="p-6 md:p-8 bg-slate-900 text-white text-left shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
-                <Edit2 className="h-6 w-6 text-white" />
+        <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col p-0 overflow-hidden w-[95vw] rounded-2xl border border-slate-200 bg-white">
+          <DialogHeader className="p-6 bg-slate-900 text-white text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <Edit2 className="h-5 w-5 text-white" />
               </div>
-              <div className="text-left">
-                <DialogTitle className="text-xl font-black uppercase">Edit Product: {selectedProduct?.name}</DialogTitle>
-                <DialogDescription className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">
-                  Pricing • Storefront Toggles • Inventory Safety
+              <div className="text-left min-w-0">
+                <DialogTitle className="text-lg font-bold tracking-tight truncate">Edit product: {selectedProduct?.name}</DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs mt-0.5">
+                  Update pricing, storefront toggles, and stock thresholds.
                 </DialogDescription>
               </div>
             </div>
@@ -1170,14 +1155,14 @@ export default function InventoryPage() {
             {renderProductFormBody()}
           </ScrollArea>
 
-          <DialogFooter className="p-6 bg-muted/10 border-t shrink-0">
-            <Button 
-              onClick={handleSubmitProduct} 
-              disabled={isSubmittingForm} 
-              className="w-full h-14 bg-primary font-black uppercase text-xs tracking-wider rounded-xl shadow-xl text-white"
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200 shrink-0">
+            <Button
+              onClick={handleSubmitProduct}
+              disabled={isSubmittingForm}
+              className="w-full h-11 bg-slate-900 hover:bg-slate-800 font-semibold text-sm rounded-xl text-white"
             >
               {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Update Product Ledger
+              Save product changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1185,69 +1170,74 @@ export default function InventoryPage() {
 
       {/* QUICK STOCK ADJUSTMENT DIALOG */}
       <Dialog open={isStockAdjustOpen} onOpenChange={setIsStockAdjustOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl bg-white text-left p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-black uppercase text-slate-900 flex items-center gap-2">
-              <ArrowRightLeft className="h-4 w-4 text-primary" /> Adjust Inventory Stock
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              {adjustTargetProduct?.name} (Current: <span className="font-bold text-slate-900">{adjustTargetProduct?.stock} {adjustTargetProduct?.unit}</span>)
-            </DialogDescription>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-slate-200 bg-white text-left p-0 overflow-hidden">
+          <DialogHeader className="p-6 bg-slate-900 text-white text-left">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <ArrowRightLeft className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-white">Adjust inventory stock</DialogTitle>
+                <DialogDescription className="text-xs text-slate-300 mt-0.5">
+                  {adjustTargetProduct?.name} (Current: <span className="font-mono tabular-nums font-semibold text-white">{adjustTargetProduct?.stock} {adjustTargetProduct?.unit}</span>)
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="space-y-4 py-3 text-left">
+          <div className="space-y-4 p-6 text-left">
             {/* Adjustment Type Selector */}
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Action Type</Label>
+              <Label className="text-xs font-semibold text-slate-700">Action type</Label>
               <div className="grid grid-cols-3 gap-2">
-                <Button 
-                  type="button" 
-                  variant={adjustType === 'add' ? 'default' : 'outline'} 
-                  className={cn("h-9 text-xs font-black uppercase rounded-xl", adjustType === 'add' && "bg-emerald-600 hover:bg-emerald-700")}
+                <Button
+                  type="button"
+                  variant={adjustType === 'add' ? 'default' : 'outline'}
+                  className={cn("h-9 text-xs font-medium rounded-xl", adjustType === 'add' ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-slate-200")}
                   onClick={() => setAdjustType('add')}
                 >
                   <PlusCircle className="h-3.5 w-3.5 mr-1" /> Add (+)
                 </Button>
-                <Button 
-                  type="button" 
-                  variant={adjustType === 'subtract' ? 'default' : 'outline'} 
-                  className={cn("h-9 text-xs font-black uppercase rounded-xl", adjustType === 'subtract' && "bg-rose-600 hover:bg-rose-700")}
+                <Button
+                  type="button"
+                  variant={adjustType === 'subtract' ? 'default' : 'outline'}
+                  className={cn("h-9 text-xs font-medium rounded-xl", adjustType === 'subtract' ? "bg-rose-600 hover:bg-rose-700 text-white" : "border-slate-200")}
                   onClick={() => setAdjustType('subtract')}
                 >
                   <MinusCircle className="h-3.5 w-3.5 mr-1" /> Remove (-)
                 </Button>
-                <Button 
-                  type="button" 
-                  variant={adjustType === 'set' ? 'default' : 'outline'} 
-                  className={cn("h-9 text-xs font-black uppercase rounded-xl", adjustType === 'set' && "bg-primary")}
+                <Button
+                  type="button"
+                  variant={adjustType === 'set' ? 'default' : 'outline'}
+                  className={cn("h-9 text-xs font-medium rounded-xl", adjustType === 'set' ? "bg-slate-900 hover:bg-slate-800 text-white" : "border-slate-200")}
                   onClick={() => setAdjustType('set')}
                 >
-                  Set Count (=)
+                  Set count (=)
                 </Button>
               </div>
             </div>
 
             {/* Quantity */}
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">
-                {adjustType === 'set' ? 'New Exact Stock Level' : 'Adjustment Quantity'}
+              <Label className="text-xs font-semibold text-slate-700">
+                {adjustType === 'set' ? 'New exact stock level' : 'Adjustment quantity'}
               </Label>
-              <Input 
-                type="number" 
-                min="1" 
-                placeholder="e.g. 25" 
+              <Input
+                type="number"
+                min="1"
+                placeholder="e.g. 25"
                 value={adjustQty}
                 onChange={(e) => setAdjustQty(e.target.value)}
-                className="h-11 rounded-xl text-base font-black"
+                className="h-10 rounded-xl border-slate-200 text-base font-mono tabular-nums font-semibold"
               />
             </div>
 
             {/* Projected Result Preview */}
             {adjustQty && !isNaN(parseInt(adjustQty, 10)) && (
-              <div className="p-3 bg-muted/20 rounded-xl text-xs flex justify-between items-center">
-                <span className="text-muted-foreground font-semibold">Projected New Stock:</span>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex justify-between items-center">
+                <span className="text-slate-600 font-medium">Projected new stock:</span>
                 <span className={cn(
-                  "font-black text-sm",
+                  "font-mono tabular-nums font-bold text-sm",
                   (() => {
                     const current = adjustTargetProduct?.stock || 0;
                     const val = parseInt(adjustQty, 10);
@@ -1273,9 +1263,9 @@ export default function InventoryPage() {
 
             {/* Reason */}
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">Reason / Audit Note</Label>
+              <Label className="text-xs font-semibold text-slate-700">Reason / audit note</Label>
               <Select value={adjustReason} onValueChange={setAdjustReason}>
-                <SelectTrigger className="h-10 rounded-xl text-xs font-bold">
+                <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -1290,17 +1280,17 @@ export default function InventoryPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsStockAdjustOpen(false)} className="rounded-xl font-black uppercase text-[10px]">
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-200 gap-2">
+            <Button variant="outline" onClick={() => setIsStockAdjustOpen(false)} className="rounded-xl font-medium text-xs border-slate-200">
               Cancel
             </Button>
-            <Button 
-              onClick={handleExecuteStockAdjust} 
+            <Button
+              onClick={handleExecuteStockAdjust}
               disabled={isAdjustingStock}
-              className="bg-primary hover:bg-primary/90 text-white font-black uppercase text-[10px] rounded-xl shadow-md"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
             >
-              {isAdjustingStock ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
-              Commit Stock
+              {isAdjustingStock ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Check className="h-4 w-4 mr-1.5" />}
+              Update stock
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1308,43 +1298,43 @@ export default function InventoryPage() {
 
       {/* SAFE ARCHIVE CONFIRMATION ALERT */}
       <AlertDialog open={isArchiveAlertOpen} onOpenChange={setIsArchiveAlertOpen}>
-        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-8 text-left">
+        <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-6 text-left">
           <AlertDialogHeader>
-            <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600 mb-2">
-              <Archive className="h-6 w-6" />
+            <div className="h-11 w-11 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 mb-2">
+              <Archive className="h-5 w-5" />
             </div>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900">
-              Archive Product: {productToArchive?.name}?
+            <AlertDialogTitle className="text-lg font-bold tracking-tight text-slate-900">
+              Archive product: {productToArchive?.name}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Archiving hides this product from your live storefront and marks it inactive, but preserves all historical customer orders and reporting data. You can restore this product at any time.
+            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed">
+              Archiving hides this product from your live storefront and marks it inactive, while preserving all historical customer orders and reporting data. You can restore it at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="py-2 space-y-1.5">
-            <Label className="text-[10px] font-black uppercase text-muted-foreground">Reason for Archiving (Optional)</Label>
-            <Input 
-              value={archiveReason} 
-              onChange={(e) => setArchiveReason(e.target.value)} 
-              placeholder="e.g. Discontinued model or seasonal rotation" 
-              className="rounded-xl text-xs h-10"
+            <Label className="text-xs font-semibold text-slate-700">Reason for archiving (optional)</Label>
+            <Input
+              value={archiveReason}
+              onChange={(e) => setArchiveReason(e.target.value)}
+              placeholder="e.g. Discontinued model or seasonal rotation"
+              className="rounded-xl border-slate-200 text-xs h-10"
             />
           </div>
 
           <AlertDialogFooter className="mt-4 flex gap-3">
             <AlertDialogCancel asChild>
-              <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold uppercase text-[10px]">
+              <Button variant="outline" className="flex-1 h-10 rounded-xl font-medium text-xs border-slate-200">
                 Cancel
               </Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
-              <Button 
-                onClick={handleConfirmArchive} 
+              <Button
+                onClick={handleConfirmArchive}
                 disabled={isSubmittingForm}
-                className="flex-1 h-11 rounded-xl font-black uppercase bg-amber-600 hover:bg-amber-700 text-white border-none shadow-lg text-[10px]"
+                className="flex-1 h-10 rounded-xl font-semibold bg-amber-600 hover:bg-amber-700 text-white border-none text-xs"
               >
-                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Archive className="h-4 w-4 mr-1" />}
-                Confirm Archive
+                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Archive className="h-4 w-4 mr-1.5" />}
+                Confirm archive
               </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1353,33 +1343,33 @@ export default function InventoryPage() {
 
       {/* PERMANENT DELETE CONFIRMATION ALERT */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={(o) => { setIsDeleteAlertOpen(o); if (!o) setProductToDelete(null); }}>
-        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-8 text-left">
+        <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-6 text-left">
           <AlertDialogHeader>
-            <div className="h-12 w-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-600 mb-2">
-              <Trash2 className="h-6 w-6" />
+            <div className="h-11 w-11 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-2">
+              <Trash2 className="h-5 w-5" />
             </div>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900">
-              Delete Product: {productToDelete?.name}?
+            <AlertDialogTitle className="text-lg font-bold tracking-tight text-slate-900">
+              Delete product: {productToDelete?.name}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              This will permanently remove <span className="font-bold text-slate-900">{productToDelete?.name}</span> (SKU: <span className="font-mono font-bold">{productToDelete?.sku}</span>) from Master Inventory and your Online Storefront. This action cannot be undone. Use Archive instead if you want to preserve it as inactive.
+            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed">
+              This will permanently remove <span className="font-semibold text-slate-900">{productToDelete?.name}</span> (SKU: <span className="font-mono font-semibold">{productToDelete?.sku}</span>) from Master Inventory and your Online Storefront. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <AlertDialogFooter className="mt-4 flex gap-3">
             <AlertDialogCancel asChild>
-              <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold uppercase text-[10px]">
+              <Button variant="outline" className="flex-1 h-10 rounded-xl font-medium text-xs border-slate-200">
                 Cancel
               </Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
-              <Button 
-                onClick={handleConfirmDelete} 
+              <Button
+                onClick={handleConfirmDelete}
                 disabled={isSubmittingForm}
-                className="flex-1 h-11 rounded-xl font-black uppercase bg-rose-600 hover:bg-rose-700 text-white border-none shadow-lg text-[10px]"
+                className="flex-1 h-10 rounded-xl font-semibold bg-rose-600 hover:bg-rose-700 text-white border-none text-xs"
               >
-                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-                Delete Permanently
+                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
+                Delete permanently
               </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1388,41 +1378,46 @@ export default function InventoryPage() {
 
       {/* PRODUCT DETAIL & AUDIT SLIDE-OVER SHEET */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-none shadow-2xl overflow-y-auto bg-slate-50 text-left">
+        <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-l border-slate-200 overflow-y-auto bg-slate-50 text-left">
           {selectedProduct && (
             <>
               {/* Header */}
               <div className="p-6 bg-slate-900 text-white shrink-0 relative text-left">
                 <div className="flex items-center justify-between pb-3">
-                  <Badge variant="outline" className="bg-white/10 text-white border-white/20 uppercase text-[9px] font-black px-2.5 py-0.5 rounded-full">
+                  <span className="inline-flex items-center rounded-md bg-white/10 text-slate-200 border border-white/15 font-mono tabular-nums text-[11px] font-medium px-2.5 py-0.5">
                     ID: {selectedProduct.id}
-                  </Badge>
+                  </span>
                   <SheetClose asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white rounded-full">
-                      <X className="h-5 w-5" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Close product details"
+                      className="h-8 w-8 text-white/70 hover:text-white rounded-lg"
+                    >
+                      <X className="h-4 w-4" />
                     </Button>
                   </SheetClose>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 rounded-2xl bg-white/10 border border-white/20 overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="h-14 w-14 rounded-xl bg-white/10 border border-white/15 overflow-hidden shrink-0 flex items-center justify-center">
                     {selectedProduct.images && selectedProduct.images[0] ? (
-                      <img src={selectedProduct.images[0]} alt="" className="h-full w-full object-cover" />
+                      <img src={selectedProduct.images[0]} referrerPolicy="no-referrer" alt={selectedProduct.name} className="h-full w-full object-cover" />
                     ) : (
-                      <Package className="h-8 w-8 text-white/50" />
+                      <Package className="h-6 w-6 text-white/50" />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight truncate">{selectedProduct.name}</h3>
-                    <p className="text-[10px] text-white/60 font-mono mt-0.5">SKU: {selectedProduct.sku}</p>
+                    <h3 className="text-xl font-bold text-white tracking-tight truncate">{selectedProduct.name}</h3>
+                    <p className="text-xs text-slate-300 font-mono tabular-nums mt-0.5">SKU: {selectedProduct.sku}</p>
                     <div className="flex items-center gap-2 pt-2">
-                      <Badge className={cn("text-[8px] font-black uppercase", selectedProduct.showOnWebsite ? "bg-teal-500/20 text-teal-300 border-teal-500/30" : "bg-slate-700 text-slate-300")}>
-                        {selectedProduct.showOnWebsite ? "Online Storefront" : "Offline Only"}
-                      </Badge>
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border", selectedProduct.showOnWebsite ? "bg-teal-500/20 text-teal-200 border-teal-400/30" : "bg-white/10 text-slate-300 border-white/15")}>
+                        {selectedProduct.showOnWebsite ? "Online storefront" : "Offline only"}
+                      </span>
                       {selectedProduct.isArchived && (
-                        <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/30 text-[8px] font-black uppercase">
+                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border bg-rose-500/20 text-rose-200 border-rose-400/30">
                           Archived
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1430,128 +1425,120 @@ export default function InventoryPage() {
               </div>
 
               {/* Body */}
-              <div className="p-6 space-y-6 flex-1">
+              <div className="p-6 space-y-5 flex-1">
                 {/* Metrics Cards */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-white rounded-2xl border shadow-sm space-y-1">
-                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Sale Price (MRP)</span>
-                    <p className="text-xl font-black text-slate-900">{currencySymbol}{selectedProduct.price.toLocaleString()}</p>
-                    {selectedProduct.onlinePrice !== undefined && selectedProduct.onlinePrice < selectedProduct.price && (
-                      <p className="text-[10px] font-bold text-emerald-600">Online: {currencySymbol}{selectedProduct.onlinePrice.toLocaleString()}</p>
-                    )}
-                  </div>
-
-                  <div className="p-4 bg-white rounded-2xl border shadow-sm space-y-1">
-                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Current Stock</span>
-                    <p className={cn("text-xl font-black", selectedProduct.stock <= 0 ? "text-rose-600" : selectedProduct.stock <= selectedProduct.minThreshold ? "text-amber-600" : "text-emerald-700")}>
-                      {selectedProduct.stock} {selectedProduct.unit}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">Safety Min: {selectedProduct.minThreshold}</p>
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <KpiStatCard
+                    label="Sale Price (MRP)"
+                    value={`${currencySymbol}${selectedProduct.price.toLocaleString()}`}
+                    subtext={
+                      selectedProduct.onlinePrice !== undefined && selectedProduct.onlinePrice < selectedProduct.price
+                        ? `Online: ${currencySymbol}${selectedProduct.onlinePrice.toLocaleString()}`
+                        : "Standard catalog price"
+                    }
+                  />
+                  <KpiStatCard
+                    label="Current Stock"
+                    value={`${selectedProduct.stock} ${selectedProduct.unit}`}
+                    subtext={`Safety min: ${selectedProduct.minThreshold}`}
+                    tone={selectedProduct.stock <= 0 ? "danger" : selectedProduct.stock <= selectedProduct.minThreshold ? "warning" : "positive"}
+                  />
                 </div>
 
                 {/* Stock Adjustment Trigger Banner */}
-                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex items-center justify-between">
+                <div className="p-4 bg-white rounded-2xl border border-slate-200 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black uppercase text-primary">Quick Stock Mutation</p>
-                    <p className="text-[10px] text-muted-foreground">Perform audited inventory adjustments</p>
+                    <p className="text-sm font-semibold text-slate-900">Quick stock adjustment</p>
+                    <p className="text-xs text-slate-500">Record audited stock additions, deductions, or physical counts</p>
                   </div>
-                  <Button 
-                    size="sm" 
-                    className="h-8 bg-primary hover:bg-primary/90 text-white font-black uppercase text-[10px] rounded-xl shadow-sm"
+                  <Button
+                    size="sm"
+                    className="h-9 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-xl shrink-0"
                     onClick={(e) => openQuickStockAdjust(e, selectedProduct)}
                   >
-                    <ArrowRightLeft className="h-3 w-3 mr-1" /> Adjust Stock
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1.5" /> Adjust stock
                   </Button>
                 </div>
 
-                {/* Technical Node Details */}
-                <Card className="border-none shadow-sm bg-white rounded-2xl p-5 border space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Technical & Tax Profile
-                  </p>
-
+                {/* Technical & Tax Details */}
+                <SectionCard title="Technical & tax profile">
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 bg-slate-50 rounded-xl border">
-                      <span className="text-[9px] font-black uppercase text-muted-foreground">HSN Code</span>
-                      <p className="font-mono font-bold text-slate-800">{selectedProduct.hsnCode || "None"}</p>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-xs font-medium text-slate-500">HSN code</span>
+                      <p className="font-mono tabular-nums font-semibold text-slate-900 mt-1">{selectedProduct.hsnCode || "None"}</p>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border">
-                      <span className="text-[9px] font-black uppercase text-muted-foreground">GST Slab</span>
-                      <p className="font-bold text-slate-800">{selectedProduct.gstRate}%</p>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-xs font-medium text-slate-500">GST slab</span>
+                      <p className="font-mono tabular-nums font-semibold text-slate-900 mt-1">{selectedProduct.gstRate}%</p>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border">
-                      <span className="text-[9px] font-black uppercase text-muted-foreground">Batch Number</span>
-                      <p className="font-mono font-bold text-slate-800">{selectedProduct.batchNumber || "General"}</p>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-xs font-medium text-slate-500">Batch number</span>
+                      <p className="font-mono tabular-nums font-semibold text-slate-900 mt-1">{selectedProduct.batchNumber || "General"}</p>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border">
-                      <span className="text-[9px] font-black uppercase text-muted-foreground">Expiry Date</span>
-                      <p className="font-bold text-slate-800">{selectedProduct.expiryDate || "N/A"}</p>
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <span className="text-xs font-medium text-slate-500">Expiry date</span>
+                      <p className="font-mono tabular-nums font-semibold text-slate-900 mt-1">{selectedProduct.expiryDate || "N/A"}</p>
                     </div>
                   </div>
-                </Card>
+                </SectionCard>
 
                 {/* Audit Trail: Stock History */}
-                <Card className="border-none shadow-sm bg-white rounded-2xl p-5 border space-y-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                    <History className="h-3.5 w-3.5 text-primary" /> Stock Movement History
-                  </p>
-
+                <SectionCard title="Stock movement history">
                   {isLoadingAuditLogs ? (
                     <div className="py-6 text-center">
-                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary opacity-40" />
-                      <p className="text-[10px] font-bold text-muted-foreground mt-2">Loading audit trail...</p>
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-slate-400" />
+                      <p className="text-xs font-medium text-slate-500 mt-2">Loading audit trail...</p>
                     </div>
                   ) : stockAuditLogs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic py-2">No manual stock adjustments recorded yet.</p>
+                    <p className="text-xs text-slate-500 py-2">No manual stock adjustments recorded yet.</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {stockAuditLogs.map((log) => {
                         const isPositive = log.delta > 0;
                         const logDate = log.adjustedAt ? new Date(log.adjustedAt) : null;
                         return (
-                          <div key={log.id} className="p-3 rounded-xl bg-slate-50 border text-xs flex justify-between items-start">
+                          <div key={log.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex justify-between items-start gap-3">
                             <div className="space-y-0.5 text-left">
-                              <p className="font-bold text-slate-800">{log.reason || "Manual adjustment"}</p>
-                              <p className="text-[10px] text-muted-foreground font-mono">
+                              <p className="font-semibold text-slate-900">{log.reason || "Manual adjustment"}</p>
+                              <p className="text-[11px] text-slate-500 font-mono tabular-nums">
                                 {logDate ? format(logDate, 'dd MMM yyyy, hh:mm a') : 'Recently'}
                               </p>
                             </div>
-                            <div className="text-right">
-                              <Badge className={cn("text-[9px] font-black font-mono", isPositive ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")}>
+                            <div className="text-right shrink-0">
+                              <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold font-mono tabular-nums border", isPositive ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-rose-50 text-rose-800 border-rose-200")}>
                                 {isPositive ? `+${log.delta}` : `${log.delta}`}
-                              </Badge>
-                              <p className="text-[9px] text-muted-foreground mt-0.5">Stock: {log.newStock}</p>
+                              </span>
+                              <p className="text-[11px] font-mono tabular-nums text-slate-500 mt-0.5">Stock: {log.newStock}</p>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                   )}
-                </Card>
+                </SectionCard>
               </div>
 
               {/* Footer Actions */}
-              <div className="p-4 border-t bg-white flex gap-2 shrink-0">
-                <Button 
-                  variant="outline" 
-                  className="h-11 px-4 rounded-xl font-black uppercase text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700" 
+              <div className="p-4 border-t border-slate-200 bg-white flex gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  className="h-10 px-4 rounded-xl font-medium text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                   onClick={(e) => openDeleteDialog(e, selectedProduct)}
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
                 </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1 h-11 rounded-xl font-black uppercase text-[10px]" 
+                <Button
+                  variant="outline"
+                  className="flex-1 h-10 rounded-xl font-medium text-xs border-slate-200"
                   onClick={() => setIsDrawerOpen(false)}
                 >
                   Close
                 </Button>
-                <Button 
-                  className="flex-1 h-11 bg-primary text-white font-black uppercase text-[10px] rounded-xl shadow-md"
+                <Button
+                  className="flex-1 h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
                   onClick={(e) => handleOpenEdit(e, selectedProduct)}
                 >
-                  <Edit2 className="h-3.5 w-3.5 mr-1" /> Edit Product
+                  <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit product
                 </Button>
               </div>
             </>
@@ -1564,84 +1551,83 @@ export default function InventoryPage() {
   // Helper renderer for Product Add / Edit Form
   function renderProductFormBody() {
     return (
-      <div className="p-6 md:p-8 space-y-8 text-left">
+      <div className="p-6 space-y-6 text-left">
         {/* Section 1: Basic Identity */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-              1. Basic Identity
-            </Label>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              disabled={isAiSuggesting} 
-              onClick={handleAiSuggest} 
-              className="h-8 rounded-xl bg-primary/5 text-primary text-[9px] font-black uppercase gap-1.5 border border-primary/10"
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-slate-900">1. Basic identity</h4>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isAiSuggesting}
+              onClick={handleAiSuggest}
+              className="h-8 rounded-lg border-slate-200 text-slate-700 text-xs font-medium gap-1.5"
             >
               {isAiSuggesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-              AI Suggest Meta
+              AI suggest meta
             </Button>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-bold uppercase ml-1 opacity-70">Product Name *</Label>
-            <Input 
-              ref={nameInputRef} 
-              value={formName} 
-              onChange={(e) => setFormName(e.target.value)} 
-              placeholder="e.g. 550W Mono PERC Solar Panel or Wireless Mouse" 
-              className="h-12 rounded-xl font-black text-base border border-slate-200 bg-muted/20 shadow-inner" 
+            <Label className="text-xs font-semibold text-slate-700">Product name *</Label>
+            <Input
+              ref={nameInputRef}
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="e.g. 550W Mono PERC Solar Panel or Wireless Mouse"
+              className="h-10 rounded-xl font-medium text-sm border-slate-200 bg-white"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">SKU Code</Label>
-              <Input 
-                value={formSku} 
-                onChange={(e) => setFormSku(e.target.value.toUpperCase())} 
-                placeholder="Auto-generated if empty" 
-                className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-mono text-xs font-bold" 
+              <Label className="text-xs font-semibold text-slate-700">SKU code</Label>
+              <Input
+                value={formSku}
+                onChange={(e) => setFormSku(e.target.value.toUpperCase())}
+                placeholder="Auto-generated if empty"
+                className="h-10 rounded-xl bg-white border-slate-200 font-mono text-xs"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Category</Label>
+              <Label className="text-xs font-semibold text-slate-700">Category</Label>
               <Select value={formCategory} onValueChange={setFormCategory}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold uppercase text-[10px]">
-                    <SelectValue placeholder="Select Category" />
+                <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium">
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                    {dynamicCategories.map((c: string) => (
-                        <SelectItem key={c} value={c} className="text-[10px] font-bold uppercase">{c}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Unit</Label>
-              <Select value={formUnit} onValueChange={setFormUnit}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold uppercase text-[10px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {dynamicUnits.map((u: string) => (
-                    <SelectItem key={u} value={u} className="text-[10px] font-bold uppercase">{u}</SelectItem>
+                  {dynamicCategories.map((c: string) => (
+                    <SelectItem key={c} value={c} className="text-xs font-medium">{c}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">GST Slab</Label>
+              <Label className="text-xs font-semibold text-slate-700">Unit</Label>
+              <Select value={formUnit} onValueChange={setFormUnit}>
+                <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {dynamicUnits.map((u: string) => (
+                    <SelectItem key={u} value={u} className="text-xs font-medium">{u}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">GST slab</Label>
               <Select value={formGst} onValueChange={setFormGst}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold text-[10px] uppercase">
+                <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   {dynamicGstSlabs.map((s: number) => (
-                    <SelectItem key={s} value={s.toString()} className="text-[10px] font-bold">{s}% GST</SelectItem>
+                    <SelectItem key={s} value={s.toString()} className="text-xs font-medium">{s}% GST</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -1649,127 +1635,125 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <Separator />
+        <Separator className="bg-slate-200" />
 
         {/* Section 2: Pricing Strategy & Storefront Controls */}
         <div className="space-y-4">
-          <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-            2. Pricing & Storefront Catalog
-          </Label>
+          <h4 className="text-sm font-semibold text-slate-900">2. Pricing & storefront catalog</h4>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase text-slate-800 ml-1">Base Price / MRP ({currencySymbol}) *</Label>
-              <Input 
-                type="number" 
-                value={formPrice} 
-                onChange={(e) => setFormPrice(e.target.value)} 
-                className="h-12 rounded-xl bg-slate-50 border border-slate-200 font-black text-lg" 
-                placeholder="0.00" 
+              <Label className="text-xs font-semibold text-slate-700">Base price / MRP ({currencySymbol}) *</Label>
+              <Input
+                type="number"
+                value={formPrice}
+                onChange={(e) => setFormPrice(e.target.value)}
+                className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums font-semibold text-sm"
+                placeholder="0.00"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase text-primary ml-1">Online Store Price ({currencySymbol})</Label>
-              <Input 
-                type="number" 
-                value={formOnlinePrice} 
-                onChange={(e) => setFormOnlinePrice(e.target.value)} 
-                className="h-12 rounded-xl bg-primary/5 text-primary border border-slate-200 font-black text-lg" 
-                placeholder="Defaults to MRP" 
+              <Label className="text-xs font-semibold text-slate-700">Online store price ({currencySymbol})</Label>
+              <Input
+                type="number"
+                value={formOnlinePrice}
+                onChange={(e) => setFormOnlinePrice(e.target.value)}
+                className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums font-semibold text-sm"
+                placeholder="Defaults to MRP"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase text-red-600 ml-1">Purchase Cost ({currencySymbol})</Label>
-              <Input 
-                type="number" 
-                value={formCost} 
-                onChange={(e) => setFormCost(e.target.value)} 
-                className="h-12 rounded-xl bg-red-50 text-red-700 border border-slate-200 font-black text-lg" 
-                placeholder="0.00" 
+              <Label className="text-xs font-semibold text-slate-700">Purchase cost ({currencySymbol})</Label>
+              <Input
+                type="number"
+                value={formCost}
+                onChange={(e) => setFormCost(e.target.value)}
+                className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums font-semibold text-sm"
+                placeholder="0.00"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Safety Stock Threshold</Label>
-              <Input 
-                type="number" 
-                value={formMinThreshold} 
-                onChange={(e) => setFormMinThreshold(e.target.value)} 
-                className="h-12 rounded-xl bg-muted/20 border border-slate-200 font-bold" 
+              <Label className="text-xs font-semibold text-slate-700">Safety stock threshold</Label>
+              <Input
+                type="number"
+                value={formMinThreshold}
+                onChange={(e) => setFormMinThreshold(e.target.value)}
+                className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums text-sm"
               />
             </div>
           </div>
 
           {/* Pricing analytics helper */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Calculator className="h-5 w-5 text-primary" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Calculator className="h-4 w-4 text-slate-600" />
                 <div>
-                  <p className="text-[10px] font-black uppercase text-primary">Profit Margin</p>
-                  <p className="text-[9px] text-muted-foreground">Markup over purchase cost</p>
+                  <p className="text-xs font-semibold text-slate-900">Profit margin</p>
+                  <p className="text-[11px] text-slate-500">Markup over purchase cost</p>
                 </div>
               </div>
-              <p className={cn("text-xl font-black", formMarginPercent >= 20 ? "text-green-600" : "text-amber-600")}>
+              <p className={cn("text-lg font-bold font-mono tabular-nums", formMarginPercent >= 20 ? "text-emerald-700" : "text-amber-700")}>
                 {formMarginPercent}%
               </p>
             </div>
 
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Tag className="h-5 w-5 text-emerald-700" />
+            <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <Tag className="h-4 w-4 text-emerald-700" />
                 <div>
-                  <p className="text-[10px] font-black uppercase text-emerald-800">Storefront Discount</p>
-                  <p className="text-[9px] text-muted-foreground">Discount off base MRP</p>
+                  <p className="text-xs font-semibold text-emerald-900">Storefront discount</p>
+                  <p className="text-[11px] text-emerald-700">Discount off base MRP</p>
                 </div>
               </div>
-              <p className="text-xl font-black text-emerald-700">
-                {formDiscountPercent}% OFF
+              <p className="text-lg font-bold font-mono tabular-nums text-emerald-700">
+                {formDiscountPercent}% off
               </p>
             </div>
           </div>
 
           {/* Store Builder Catalog Toggles */}
-          <div className="p-5 bg-slate-50 rounded-2xl border space-y-4">
-            <p className="text-[10px] font-black uppercase text-slate-700 tracking-wider">
-              Store Builder Visibility & Badging
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <p className="text-xs font-semibold text-slate-700">
+              Store builder visibility & badging
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-slate-800">Show On Website</span>
-                  <p className="text-[9px] text-muted-foreground">Visible on online storefront</p>
+                  <span className="text-xs font-semibold text-slate-800">Show on website</span>
+                  <p className="text-[11px] text-slate-500">Visible on storefront</p>
                 </div>
-                <Switch 
-                  checked={formShowOnWebsite} 
-                  onCheckedChange={setFormShowOnWebsite} 
+                <Switch
+                  checked={formShowOnWebsite}
+                  onCheckedChange={setFormShowOnWebsite}
                   className="data-[state=checked]:bg-teal-600"
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
+              <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-slate-800">Featured Item</span>
-                  <p className="text-[9px] text-muted-foreground">Show in featured collections</p>
+                  <span className="text-xs font-semibold text-slate-800">Featured item</span>
+                  <p className="text-[11px] text-slate-500">Featured collections</p>
                 </div>
-                <Switch 
-                  checked={formIsFeatured} 
-                  onCheckedChange={setFormIsFeatured} 
+                <Switch
+                  checked={formIsFeatured}
+                  onCheckedChange={setFormIsFeatured}
                   className="data-[state=checked]:bg-amber-600"
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-white rounded-xl border">
+              <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-slate-800">Best Seller</span>
-                  <p className="text-[9px] text-muted-foreground">Highlight as top-selling</p>
+                  <span className="text-xs font-semibold text-slate-800">Best seller</span>
+                  <p className="text-[11px] text-slate-500">Top-selling badge</p>
                 </div>
-                <Switch 
-                  checked={formIsBestSeller} 
-                  onCheckedChange={setFormIsBestSeller} 
+                <Switch
+                  checked={formIsBestSeller}
+                  onCheckedChange={setFormIsBestSeller}
                   className="data-[state=checked]:bg-purple-600"
                 />
               </div>
@@ -1777,95 +1761,92 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        <Separator />
+        <Separator className="bg-slate-200" />
 
         {/* Section 3: Stock & Logistics */}
         <div className="space-y-4">
-          <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-            3. Inventory & Supplier
-          </Label>
+          <h4 className="text-sm font-semibold text-slate-900">3. Inventory & supplier</h4>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             {!selectedProduct && (
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase ml-1 opacity-70">Initial Opening Stock</Label>
-                <Input 
-                  type="number" 
-                  value={formStock} 
-                  onChange={(e) => setFormStock(e.target.value)} 
-                  className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold text-base" 
+                <Label className="text-xs font-semibold text-slate-700">Initial opening stock</Label>
+                <Input
+                  type="number"
+                  value={formStock}
+                  onChange={(e) => setFormStock(e.target.value)}
+                  className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums text-sm"
                   placeholder="0"
                 />
               </div>
             )}
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Primary Vendor</Label>
+              <Label className="text-xs font-semibold text-slate-700">Primary vendor</Label>
               <Select value={formVendorId} onValueChange={setFormVendorId}>
-                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-bold uppercase text-[10px]">
-                  <SelectValue placeholder="Pick Supplier" />
+                <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium">
+                  <SelectValue placeholder="Pick supplier" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="none" className="text-[10px] font-bold uppercase">No Vendor</SelectItem>
+                  <SelectItem value="none" className="text-xs font-medium">No vendor</SelectItem>
                   {vendorList.map(v => (
-                    <SelectItem key={v.id} value={v.id} className="text-[10px] font-bold uppercase">{v.name}</SelectItem>
+                    <SelectItem key={v.id} value={v.id} className="text-xs font-medium">{v.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Batch Number</Label>
-              <Input 
-                value={formBatchNumber} 
-                onChange={(e) => setFormBatchNumber(e.target.value.toUpperCase())} 
-                placeholder="e.g. B-8821" 
-                className="h-11 rounded-xl bg-muted/20 border border-slate-200 font-mono text-xs" 
+              <Label className="text-xs font-semibold text-slate-700">Batch number</Label>
+              <Input
+                value={formBatchNumber}
+                onChange={(e) => setFormBatchNumber(e.target.value.toUpperCase())}
+                placeholder="e.g. B-8821"
+                className="h-10 rounded-xl bg-white border-slate-200 font-mono text-xs"
               />
             </div>
           </div>
         </div>
 
-        <Separator />
+        <Separator className="bg-slate-200" />
 
         {/* Section 4: Images & Description */}
         <div className="space-y-4">
-          <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-            4. Media & Description
-          </Label>
+          <h4 className="text-sm font-semibold text-slate-900">4. Media & description</h4>
 
           <div className="space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {formImages.map((img, i) => (
-                <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border group shadow-sm">
-                  <img src={img} className="w-full h-full object-cover" alt="" />
-                  <button 
+                <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 group">
+                  <img src={img} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt={`Product photo ${i + 1}`} />
+                  <button
                     type="button"
-                    onClick={() => setFormImages(formImages.filter((_, idx) => idx !== i))} 
-                    className="absolute top-1 right-1 h-6 w-6 bg-white/90 rounded-full flex items-center justify-center text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label={`Remove image ${i + 1}`}
+                    onClick={() => setFormImages(formImages.filter((_, idx) => idx !== i))}
+                    className="absolute top-1.5 right-1.5 h-6 w-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </div>
               ))}
-              <button 
+              <button
                 type="button"
-                onClick={() => imageInputRef.current?.click()} 
-                className="aspect-square rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 flex flex-col items-center justify-center gap-1 hover:bg-primary/10 transition-all"
+                onClick={() => imageInputRef.current?.click()}
+                className="aspect-square rounded-xl border border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition-colors"
               >
-                <Upload className="h-5 w-5 text-primary" />
-                <span className="text-[8px] font-black uppercase text-primary/70">Upload</span>
+                <Upload className="h-4 w-4 text-slate-600" />
+                <span className="text-xs font-medium text-slate-600">Upload</span>
               </button>
             </div>
             <input type="file" ref={imageInputRef} className="hidden" accept="image/*" multiple onChange={handleImageUpload} />
 
-            <div className="space-y-1.5 pt-2">
-              <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Product Description</Label>
-              <Textarea 
-                value={formDescription} 
-                onChange={(e) => setFormDescription(e.target.value)} 
-                className="min-h-[90px] rounded-xl bg-muted/20 border-none shadow-inner p-3 text-xs leading-relaxed" 
-                placeholder="Product specifications, features, and warranty details..." 
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-semibold text-slate-700">Product description</Label>
+              <Textarea
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                className="min-h-[90px] rounded-xl bg-white border-slate-200 p-3 text-sm leading-relaxed"
+                placeholder="Product specifications, features, and warranty details..."
               />
             </div>
           </div>

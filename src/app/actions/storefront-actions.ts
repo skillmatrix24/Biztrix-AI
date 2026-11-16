@@ -1069,7 +1069,10 @@ export async function getPublicFunnelData(params: {
           .where('kind', '==', 'funnel')
           .limit(5)
           .get();
-        const docs = fQuery.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, any>) }));
+        const docs: Array<Record<string, any> & { id: string }> = fQuery.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Record<string, any>),
+        }));
         rawFunnelDoc = docs.find((d) => d.status === 'published') || docs[0] || null;
       }
     } catch (adminErr: any) {

@@ -171,7 +171,7 @@ export function InvoicePrintTemplate({ invoice, business, currencySymbol, isPrev
           </div>
         </div>
         <div className="text-left space-y-3">
-          <p className="text-[8px] font-black uppercase text-black tracking-[0.2em] border-b border-black/20 pb-1 w-fit pr-6 leading-none">EXECUTION NODE</p>
+          <p className="text-[8px] font-black uppercase text-black tracking-[0.2em] border-b border-black/20 pb-1 w-fit pr-6 leading-none">PAYMENT & DISPATCH</p>
           <div className="text-[9px] font-bold text-black space-y-2 uppercase leading-none">
               <div className="flex justify-between max-w-[240px]"><span>Method:</span> <span className="font-black">{invoice.paymentMode || 'Cash'}</span></div>
               {Array.isArray(invoice.splitPayments) && invoice.splitPayments.length > 0 && (
@@ -294,7 +294,7 @@ export function InvoicePrintTemplate({ invoice, business, currencySymbol, isPrev
                         <div className="flex justify-between"><span>SGST (State Tax)</span><span className="font-black">{currencySymbol}{t.sgst?.toLocaleString()}</span></div>
                       </>
                     )}
-                    <div className="flex justify-between font-black text-black pt-2 border-t border-black/10"><span>Total Tax Node</span><span>₹{t.taxTotal?.toLocaleString()}</span></div>
+                    <div className="flex justify-between font-black text-black pt-2 border-t border-black/10"><span>Total Tax</span><span>₹{t.taxTotal?.toLocaleString()}</span></div>
                 </div>
               </div>
             )}
@@ -319,7 +319,7 @@ export function InvoicePrintTemplate({ invoice, business, currencySymbol, isPrev
 
           {/* Right Column: Reconciliation & Net Payable */}
           <div className="w-[40%] flex flex-col gap-6">
-            <div className="p-6 border-2 border-black rounded-[2.5rem] bg-white flex flex-col justify-center text-left">
+            <div className="p-6 border-2 border-black rounded-2xl bg-white flex flex-col justify-center text-left">
               <div className="space-y-4 w-full">
                 <div className="flex justify-between text-[10px] font-black text-black uppercase leading-none">
                     <span className="opacity-60">Gross Subtotal</span>
@@ -370,7 +370,7 @@ export function InvoicePrintTemplate({ invoice, business, currencySymbol, isPrev
           </div>
           <div className="text-center space-y-2 w-48">
               <div className="h-0.5 w-full bg-black" />
-              <p className="text-[9px] font-black uppercase text-black tracking-widest leading-none">Authorized Node</p>
+              <p className="text-[9px] font-black uppercase text-black tracking-widest leading-none">Authorized Signatory</p>
           </div>
         </div>
 

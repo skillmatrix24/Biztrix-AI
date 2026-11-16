@@ -1,125 +1,186 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { 
-  LayoutDashboard, 
-  Zap, 
-  Target, 
-  Briefcase, 
-  Calculator, 
-  Package, 
-  Wrench, 
-  ShieldCheck, 
-  AlertCircle, 
-  Clock, 
-  CheckCircle2, 
-  TrendingUp, 
-  ChevronRight, 
-  Filter, 
-  Search,
-  Users,
-  User,
+import {
+  LayoutDashboard,
+  Target,
+  Briefcase,
+  Package,
+  Wrench,
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
   Bot,
-  SmartphoneNfc,
-  History,
-  FileText,
-  BadgeCheck,
-  Building2,
   DollarSign,
-  Smartphone,
   Loader2,
-  Lock,
-  ArrowRight,
-  Sun,
-  ClipboardCheck,
-  AlertTriangle,
-  Layers,
-  SearchCode,
   Activity,
   LineChart,
-  Info,
   Sparkles,
-  Bell
+  Bell,
+  SearchCode,
+  BadgeCheck,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection, updateDocumentNonBlocking } from "@/firebase";
+import {
+  PageHeader,
+  KpiStatCard,
+  SectionCard,
+  EmptyStatePanel,
+} from "@/components/ui/editorial";
+import {
+  useFirestore,
+  useUser,
+  useDoc,
+  useMemoFirebase,
+  useCollection,
+} from "@/firebase";
 import { collection, doc, query, where, orderBy, limit } from "firebase/firestore";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { runSolarConditionScanner } from "@/firebase/solar-notifications";
 
 const INSTALL_STATUS_GROUPS: Record<string, string[]> = {
-  'Staging': ['READY_TO_SCHEDULE', 'SCHEDULED', 'TEAM_ASSIGNED', 'MATERIAL_READY'],
-  'Active': ['IN_PROGRESS', 'QUALITY_CHECK', 'COMMISSIONING'],
-  'Closed': ['COMPLETED', 'HANDED_OVER']
+  Staging: ["READY_TO_SCHEDULE", "SCHEDULED", "TEAM_ASSIGNED", "MATERIAL_READY"],
+  Active: ["IN_PROGRESS", "QUALITY_CHECK", "COMMISSIONING"],
+  Closed: ["COMPLETED", "HANDED_OVER"],
 };
 
 export default function SolarOperationsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
-  const router = useRouter();
 
-  const userProfileRef = useMemoFirebase(() => 
-    user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
-  const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'manager';
+  const isAdmin =
+    userProfile?.role === "admin" || userProfile?.role === "manager";
 
-  // --- DATA NODES ---
-  const inqQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'solarInquiries') : null, [firestore, businessId]);
+  const businessRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
+  const { data: business } = useDoc<any>(businessRef);
+
+  const inqQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(firestore, "businesses", businessId, "solarInquiries")
+        : null,
+    [firestore, businessId]
+  );
   const { data: inquiriesData } = useCollection<any>(inqQuery);
   const inquiries = inquiriesData || [];
 
-  const installsQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'solarInstallations') : null, [firestore, businessId]);
+  const installsQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(firestore, "businesses", businessId, "solarInstallations")
+        : null,
+    [firestore, businessId]
+  );
   const { data: installationsData } = useCollection<any>(installsQuery);
   const installations = installationsData || [];
 
-  const serviceQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'solarServiceRequests') : null, [firestore, businessId]);
+  const serviceQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(
+            firestore,
+            "businesses",
+            businessId,
+            "solarServiceRequests"
+          )
+        : null,
+    [firestore, businessId]
+  );
   const { data: servicesData } = useCollection<any>(serviceQuery);
   const services = servicesData || [];
 
-  const amcQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'solarAmcContracts') : null, [firestore, businessId]);
+  const amcQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(firestore, "businesses", businessId, "solarAmcContracts")
+        : null,
+    [firestore, businessId]
+  );
   const { data: amcListData } = useCollection<any>(amcQuery);
   const amcList = amcListData || [];
 
-  const productsQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'products') : null, [firestore, businessId]);
+  const productsQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(firestore, "businesses", businessId, "products")
+        : null,
+    [firestore, businessId]
+  );
   const { data: productsData } = useCollection<any>(productsQuery);
   const products = productsData || [];
 
-  const quotesQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'quotations'), orderBy('createdAt', 'desc')) : null, [firestore, businessId]);
+  const quotesQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "quotations"),
+            orderBy("createdAt", "desc")
+          )
+        : null,
+    [firestore, businessId]
+  );
   const { data: allQuotesData } = useCollection<any>(quotesQuery);
   const allQuotes = allQuotesData || [];
-  const solarQuotes = useMemo(() => (allQuotes || []).filter((q: any) => q.solarSystemDesignId), [allQuotes]);
+  const solarQuotes = useMemo(
+    () => (allQuotes || []).filter((q: any) => q.solarSystemDesignId),
+    [allQuotes]
+  );
 
-  const cashbookQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'cashbook'), where('category', '==', 'Sales')) : null, [firestore, businessId]);
+  const cashbookQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "cashbook"),
+            where("category", "==", "Sales")
+          )
+        : null,
+    [firestore, businessId]
+  );
   const { data: transactionsData } = useCollection<any>(cashbookQuery);
   const transactions = transactionsData || [];
 
-  const notifQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'notifications'), where('type', '==', 'solar_alert'), orderBy('createdAt', 'desc'), limit(10)) : null, [firestore, businessId]);
+  const notifQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "notifications"),
+            where("type", "==", "solar_alert"),
+            orderBy("createdAt", "desc"),
+            limit(10)
+          )
+        : null,
+    [firestore, businessId]
+  );
   const { data: solarAlertsData } = useCollection<any>(notifQuery);
   const solarAlerts = solarAlertsData || [];
 
   const [activeTab, setActiveTab] = useState("overview");
-  const currencySymbol = getCurrencySymbol(businessId ? "INR" : "INR");
+  const currencySymbol = getCurrencySymbol(business?.currency);
 
-  // --- TRIGGER SCANNER ---
   useEffect(() => {
     if (businessId && isAdmin && user?.uid) {
       runSolarConditionScanner(firestore, businessId, user.uid);
@@ -127,26 +188,49 @@ export default function SolarOperationsPage() {
   }, [businessId, isAdmin, user?.uid, firestore]);
 
   const opsStats = useMemo(() => {
-    const fresh = (inquiries || []).filter(i => i.status === 'NEW').length;
-    const workingInstalls = (installations || []).filter(i => i.status !== 'HANDED_OVER' && i.status !== 'CANCELLED').length;
-    const openService = (services || []).filter(s => s.status !== 'RESOLVED' && s.status !== 'CLOSED').length;
-    const activeAmc = (amcList || []).filter(a => a.status === 'ACTIVE').length; 
+    const fresh = (inquiries || []).filter((i) => i.status === "NEW").length;
+    const workingInstalls = (installations || []).filter(
+      (i) => i.status !== "HANDED_OVER" && i.status !== "CANCELLED"
+    ).length;
+    const openService = (services || []).filter(
+      (s) => s.status !== "RESOLVED" && s.status !== "CLOSED"
+    ).length;
+    const activeAmc = (amcList || []).filter(
+      (a) => a.status === "ACTIVE"
+    ).length;
 
-    const totalKw = (installations || []).filter(i => i.status === 'HANDED_OVER').reduce((sum, i) => sum + (parseFloat(i.capacityKw) || 0), 0);
-    const acceptedValue = (solarQuotes || []).filter(q => q.status === 'converted').reduce((sum, q) => sum + (q.totals?.finalPayout || 0), 0);
-    const totalCollected = (transactions || []).reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const totalKw = (installations || [])
+      .filter((i) => i.status === "HANDED_OVER")
+      .reduce((sum, i) => sum + (parseFloat(i.capacityKw) || 0), 0);
+    const acceptedValue = (solarQuotes || [])
+      .filter((q) => q.status === "converted")
+      .reduce((sum, q) => sum + (q.totals?.finalPayout || 0), 0);
+    const totalCollected = (transactions || []).reduce(
+      (sum, t) => sum + (parseFloat(t.amount) || 0),
+      0
+    );
     const collectionGap = acceptedValue - totalCollected;
 
-    return { fresh, workingInstalls, openService, activeAmc, totalKw, acceptedValue, totalCollected, collectionGap };
+    return {
+      fresh,
+      workingInstalls,
+      openService,
+      activeAmc,
+      totalKw,
+      acceptedValue,
+      totalCollected,
+      collectionGap,
+    };
   }, [inquiries, installations, services, amcList, solarQuotes, transactions]);
 
-  // MATERIAL READINESS ENGINE
   const materialReadiness = useMemo(() => {
-    const active = (installations || []).filter(i => i.status !== 'HANDED_OVER' && i.status !== 'CANCELLED');
-    return active.map(inst => {
+    const active = (installations || []).filter(
+      (i) => i.status !== "HANDED_OVER" && i.status !== "CANCELLED"
+    );
+    return active.map((inst) => {
       const materials = inst.materials || [];
       const shortages = materials.filter((m: any) => {
-        const product = products?.find(p => p.id === m.productId);
+        const product = products?.find((p) => p.id === m.productId);
         const remaining = (m.required || 0) - (m.issued || 0);
         return (product?.stock || 0) < remaining;
       });
@@ -157,234 +241,502 @@ export default function SolarOperationsPage() {
         number: inst.installationNumber,
         status: inst.status,
         shortageCount: shortages.length,
-        isReady: shortages.length === 0
+        isReady: shortages.length === 0,
       };
     });
   }, [installations, products]);
 
-  if (isProfileLoading) return <div className="min-h-screen flex items-center justify-center opacity-40 text-left"><Loader2 className="animate-spin text-primary h-10 w-10" /></div>;
+  const shortfallCount = materialReadiness.filter((m) => !m.isReady).length;
+
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-slate-600 h-8 w-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-20 text-left">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between px-1">
-        <div className="flex items-center gap-4 text-left">
-          <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl">
-            <LayoutDashboard className="h-7 w-7" />
-          </div>
-          <div className="text-left">
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-none uppercase">Solar Operations</h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">Control Center Node v3.5</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-           <Button asChild variant="outline" className="h-10 px-6 rounded-xl border-primary/20 text-primary font-black uppercase text-[9px] tracking-widest bg-white shadow-sm">
-             <Link href="/solar/analytics"><LineChart className="mr-2 h-4 w-4" /> BI Analytics</Link>
-           </Button>
-           <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl h-10 px-6 font-black uppercase text-[9px] tracking-widest rounded-xl text-white">
-             <Link href="/solar/ai-insights"><Sparkles className="mr-2 h-4 w-4" /> Intelligence</Link>
-           </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Solar Operations"
+        description="Live operational radar, field installations, and material readiness"
+        actions={
+          <>
+            <Button
+              asChild
+              variant="outline"
+              className="h-10 px-4 rounded-xl border-slate-200 text-slate-800 font-semibold text-sm bg-white"
+            >
+              <Link href="/solar/analytics">
+                <LineChart className="mr-2 h-4 w-4 text-slate-600" /> BI
+                Analytics
+              </Link>
+            </Button>
+            <Button
+              asChild
+              className="bg-slate-900 hover:bg-slate-800 h-10 px-5 font-semibold text-sm rounded-xl text-white"
+            >
+              <Link href="/solar/ai-insights">
+                <Sparkles className="mr-2 h-4 w-4" /> Intelligence
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-primary flex flex-col justify-between h-32 text-left">
-           <div className="flex items-center justify-between opacity-60 mb-1"><span className="text-[9px] font-black uppercase tracking-widest">Active Sites</span><Activity className="h-4 w-4 text-primary" /></div>
-           <div className="text-2xl md:text-3xl font-black text-slate-900">{opsStats.workingInstalls} Units</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-orange-500 flex flex-col justify-between h-32 text-left">
-           <div className="flex items-center justify-between opacity-60 mb-1"><span className="text-[9px] font-black uppercase tracking-widest">Installed Capacity</span><BadgeCheck className="h-4 w-4 text-orange-600" /></div>
-           <div className="text-2xl md:text-3xl font-black text-orange-700">{opsStats.totalKw} kWp</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-green-500 flex flex-col justify-between h-32 text-left">
-           <div className="flex items-center justify-between opacity-60 mb-1"><span className="text-[10px] font-black uppercase tracking-widest text-green-600">Service Load</span><Wrench className="h-4 w-4 text-green-600" /></div>
-           <div className="text-2xl md:text-3xl font-black text-green-700">{opsStats.openService} Tickets</div>
-        </Card>
-        <Card className={cn("border-none shadow-xl rounded-3xl p-6 flex flex-col justify-between h-32 border-l-4", opsStats.collectionGap > 0 ? "bg-red-50 border-l-red-600" : "bg-green-50 border-l-green-600")}>
-           <div className="flex items-center justify-between opacity-60 mb-1"><span className={cn("text-[9px] font-black uppercase tracking-widest", opsStats.collectionGap > 0 ? "text-red-600" : "text-green-600")}>Collection Gap</span><DollarSign className="h-4 w-4" /></div>
-           <div className={cn("text-2xl font-black", opsStats.collectionGap > 0 ? "text-red-700" : "text-green-700")}>{currencySymbol}{Math.max(0, opsStats.collectionGap).toLocaleString()}</div>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <KpiStatCard
+          label="Active Sites"
+          value={`${opsStats.workingInstalls} Units`}
+          icon={Activity}
+        />
+        <KpiStatCard
+          label="Installed Capacity"
+          value={`${opsStats.totalKw} kWp`}
+          icon={BadgeCheck}
+          tone="warning"
+        />
+        <KpiStatCard
+          label="Open Service Tickets"
+          value={`${opsStats.openService} Tickets`}
+          icon={Wrench}
+          tone="positive"
+        />
+        <KpiStatCard
+          label="Collection Gap"
+          value={`${currencySymbol}${Math.max(0, opsStats.collectionGap).toLocaleString()}`}
+          icon={DollarSign}
+          tone={opsStats.collectionGap > 0 ? "danger" : "positive"}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-white border h-14 p-1.5 rounded-2xl shadow-sm mb-10 flex overflow-x-auto scrollbar-hide">
-          <TabsTrigger value="overview" className="flex-1 text-[10px] font-black uppercase px-8 gap-2 whitespace-nowrap"><Target className="h-4 w-4" /> Attention Required</TabsTrigger>
-          <TabsTrigger value="installations" className="flex-1 text-[10px] font-black uppercase px-8 gap-2 whitespace-nowrap"><Briefcase className="h-4 w-4" /> Field Execution</TabsTrigger>
-          <TabsTrigger value="materials" className="flex-1 text-[10px] font-black uppercase px-8 gap-2 whitespace-nowrap"><Package className="h-4 w-4" /> Material Readiness</TabsTrigger>
-          <TabsTrigger value="pipeline" className="flex-1 text-[10px] font-black uppercase px-8 gap-2 whitespace-nowrap"><SearchCode className="h-4 w-4" /> Sales Pipeline</TabsTrigger>
-          {isAdmin && <TabsTrigger value="financials" className="flex-1 text-[10px] font-black uppercase px-8 gap-2 whitespace-nowrap text-primary"><DollarSign className="h-4 w-4" /> Financials</TabsTrigger>}
+        <TabsList className="bg-white border border-slate-200 h-auto p-1.5 rounded-2xl mb-6 flex overflow-x-auto gap-1">
+          <TabsTrigger
+            value="overview"
+            className="flex-1 text-xs font-semibold px-4 py-2.5 rounded-xl gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+          >
+            <Target className="h-4 w-4" /> Attention Required
+          </TabsTrigger>
+          <TabsTrigger
+            value="installations"
+            className="flex-1 text-xs font-semibold px-4 py-2.5 rounded-xl gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+          >
+            <Briefcase className="h-4 w-4" /> Field Execution
+          </TabsTrigger>
+          <TabsTrigger
+            value="materials"
+            className="flex-1 text-xs font-semibold px-4 py-2.5 rounded-xl gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+          >
+            <Package className="h-4 w-4" /> Material Readiness
+          </TabsTrigger>
+          <TabsTrigger
+            value="pipeline"
+            className="flex-1 text-xs font-semibold px-4 py-2.5 rounded-xl gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+          >
+            <SearchCode className="h-4 w-4" /> Sales Pipeline
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger
+              value="financials"
+              className="flex-1 text-xs font-semibold px-4 py-2.5 rounded-xl gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white"
+            >
+              <DollarSign className="h-4 w-4" /> Financials
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-          <div className="lg:col-span-8 space-y-8">
-            <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in">
-               <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border text-left">
-                  <CardHeader className="bg-primary/5 border-b py-6 px-8 flex flex-row items-center justify-between">
-                     <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4" /> Critical Operations Radar
-                     </CardTitle>
-                     <Badge className="bg-primary text-white border-none text-[8px] font-black h-5 px-3 uppercase">Real-time</Badge>
-                  </CardHeader>
-                  <div className="divide-y divide-border/50">
-                     {(solarAlerts || []).map(alert => (
-                       <div key={alert.id} className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
-                          <div className="flex items-start gap-4">
-                             <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-inner shrink-0", 
-                                alert.severity === 'URGENT' ? "bg-red-50 text-red-600" : "bg-orange-50 text-orange-600")}>
-                                <Bell className="h-5 w-5" />
-                             </div>
-                             <div className="text-left">
-                                <p className="text-sm font-black text-slate-900 uppercase leading-none">{alert.title}</p>
-                                <p className="text-[10px] font-medium text-slate-500 mt-1.5">{alert.message}</p>
-                                <p className="text-[7px] font-bold text-muted-foreground uppercase mt-1">{alert.createdAt?.toDate ? format(alert.createdAt.toDate(), 'dd MMM, HH:mm') : 'Recently'}</p>
-                             </div>
-                          </div>
-                          <Button asChild variant="ghost" size="sm" className="h-8 rounded-lg text-primary">
-                             <Link href={alert.entityType === 'SOLAR_INSTALLATION' ? `/solar/installations/${alert.entityId}` : alert.entityType === 'SOLAR_INQUIRY' ? `/solar/inquiries/${alert.entityId}` : '#'}>
-                               <ChevronRight className="h-4 w-4" />
-                             </Link>
-                          </Button>
-                       </div>
-                     ))}
-                     {materialReadiness.filter(m => !m.isReady).map(m => (
-                       <div key={m.id} className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all cursor-pointer" onClick={() => router.push(`/solar/installations/${m.id}`)}>
-                          <div className="flex items-center gap-4 text-left">
-                             <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center text-red-600 shadow-inner"><Package className="h-5 w-5" /></div>
-                             <div className="text-left"><p className="text-sm font-black text-slate-900 uppercase">{m.name}</p><p className="text-[9px] font-bold text-red-600 uppercase">Material Shortage: {m.shortageCount} components</p></div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-primary opacity-20" />
-                       </div>
-                     ))}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-8 space-y-6">
+            <TabsContent value="overview" className="m-0 space-y-6">
+              <SectionCard
+                title="Critical Operations Radar"
+                description="Priority alerts and inventory shortages needing attention"
+                headerRight={
+                  <Badge
+                    variant="outline"
+                    className="bg-slate-900 text-white border-slate-900 text-xs font-semibold px-2.5 py-0.5 rounded-lg"
+                  >
+                    Real-time
+                  </Badge>
+                }
+                bodyClassName="p-0"
+              >
+                {solarAlerts.length === 0 && shortfallCount === 0 ? (
+                  <div className="p-6">
+                    <EmptyStatePanel
+                      icon={CheckCircle2}
+                      title="All operations clear"
+                      description="No urgent field alerts or component shortages detected across active projects."
+                    />
                   </div>
-               </Card>
-            </TabsContent>
-
-            <TabsContent value="installations" className="m-0 space-y-10 animate-in fade-in">
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {Object.entries(INSTALL_STATUS_GROUPS).map(([groupName, statuses]) => (
-                    <Card key={groupName} className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border">
-                       <CardHeader className="bg-muted/30 border-b py-4 px-6 text-left">
-                          <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">{groupName} Node</CardTitle>
-                       </CardHeader>
-                       <div className="divide-y divide-border/50">
-                          {(installations || []).filter(i => statuses.includes(i.status)).map(i => (
-                            <div key={i.id} className="p-5 flex items-center justify-between hover:bg-muted/5 transition-all cursor-pointer" onClick={() => router.push(`/solar/installations/${i.id}`)}>
-                               <div className="text-left">
-                                  <p className="text-xs font-black text-slate-900 uppercase truncate max-w-[150px]">{i.customerName}</p>
-                                  <p className="text-[8px] font-bold text-primary uppercase mt-1">{i.status.replace(/_/g, ' ')}</p>
-                               </div>
-                               <Badge variant="outline" className="text-[7px] h-4 border-primary/20 text-primary">{i.capacityKw} kW</Badge>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {(solarAlerts || []).map((alert) => {
+                      const targetHref =
+                        alert.entityType === "SOLAR_INSTALLATION"
+                          ? `/solar/installations/${alert.entityId}`
+                          : alert.entityType === "SOLAR_INQUIRY"
+                            ? `/solar/inquiries/${alert.entityId}`
+                            : "/solar/operations";
+                      return (
+                        <div
+                          key={alert.id}
+                          className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors gap-4"
+                        >
+                          <div className="flex items-start gap-3.5 min-w-0">
+                            <div
+                              className={cn(
+                                "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 border",
+                                alert.severity === "URGENT"
+                                  ? "bg-rose-50 text-rose-600 border-rose-200"
+                                  : "bg-amber-50 text-amber-600 border-amber-200"
+                              )}
+                            >
+                              <Bell className="h-4 w-4" />
                             </div>
-                          ))}
-                       </div>
-                    </Card>
-                  ))}
-               </div>
-            </TabsContent>
-
-            <TabsContent value="materials" className="m-0 space-y-6 animate-in fade-in">
-               <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2.5rem] border">
-                  <div className="overflow-x-auto scrollbar-hide text-left">
-                     <Table className="min-w-[800px]">
-                        <TableHeader><TableRow className="bg-muted/10"><TableHead className="pl-8 text-[10px] font-black uppercase h-12">Field Installation</TableHead><TableHead className="text-[10px] font-black uppercase h-12">Status</TableHead><TableHead className="text-center text-[10px] font-black uppercase h-12">Inventory Node</TableHead><TableHead className="text-right pr-8 h-12"></TableHead></TableRow></TableHeader>
-                        <TableBody>
-                           {materialReadiness.map(m => (
-                             <TableRow key={m.id} className="hover:bg-muted/5 border-b">
-                                <TableCell className="pl-8 py-5">
-                                   <div className="text-left">
-                                      <p className="text-sm font-black text-slate-900 uppercase">{m.name}</p>
-                                      <p className="text-[9px] font-bold text-muted-foreground uppercase">{m.number}</p>
-                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                   <Badge variant="outline" className="text-[8px] font-black uppercase h-5 px-2">{m.status}</Badge>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                   <Badge className={cn("text-[8px] font-black h-5 px-3 uppercase border-none", m.isReady ? "bg-green-500 text-white" : "bg-red-50 text-white")}>
-                                      {m.isReady ? 'READY TO DISPATCH' : `SHORT: ${m.shortageCount} ITEMS`}
-                                   </Badge>
-                                </TableCell>
-                                <TableCell className="text-right pr-8">
-                                  <Button asChild variant="ghost" size="icon">
-                                    <Link href={`/solar/installations/${m.id}`}>
-                                      <ChevronRight className="h-4 w-4" />
-                                    </Link>
-                                  </Button>
-                                </TableCell>
-                             </TableRow>
-                           ))}
-                        </TableBody>
-                     </Table>
+                            <div className="text-left min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 leading-tight">
+                                {alert.title}
+                              </p>
+                              <p className="text-xs text-slate-600 mt-1">
+                                {alert.message}
+                              </p>
+                              <p className="text-xs text-slate-400 font-mono tabular-nums mt-1">
+                                {alert.createdAt?.toDate
+                                  ? format(
+                                      alert.createdAt.toDate(),
+                                      "dd MMM, HH:mm"
+                                    )
+                                  : "Recently"}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-xl text-slate-600 shrink-0"
+                          >
+                            <Link
+                              href={targetHref}
+                              aria-label={`Open ${alert.title}`}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    {materialReadiness
+                      .filter((m) => !m.isReady)
+                      .map((m) => (
+                        <Link
+                          key={m.id}
+                          href={`/solar/installations/${m.id}`}
+                          className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors gap-4"
+                        >
+                          <div className="flex items-center gap-3.5 text-left min-w-0">
+                            <div className="h-10 w-10 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                              <Package className="h-4 w-4" />
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 truncate">
+                                {m.name}
+                              </p>
+                              <p className="text-xs font-medium text-rose-700 mt-0.5 tabular-nums">
+                                Material Shortage: {m.shortageCount} components
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+                        </Link>
+                      ))}
                   </div>
-               </Card>
+                )}
+              </SectionCard>
             </TabsContent>
 
-            <TabsContent value="pipeline" className="m-0 space-y-6 animate-in fade-in">
-                <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border">
-                    <CardHeader className="bg-muted/30 border-b py-6 px-8 flex justify-between items-center text-left">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary">Sales Pipeline Node</CardTitle>
-                    </CardHeader>
-                    <div className="p-20 text-center opacity-30 italic text-[10px] font-black uppercase">
-                       Pipeline overview synchronized with registry.
+            <TabsContent value="installations" className="m-0 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {Object.entries(INSTALL_STATUS_GROUPS).map(
+                  ([groupName, statuses]) => {
+                    const groupItems = (installations || []).filter((i) =>
+                      statuses.includes(i.status)
+                    );
+                    return (
+                      <SectionCard
+                        key={groupName}
+                        title={`${groupName} Stage`}
+                        headerRight={
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-mono tabular-nums border-slate-200 text-slate-600"
+                          >
+                            {groupItems.length}
+                          </Badge>
+                        }
+                        bodyClassName="p-0"
+                      >
+                        {groupItems.length === 0 ? (
+                          <div className="p-6 text-center text-xs text-slate-500">
+                            No projects in {groupName.toLowerCase()} stage.
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-100">
+                            {groupItems.map((i) => (
+                              <Link
+                                key={i.id}
+                                href={`/solar/installations/${i.id}`}
+                                className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors gap-3"
+                              >
+                                <div className="text-left min-w-0">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">
+                                    {i.customerName}
+                                  </p>
+                                  <p className="text-xs text-slate-500 mt-0.5 capitalize">
+                                    {i.status.replace(/_/g, " ").toLowerCase()}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs font-mono tabular-nums border-slate-200 text-slate-700 shrink-0"
+                                >
+                                  {i.capacityKw} kW
+                                </Badge>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </SectionCard>
+                    );
+                  }
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="materials" className="m-0 space-y-6">
+              <SectionCard bodyClassName="p-0">
+                <div className="overflow-x-auto text-left">
+                  <Table className="min-w-[680px]">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50 border-b border-slate-200">
+                        <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11">
+                          Field Installation
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600 h-11">
+                          Status
+                        </TableHead>
+                        <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">
+                          Inventory Readiness
+                        </TableHead>
+                        <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11">
+                          Open
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {materialReadiness.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="p-6">
+                            <EmptyStatePanel
+                              icon={Package}
+                              title="No active installations"
+                              description="Active site material requirements will appear here once installations are scheduled."
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        materialReadiness.map((m) => (
+                          <TableRow
+                            key={m.id}
+                            className="hover:bg-slate-50/70 border-b border-slate-100"
+                          >
+                            <TableCell className="pl-6 py-4">
+                              <div className="text-left">
+                                <p className="text-sm font-semibold text-slate-900">
+                                  {m.name}
+                                </p>
+                                <p className="text-xs text-slate-500 font-mono tabular-nums">
+                                  {m.number}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className="text-xs font-medium border-slate-200 text-slate-700"
+                              >
+                                {m.status?.replace(/_/g, " ")}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs font-semibold px-2.5 py-0.5 rounded-lg border",
+                                  m.isReady
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : "bg-rose-50 text-rose-700 border-rose-200"
+                                )}
+                              >
+                                {m.isReady
+                                  ? "Ready to Dispatch"
+                                  : `Short: ${m.shortageCount} items`}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <Button
+                                asChild
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-xl text-slate-600"
+                              >
+                                <Link
+                                  href={`/solar/installations/${m.id}`}
+                                  aria-label={`Open installation ${m.name}`}
+                                >
+                                  <ChevronRight className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </SectionCard>
+            </TabsContent>
+
+            <TabsContent value="pipeline" className="m-0 space-y-6">
+              <SectionCard
+                title="Sales Pipeline Overview"
+                description="Current lead and quotation activity synced from CRM"
+                headerRight={
+                  <Button asChild variant="outline" size="sm" className="rounded-xl">
+                    <Link href="/solar/inquiries">View All Inquiries</Link>
+                  </Button>
+                }
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <p className="text-xs text-slate-500">New Inquiries</p>
+                    <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">
+                      {opsStats.fresh}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <p className="text-xs text-slate-500">Total Solar Quotes</p>
+                    <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">
+                      {solarQuotes.length}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <p className="text-xs text-slate-500">Active AMC Contracts</p>
+                    <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">
+                      {opsStats.activeAmc}
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+            </TabsContent>
+
+            <TabsContent value="financials" className="m-0 space-y-6">
+              <SectionCard
+                title="Collection Summary"
+                description="Accepted order value compared against recorded sales receipts"
+              >
+                <div className="space-y-4 text-left">
+                  <div className="flex flex-wrap justify-between items-end gap-4 border-b border-slate-200 pb-4">
+                    <div>
+                      <p className="text-xs text-slate-500">Accepted Value</p>
+                      <p className="text-2xl font-bold font-mono tabular-nums text-slate-900">
+                        {currencySymbol}
+                        {opsStats.acceptedValue.toLocaleString()}
+                      </p>
                     </div>
-                </Card>
-            </TabsContent>
-
-            <TabsContent value="financials" className="m-0 space-y-10 animate-in fade-in">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border">
-                     <CardHeader className="bg-green-50 border-b py-6 px-8 text-left">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-green-700">Collection Protocol Node</CardTitle>
-                     </CardHeader>
-                     <CardContent className="p-8 space-y-6 text-left">
-                        <div className="flex justify-between items-end border-b pb-4">
-                           <div className="text-left"><p className="text-[9px] font-black text-slate-400 uppercase">Accepted Value</p><p className="text-2xl font-black text-primary">{currencySymbol}{opsStats.acceptedValue.toLocaleString()}</p></div>
-                           <div className="text-right"><p className="text-[9px] font-black text-slate-400 uppercase">Collected Amount</p><p className="text-lg font-black text-green-600">{currencySymbol}{opsStats.totalCollected.toLocaleString()}</p></div>
-                        </div>
-                        <div className="flex justify-between items-center text-left pt-2">
-                           <span className="text-[10px] font-black text-red-600 uppercase">Collection Gap</span>
-                           <span className="text-sm font-black text-red-600">{currencySymbol}{Math.max(0, opsStats.collectionGap).toLocaleString()}</span>
-                        </div>
-                     </CardContent>
-                  </Card>
-               </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Collected Amount</p>
+                      <p className="text-xl font-bold font-mono tabular-nums text-emerald-700">
+                        {currencySymbol}
+                        {opsStats.totalCollected.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-sm font-semibold text-slate-700">
+                      Remaining Collection Gap
+                    </span>
+                    <span
+                      className={cn(
+                        "text-base font-bold font-mono tabular-nums",
+                        opsStats.collectionGap > 0
+                          ? "text-rose-700"
+                          : "text-emerald-700"
+                      )}
+                    >
+                      {currencySymbol}
+                      {Math.max(0, opsStats.collectionGap).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </SectionCard>
             </TabsContent>
           </div>
 
-          <div className="lg:col-span-4 space-y-8 text-left">
-             <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden border border-white/5 group text-left">
-                <CardHeader className="p-8 pb-4 text-left">
-                   <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner group-hover:scale-110 transition-transform text-white">
-                      <ShieldCheck className="h-6 w-6 text-accent" />
-                   </div>
-                   <CardTitle className="text-base font-black uppercase tracking-widest mt-4 leading-none text-white">System Protocol</CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 pt-0 space-y-6 text-left">
-                   <p className="text-xs text-slate-400 leading-relaxed font-medium">This control layer provides a read-only snapshot. Recognized Revenue node is currently unavailable from authoritative data.</p>
-                   <div className="space-y-4">
-                      <div className="flex items-center gap-3 text-left"><CheckCircle2 className="h-4 w-4 text-green-400" /><span className="text-[10px] font-black uppercase text-slate-300">Tenant Scoped Isolation</span></div>
-                   </div>
-                </CardContent>
-             </Card>
-
-             <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border p-8 space-y-6 text-left">
-                <div className="flex items-center gap-3">
-                   <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm"><Bot className="h-5 w-5" /></div>
-                   <h5 className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">AI Advisor Note</h5>
+          <div className="lg:col-span-4 space-y-6 text-left">
+            <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-5 text-left">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="h-5 w-5 text-white" />
                 </div>
-                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed italic text-left">"Analysis: Installation throughput is up 12%. However, {(materialReadiness.filter(m=>!m.isReady).length)} sites are blocked due to inventory shortages. Recommend bulk reordering of DC cables."</p>
-                <Button asChild variant="outline" className="w-full h-11 rounded-xl text-[9px] font-black uppercase border-primary/20 text-primary hover:bg-white">
-                  <Link href="/solar/ai-insights">
-                    Open Strategy Center <ChevronRight className="ml-1 h-3 w-3" />
-                  </Link>
-                </Button>
-             </Card>
+                <h3 className="text-base font-bold text-white">
+                  Operational Scope
+                </h3>
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                This dashboard provides a live operational view of field
+                progress and collections. Accrued revenue recognition schedules
+                are maintained separately in accounting.
+              </p>
+              <div className="flex items-center gap-2.5 text-xs font-medium text-emerald-300">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                <span>Tenant-Scoped Data Isolation Active</span>
+              </div>
+            </div>
 
-             <div className="p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 flex items-start gap-4 shadow-inner text-left">
-                <ShieldCheck className="h-5 w-5 text-primary opacity-40 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-primary/70 leading-relaxed font-medium italic uppercase tracking-tighter text-left">
-                  "Your solar tracking node is encrypted and isolated per-tenant security protocol v3.5."
-                </p>
-             </div>
+            <SectionCard
+              title="Operations Note"
+              headerRight={<Bot className="h-4 w-4 text-slate-500" />}
+              bodyClassName="space-y-4"
+            >
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {shortfallCount > 0
+                  ? `${shortfallCount} active installation site${shortfallCount === 1 ? " has" : "s have"} component stock shortages. Review material readiness before scheduling field dispatch.`
+                  : "All active installation sites have sufficient stock allocated for scheduled dispatch."}
+              </p>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full h-10 rounded-xl text-xs font-semibold border-slate-200 text-slate-900 bg-white"
+              >
+                <Link href="/solar/ai-insights">
+                  Open Strategy Center{" "}
+                  <ChevronRight className="ml-1.5 h-4 w-4" />
+                </Link>
+              </Button>
+            </SectionCard>
+
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-3 text-left">
+              <AlertCircle className="h-5 w-5 text-slate-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Workspace operations are isolated per business account and synced
+                in real time.
+              </p>
+            </div>
           </div>
         </div>
       </Tabs>

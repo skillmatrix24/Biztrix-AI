@@ -85,6 +85,7 @@ import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocki
 import { collection, doc, query, orderBy, serverTimestamp, Timestamp } from "firebase/firestore";
 import { startOfMonth, format, subMonths, isWithinInterval, parseISO, startOfDay, endOfDay, endOfMonth } from "date-fns";
 import Link from "next/link";
+import { PageHeader, KpiStatCard, SectionCard } from "@/components/ui/editorial";
 
 const EXPENSE_CATEGORIES = ["Rent", "Salary", "Electricity", "Utility", "Marketing", "Maintenance", "Travel", "Purchase", "Other"];
 const INCOME_CATEGORIES = ["Sales", "Services", "Interest", "Refund", "Other"];
@@ -241,310 +242,345 @@ export default function AccountingPage() {
   if (isProfileLoading || isUserLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="space-y-8 md:space-y-12 pb-20 text-left">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between px-1">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-            <Wallet className="h-7 w-7 md:h-8 md:w-8 text-primary" />
-          </div>
-          <div className="text-left">
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-none">Profit & Loss</h2>
-            <div className="flex items-center gap-2 mt-1.5">
-              <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-black tracking-widest opacity-60">Financial Intelligence Node</p>
-              <div className="flex items-center gap-1.5 ml-2 bg-white px-2 py-1 rounded-lg border shadow-sm shrink-0">
-                <Layout className="h-3 w-3 text-muted-foreground" />
-                <Switch checked={isPinned} onCheckedChange={toggleDashboardPin} className="scale-[0.6] data-[state=checked]:bg-primary" />
-              </div>
+    <div className="space-y-6 pb-12 text-left">
+      <PageHeader
+        title="Profit & Loss"
+        description="Consolidated cashflow, expense breakdown, and transaction ledger."
+        icon={Wallet}
+        actions={
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div
+              className="flex items-center gap-2 bg-white px-3 h-10 rounded-xl border border-slate-200 shrink-0"
+              title="Pin Accounting widget to Dashboard"
+            >
+              <Layout className="h-3.5 w-3.5 text-slate-500" />
+              <span className="text-xs font-medium text-slate-600 hidden sm:inline">Pin widget</span>
+              <Switch checked={isPinned} onCheckedChange={toggleDashboardPin} aria-label="Pin accounting widget to dashboard" className="scale-90 data-[state=checked]:bg-slate-900" />
             </div>
+
+            <div className="flex items-center gap-1.5 bg-white px-2.5 h-10 rounded-xl border border-slate-200">
+              <Filter className="h-3.5 w-3.5 text-slate-400" />
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger className="h-8 w-32 border-none bg-transparent font-medium text-xs text-slate-700 focus:ring-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="today" className="text-xs font-medium">Today</SelectItem>
+                  <SelectItem value="thisMonth" className="text-xs font-medium">This month</SelectItem>
+                  <SelectItem value="lastMonth" className="text-xs font-medium">Last month</SelectItem>
+                  <SelectItem value="all" className="text-xs font-medium">Full history</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button asChild variant="outline" className="h-10 px-4 rounded-xl font-medium text-xs border-slate-200 bg-white text-slate-700 hover:bg-slate-50">
+              <Link href="/accounting/gst">
+                <Percent className="mr-1.5 h-3.5 w-3.5 text-slate-600" /> GST reports
+              </Link>
+            </Button>
+
+            <Button onClick={() => setIsAddOpen(true)} className="bg-slate-900 hover:bg-slate-800 h-10 px-4 font-semibold text-xs rounded-xl text-white">
+              <Plus className="mr-1.5 h-4 w-4" /> New entry
+            </Button>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border shadow-sm flex-1 sm:flex-none">
-            <Filter className="h-3.5 w-3.5 text-primary ml-2 opacity-40" />
-            <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="h-9 w-full sm:w-32 border-none bg-transparent font-black text-[10px] uppercase tracking-widest"><SelectValue /></SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-2xl">
-                <SelectItem value="today" className="text-[10px] font-bold uppercase">Today</SelectItem>
-                <SelectItem value="thisMonth" className="text-[10px] font-bold uppercase">This Month</SelectItem>
-                <SelectItem value="lastMonth" className="text-[10px] font-bold uppercase">Last Month</SelectItem>
-                <SelectItem value="all" className="text-[10px] font-bold uppercase">Full History</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button asChild variant="outline" className="h-11 px-5 rounded-xl font-black uppercase text-[10px] tracking-widest border-slate-200 bg-white text-slate-700 hover:text-primary">
-            <Link href="/accounting/gst">
-              <Percent className="mr-1.5 h-3.5 w-3.5 text-primary" /> GST Reports
-            </Link>
-          </Button>
-          <Button onClick={() => setIsAddOpen(true)} className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
-            <Plus className="mr-2 h-4 w-4" /> New Entry
-          </Button>
-        </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiStatCard
+          label="Gross Revenue"
+          value={`${currencySymbol}${stats.income.toLocaleString()}`}
+          subtext="Total inflows in period"
+          tone="positive"
+          icon={TrendingUp}
+        />
+        <KpiStatCard
+          label="Total Outflow"
+          value={`${currencySymbol}${stats.expense.toLocaleString()}`}
+          subtext="Total expenses in period"
+          tone="danger"
+          icon={TrendingDown}
+        />
+        <KpiStatCard
+          label="Profit Margin"
+          value={`${margin}%`}
+          subtext="Net surplus ratio"
+          icon={Percent}
+        />
+        <KpiStatCard
+          label="Net Balance"
+          value={`${currencySymbol}${profit.toLocaleString()}`}
+          subtext={profit >= 0 ? "Net surplus" : "Net deficit"}
+          tone={profit >= 0 ? "dark" : "danger"}
+          icon={Wallet}
+        />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-border/50">
-          <div className="flex items-center justify-between opacity-60 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-widest">Gross Revenue</span>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900">{currencySymbol}{stats.income.toLocaleString()}</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-border/50">
-          <div className="flex items-center justify-between opacity-60 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-widest">Total Outflow</span>
-            <TrendingDown className="h-4 w-4 text-red-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900">{currencySymbol}{stats.expense.toLocaleString()}</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-border/50 border-l-4 border-l-blue-500">
-          <div className="flex items-center justify-between opacity-60 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">Profit Margin</span>
-            <Percent className="h-4 w-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-blue-700">{margin}%</div>
-        </Card>
-        <Card className={cn("border-none shadow-xl rounded-3xl p-6 border-l-4 transition-all", profit >= 0 ? "border-l-primary bg-primary/5" : "border-l-destructive bg-destructive/5")}>
-          <div className="flex items-center justify-between opacity-60 mb-1">
-            <span className={cn("text-[10px] font-black uppercase tracking-widest", profit >= 0 ? "text-primary" : "text-destructive")}>Net Balance</span>
-            <Wallet className={cn("h-4 w-4", profit >= 0 ? "text-primary" : "text-destructive")} />
-          </div>
-          <div className={cn("text-2xl font-black", profit >= 0 ? "text-primary" : "text-destructive")}>{currencySymbol}{profit.toLocaleString()}</div>
-        </Card>
-      </div>
+      {/* ANALYTICS SECTION: SPENDING BREAKDOWN & CASHFLOW TREND */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="lg:col-span-4">
+          <SectionCard
+            title="Spending breakdown"
+            description="Expense distribution by category"
+            headerRight={
+              <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                Live
+              </span>
+            }
+            className="h-full flex flex-col"
+            bodyClassName="flex-1 flex flex-col justify-between gap-4"
+          >
+            <div className="h-[240px]">
+              {categoryData.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                  No expense entries in this period
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      innerRadius={56}
+                      outerRadius={78}
+                      paddingAngle={4}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {categoryData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index === 0 ? '#0f172a' : index === 1 ? '#334155' : index === 2 ? '#64748b' : '#cbd5e1'}
+                        />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: 'none', fontSize: '12px', fontWeight: 500 }}
+                      formatter={(value: number) => [`${currencySymbol}${value.toLocaleString()}`, 'Outflow']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
 
-      {/* ANALYTICS SECTION: SPENDING HEATMAP & TRENDS */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-         <div className="lg:col-span-4">
-            <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border h-full">
-               <CardHeader className="bg-muted/30 border-b py-6 px-8">
-                  <div className="flex items-center justify-between">
-                     <div className="space-y-1">
-                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                           <PieChartIcon className="h-4 w-4" /> Spending Heatmap
-                        </CardTitle>
-                        <p className="text-[8px] font-bold text-muted-foreground uppercase">Expense Distribution by Node</p>
-                     </div>
-                     <Badge variant="outline" className="h-4 text-[7px] font-black border-primary/20 text-primary">REAL-TIME</Badge>
-                  </div>
-               </CardHeader>
-               <CardContent className="p-6 h-[320px]">
-                  {categoryData.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center opacity-30 italic text-xs uppercase font-black">No Expense Traffic</div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                       <PieChart>
-                          <Pie
-                            data={categoryData}
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                          >
-                             {categoryData.map((entry, index) => (
-                               <Cell key={`cell-${index}`} fill={index === 0 ? 'hsl(var(--primary))' : index === 1 ? 'hsl(var(--primary)/0.6)' : index === 2 ? 'hsl(var(--primary)/0.3)' : '#f1f5f9'} />
-                             ))}
-                          </Pie>
-                          <RechartsTooltip 
-                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
-                             formatter={(value: number) => [`${currencySymbol}${value.toLocaleString()}`, 'Outflow']}
-                          />
-                       </PieChart>
-                    </ResponsiveContainer>
-                  )}
-               </CardContent>
-               <CardFooter className="px-8 pb-8 pt-0 flex flex-col gap-2">
-                  {categoryData.slice(0, 3).map((item, i) => (
-                    <div key={i} className="flex items-center justify-between w-full">
-                       <div className="flex items-center gap-2">
-                          <div className={cn("h-1.5 w-1.5 rounded-full", i === 0 ? "bg-primary" : i === 1 ? "bg-primary/60" : "bg-primary/30")} />
-                          <span className="text-[10px] font-bold text-slate-500 uppercase">{item.name}</span>
-                       </div>
-                       <span className="text-[10px] font-black text-slate-900">{currencySymbol}{item.value.toLocaleString()}</span>
+            {categoryData.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                {categoryData.slice(0, 4).map((item, i) => (
+                  <div key={i} className="flex items-center justify-between w-full text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={cn("h-2 w-2 rounded-full shrink-0", i === 0 ? "bg-slate-900" : i === 1 ? "bg-slate-700" : i === 2 ? "bg-slate-500" : "bg-slate-300")} />
+                      <span className="font-medium text-slate-600 truncate">{item.name}</span>
                     </div>
-                  ))}
-               </CardFooter>
-            </Card>
-         </div>
-
-         <div className="lg:col-span-8">
-            <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border h-full">
-               <CardHeader className="bg-primary/5 border-b py-6 px-8 flex flex-row items-center justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                       <Activity className="h-4 w-4" /> Cashflow Node Pulse
-                    </CardTitle>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase">Inflow vs Outflow Velocity</p>
+                    <span className="font-mono tabular-nums font-semibold text-slate-900 shrink-0">{currencySymbol}{item.value.toLocaleString()}</span>
                   </div>
-               </CardHeader>
-               <CardContent className="p-8 h-[380px]">
-                  {cashflowTrend.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center opacity-30 italic text-xs uppercase font-black">Waiting for Data Nodes...</div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                       <AreaChart data={cashflowTrend}>
-                          <defs>
-                             <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/><stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/></linearGradient>
-                             <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} tick={{fill: '#94a3b8'}} />
-                          <YAxis hide />
-                          <RechartsTooltip 
-                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }}
-                          />
-                          <Area type="monotone" dataKey="inflow" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorIn)" strokeWidth={3} />
-                          <Area type="monotone" dataKey="outflow" stroke="#ef4444" fillOpacity={1} fill="url(#colorOut)" strokeWidth={3} />
-                       </AreaChart>
-                    </ResponsiveContainer>
-                  )}
-               </CardContent>
-            </Card>
-         </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="lg:col-span-8">
+          <SectionCard
+            title="Cashflow trend"
+            description="Inflow vs outflow velocity over recent entries"
+            className="h-full"
+          >
+            <div className="h-[320px]">
+              {cashflowTrend.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                  Waiting for cashbook entries...
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={cashflowTrend}>
+                    <defs>
+                      <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0f172a" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#0f172a" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#e11d48" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#e11d48" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} tick={{ fill: '#64748b' }} />
+                    <YAxis hide />
+                    <RechartsTooltip
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: 'none', fontSize: '12px', fontWeight: 500 }}
+                    />
+                    <Area type="monotone" dataKey="inflow" name="Inflow" stroke="#0f172a" fillOpacity={1} fill="url(#colorIn)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="outflow" name="Outflow" stroke="#e11d48" fillOpacity={1} fill="url(#colorOut)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </SectionCard>
+        </div>
       </section>
 
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2.5rem] border">
-        <div className="p-4 border-b bg-muted/20 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <SectionCard bodyClassName="p-0">
+        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70 flex flex-col md:flex-row gap-3 items-center justify-between">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-            <TabsList className="bg-white border h-10 p-1 rounded-xl shadow-sm">
-              <TabsTrigger value="all" className="text-[10px] font-bold uppercase px-6">Consolidated</TabsTrigger>
-              <TabsTrigger value="income" className="text-[10px] font-bold uppercase px-6 text-green-600">Earnings</TabsTrigger>
-              <TabsTrigger value="expense" className="text-[10px] font-bold uppercase px-6 text-red-600">Outflows</TabsTrigger>
+            <TabsList className="bg-white border border-slate-200 h-10 p-1 rounded-xl">
+              <TabsTrigger value="all" className="text-xs font-medium px-4 rounded-lg data-[state=active]:bg-slate-900 data-[state=active]:text-white">Consolidated</TabsTrigger>
+              <TabsTrigger value="income" className="text-xs font-medium px-4 rounded-lg text-emerald-700 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Earnings</TabsTrigger>
+              <TabsTrigger value="expense" className="text-xs font-medium px-4 rounded-lg text-rose-700 data-[state=active]:bg-rose-600 data-[state=active]:text-white">Outflows</TabsTrigger>
             </TabsList>
           </Tabs>
           <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-            <Input placeholder="Search descriptions..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-11 pl-10 rounded-xl bg-white border-none shadow-inner text-xs font-bold" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search particulars or category..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 pl-10 rounded-xl bg-white border-slate-200 text-sm"
+            />
           </div>
         </div>
+
         <div className="overflow-x-auto">
-          <Table className="min-w-[1000px]">
+          <Table className="min-w-[900px]">
             <TableHeader>
-              <TableRow className="bg-muted/10">
-                <TableHead className="pl-8 text-[10px] font-black uppercase h-12">Entry Date</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Transaction Node</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Sector</TableHead>
-                <TableHead className="text-right text-[10px] font-black uppercase h-12">Inflow (+)</TableHead>
-                <TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12">Outflow (-)</TableHead>
+              <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
+                <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11">Entry date</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 h-11">Particulars</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 h-11">Category</TableHead>
+                <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">Inflow (+)</TableHead>
+                <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11">Outflow (-)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isTransactionsLoading ? (
-                <TableRow><TableCell colSpan={5} className="h-60 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary opacity-20" /></TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={5} className="h-44 text-center">
+                    <Loader2 className="animate-spin h-6 w-6 mx-auto text-slate-400" />
+                  </TableCell>
+                </TableRow>
               ) : filteredTransactions.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="h-60 text-center opacity-30 italic text-sm uppercase">No traffic logged for this window.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={5} className="h-44 text-center text-slate-500 text-sm">
+                    No cashbook entries logged for this window.
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredTransactions.map((t: any) => (
-                  <TableRow key={t.id} className="group hover:bg-muted/5 transition-colors border-b">
-                    <TableCell className="pl-8 py-5">
-                       <span className="text-[10px] font-black text-slate-400 uppercase">{format(parseISO(t.date), 'dd MMM yyyy')}</span>
+                  <TableRow key={t.id} className="group hover:bg-slate-50/80 transition-colors border-b border-slate-100">
+                    <TableCell className="pl-6 py-3.5">
+                      <span className="text-xs font-mono tabular-nums font-medium text-slate-500">{format(parseISO(t.date), 'dd MMM yyyy')}</span>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-4">
-                        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-inner", t.type === 'credit' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600")}>
-                          {t.type === 'credit' ? <ArrowUpRight className="h-5 w-5" /> : <ArrowDownLeft className="h-5 w-5" />}
+                      <div className="flex items-center gap-3">
+                        <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border", t.type === 'credit' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200")}>
+                          {t.type === 'credit' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{t.particulars}</p>
-                          <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Mode: {t.mode} • By: {t.entryBy}</p>
+                          <p className="text-sm font-semibold text-slate-900 truncate">{t.particulars}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Mode: {t.mode} • By: {t.entryBy}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1.5 border-primary/20 text-primary">{t.category}</Badge>
+                      <span className="inline-flex items-center rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium px-2 py-0.5">
+                        {t.category}
+                      </span>
                     </TableCell>
-                    <TableCell className="text-right font-black text-sm text-green-600">{t.type === 'credit' ? `${currencySymbol}${t.amount.toLocaleString()}` : '-'}</TableCell>
-                    <TableCell className="text-right pr-8 font-black text-sm text-destructive">{t.type === 'debit' ? `${currencySymbol}${t.amount.toLocaleString()}` : '-'}</TableCell>
+                    <TableCell className="text-right font-mono tabular-nums font-semibold text-sm text-emerald-700">
+                      {t.type === 'credit' ? `${currencySymbol}${t.amount.toLocaleString()}` : '—'}
+                    </TableCell>
+                    <TableCell className="text-right pr-6 font-mono tabular-nums font-semibold text-sm text-rose-700">
+                      {t.type === 'debit' ? `${currencySymbol}${t.amount.toLocaleString()}` : '—'}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
         </div>
-      </Card>
+      </SectionCard>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden text-left">
-          <DialogHeader className="p-8 bg-primary text-white text-left shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                <Plus className="h-6 w-6 text-white" />
+        <DialogContent className="sm:max-w-[460px] rounded-2xl border border-slate-200 bg-white p-0 overflow-hidden text-left">
+          <DialogHeader className="p-6 bg-slate-900 text-white text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <Plus className="h-5 w-5 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-xl">Record Ledger Entry</DialogTitle>
-                <DialogDescription className="text-white/70 text-[9px] font-bold uppercase tracking-widest mt-1">Direct Cashbook Synchronization</DialogDescription>
+                <DialogTitle className="text-lg font-bold tracking-tight">Record ledger entry</DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs mt-0.5">Direct cashbook entry synchronization</DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Flow Type</Label>
-                  <Select value={type} onValueChange={(v: any) => setType(v)}>
-                    <SelectTrigger className={cn("h-11 rounded-xl font-bold uppercase text-[10px]", type === 'income' ? "text-green-600 bg-green-50" : "text-destructive bg-red-50")}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-2xl">
-                      <SelectItem value="income" className="text-[10px] font-bold uppercase text-green-600">Credit (+)</SelectItem>
-                      <SelectItem value="expense" className="text-[10px] font-bold uppercase text-destructive">Debit (-)</SelectItem>
-                    </SelectContent>
-                  </Select>
-               </div>
-               <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Entry Date</Label>
-                  <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-11 rounded-xl font-bold" />
-               </div>
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Flow type</Label>
+                <Select value={type} onValueChange={(v: any) => setType(v)}>
+                  <SelectTrigger className={cn("h-10 rounded-xl font-semibold text-xs border-slate-200", type === 'income' ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50")}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="income" className="text-xs font-medium text-emerald-700">Credit (+)</SelectItem>
+                    <SelectItem value="expense" className="text-xs font-medium text-rose-700">Debit (-)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Entry date</Label>
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10 rounded-xl border-slate-200 font-mono text-xs" />
+              </div>
             </div>
 
             <div className="space-y-1.5">
-               <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Particulars / Description *</Label>
-               <Input value={particulars} onChange={(e) => setParticulars(e.target.value)} placeholder="What was this for?" className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+              <Label className="text-xs font-semibold text-slate-700">Particulars / description *</Label>
+              <Input value={particulars} onChange={(e) => setParticulars(e.target.value)} placeholder="What was this for?" className="h-10 rounded-xl bg-white border-slate-200 text-sm" />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Amount ({currencySymbol}) *</Label>
-                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-11 rounded-xl font-black text-lg bg-primary/5 text-primary border-none shadow-inner" />
+                <Label className="text-xs font-semibold text-slate-700">Amount ({currencySymbol}) *</Label>
+                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-10 rounded-xl font-mono tabular-nums font-semibold text-sm bg-white border-slate-200" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Sector Category</Label>
+                <Label className="text-xs font-semibold text-slate-700">Category</Label>
                 <Select value={category} onValueChange={setCategory}>
-                   <SelectTrigger className="h-11 rounded-xl font-bold uppercase text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger>
-                   <SelectContent className="rounded-xl">
-                      {(type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (
-                        <SelectItem key={cat} value={cat} className="text-[10px] font-bold uppercase">{cat}</SelectItem>
-                      ))}
-                   </SelectContent>
+                  <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium"><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {(type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES).map(cat => (
+                      <SelectItem key={cat} value={cat} className="text-xs font-medium">{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-1.5">
-               <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Execution Mode</Label>
-               <Select value={mode} onValueChange={setMode}>
-                  <SelectTrigger className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {dynamicPaymentModes.map((m: string) => <SelectItem key={m} value={m} className="text-[10px] font-bold uppercase">{m}</SelectItem>)}
-                  </SelectContent>
-               </Select>
+              <Label className="text-xs font-semibold text-slate-700">Payment mode</Label>
+              <Select value={mode} onValueChange={setMode}>
+                <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {dynamicPaymentModes.map((m: string) => <SelectItem key={m} value={m} className="text-xs font-medium">{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             {type === 'expense' && (
-              <div className="grid grid-cols-2 gap-4 pt-1 border-t">
+              <div className="grid grid-cols-2 gap-3.5 pt-2 border-t border-slate-100">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Input GST / ITC ({currencySymbol})</Label>
-                  <Input type="number" value={gstAmount} onChange={(e) => setGstAmount(e.target.value)} placeholder="0.00 (Optional)" className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+                  <Label className="text-xs font-semibold text-slate-700">Input GST / ITC ({currencySymbol})</Label>
+                  <Input type="number" value={gstAmount} onChange={(e) => setGstAmount(e.target.value)} placeholder="0.00 (Optional)" className="h-10 rounded-xl font-mono tabular-nums text-xs bg-white border-slate-200" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Vendor GSTIN (ITC)</Label>
-                  <Input value={vendorGstin} onChange={(e) => setVendorGstin(e.target.value.toUpperCase())} placeholder="27AAA..." maxLength={15} className="h-11 rounded-xl font-mono text-xs uppercase bg-muted/20 border-none shadow-inner" />
+                  <Label className="text-xs font-semibold text-slate-700">Vendor GSTIN (ITC)</Label>
+                  <Input value={vendorGstin} onChange={(e) => setVendorGstin(e.target.value.toUpperCase())} placeholder="27AAA..." maxLength={15} className="h-10 rounded-xl font-mono text-xs uppercase bg-white border-slate-200" />
                 </div>
               </div>
             )}
           </div>
-          <DialogFooter className="p-8 bg-muted/10 border-t">
-            <Button onClick={handleAddEntry} disabled={!amount || !particulars} className="w-full h-14 bg-primary font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl">Commit Node Entry</Button>
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200">
+            <Button onClick={handleAddEntry} disabled={!amount || !particulars} className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-xl">
+              Save ledger entry
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

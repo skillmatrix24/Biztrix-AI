@@ -282,10 +282,10 @@ export function SidebarNav() {
 
     return (
       <SidebarGroup>
-        <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1 px-4">
+        <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold text-slate-500 mb-1 px-3">
           {label}
         </SidebarGroupLabel>
-        <SidebarMenu className="px-2">
+        <SidebarMenu className="px-2 space-y-0.5">
           {roleFilteredItems.map((item) => {
             const state = getModuleState(item.suiteId, item.addonId, item.altAddonId, item.href);
             const isExpired = state === 'expired';
@@ -305,25 +305,25 @@ export function SidebarNav() {
                   tooltip={item.label}
                   onClick={closeOnMobile}
                   className={cn(
-                    "transition-all h-10 rounded-xl px-4 font-medium",
+                    "transition-colors h-9 rounded-xl px-3 font-medium",
                     isActive 
-                      ? "bg-primary text-white font-bold shadow-md shadow-primary/20 scale-[1.02]" 
-                      : "text-slate-600 hover:text-primary hover:bg-primary/5",
+                      ? "bg-slate-900 text-white font-semibold hover:bg-slate-900 hover:text-white" 
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
                     isExpired && "opacity-60 grayscale-[0.5]"
                   )}
                 >
                   <Link href={href} ref={isActive ? activeItemRef : null}>
                     {isExpired ? (
-                      <div className="flex items-center gap-3 w-full">
-                        <Clock className="h-4 w-4 text-red-500" />
+                      <div className="flex items-center gap-2.5 w-full">
+                        <Clock className="h-4 w-4 text-rose-500" />
                         <span className="text-xs font-medium">{item.label}</span>
-                        <Badge className="ml-auto text-[7px] h-3.5 px-1 font-black bg-red-100 text-red-600 border-none">EXPIRED</Badge>
+                        <span className="ml-auto text-xs font-semibold text-rose-600">Expired</span>
                       </div>
                     ) : (
                       <>
-                        <item.icon className={cn("h-4.5 w-4.5 shrink-0", isActive ? "text-white" : "text-slate-500")} />
+                        <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white" : "text-slate-500")} />
                         <span className="text-xs">{item.label}</span>
-                        {isActive && !isMobile && <ChevronRight className="ml-auto h-3 w-3 opacity-50" />}
+                        {isActive && !isMobile && <ChevronRight className="ml-auto h-3.5 w-3.5 opacity-60" />}
                       </>
                     )}
                   </Link>
@@ -337,32 +337,32 @@ export function SidebarNav() {
   };
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon" className="hidden md:flex border-r border-border/50 bg-white">
-      <SidebarHeader className="border-b px-6 py-8">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-md border border-border/50 shrink-0 overflow-hidden group-data-[collapsible=icon]:mx-auto transition-transform hover:scale-105">
+    <Sidebar variant="sidebar" collapsible="icon" className="hidden md:flex border-r border-slate-200 bg-white">
+      <SidebarHeader className="border-b border-slate-200 px-5 py-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden group-data-[collapsible=icon]:mx-auto">
             {activeLogoPublic ? (
-              <img src={activeLogoPublic} className="h-full w-full object-contain" alt="Logo" />
+              <img src={activeLogoPublic} referrerPolicy="no-referrer" className="h-full w-full object-contain" alt="Business Logo" />
             ) : (
-              <div className="h-full w-full bg-primary flex items-center justify-center text-white font-black text-xl">
+              <div className="h-full w-full bg-slate-900 flex items-center justify-center text-white font-bold text-base">
                 {business?.name?.charAt(0) || "B"}
               </div>
             )}
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden min-w-0">
-            <span className="text-lg tracking-tight leading-none text-primary font-black uppercase truncate max-w-[140px]">
+            <span className="text-sm font-bold tracking-tight leading-tight text-slate-900 truncate max-w-[150px]">
               {business?.name || "Biztrix AI"}
             </span>
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1.5 truncate">Modern Business OS</span>
+            <span className="text-xs text-slate-500 mt-0.5 truncate">Business OS</span>
           </div>
         </div>
       </SidebarHeader>
       
-      <SidebarContent className="scrollbar-hide py-6 space-y-1 overflow-y-auto text-left">
+      <SidebarContent className="scrollbar-hide py-4 space-y-1 overflow-y-auto text-left">
         {isPlatformOwner && !isAgent && (
           <SidebarGroup>
-            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-1 px-4">Platform Master</SidebarGroupLabel>
-            <SidebarMenu className="px-2">
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden text-[11px] font-semibold text-slate-500 mb-1 px-3">Platform Master</SidebarGroupLabel>
+            <SidebarMenu className="px-2 space-y-0.5">
               {ownerItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
@@ -373,13 +373,13 @@ export function SidebarNav() {
                       tooltip={item.label} 
                       onClick={closeOnMobile} 
                       className={cn(
-                        "transition-all h-10 rounded-xl px-4",
-                        isActive ? "bg-primary text-white font-bold shadow-md shadow-primary/20" : ""
+                        "transition-colors h-9 rounded-xl px-3 font-medium",
+                        isActive ? "bg-slate-900 text-white font-semibold hover:bg-slate-900 hover:text-white" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                       )}
                     >
                       <Link href={item.href} ref={isActive ? activeItemRef : null}>
-                        <item.icon className={cn("h-4 w-4", isActive ? "text-white" : "")} />
-                        <span className="text-xs font-bold">{item.label}</span>
+                        <item.icon className={cn("h-4 w-4", isActive ? "text-white" : "text-slate-500")} />
+                        <span className="text-xs">{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -400,17 +400,16 @@ export function SidebarNav() {
         <NavGroup label="Store Builder" items={storeItems} hideForAgent />
         
         {!isAgent && (
-          <SidebarGroup className="mt-4">
+          <SidebarGroup className="mt-2">
             <SidebarMenu className="px-2">
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Marketplace" onClick={closeOnMobile}>
                   <Link href="/marketplace" className={cn(
-                    "rounded-2xl h-11 border border-primary/10 px-4 group transition-all",
-                    pathname === '/marketplace' ? "bg-primary text-white shadow-lg" : "bg-primary/5 text-primary hover:bg-primary/10"
+                    "rounded-xl h-10 border px-3 group transition-colors",
+                    pathname === '/marketplace' ? "bg-slate-900 border-slate-900 text-white" : "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100"
                   )}>
-                    <ShoppingBasket className={cn("h-4.5 w-4.5", pathname === '/marketplace' ? "text-white" : "group-hover:scale-110 transition-transform")} />
-                    <span className="text-xs font-black uppercase tracking-tight">Marketplace</span>
-                    {pathname !== '/marketplace' && <Badge className="ml-auto bg-primary text-white text-[8px] h-4 border-none shadow-sm px-1.5">NEW</Badge>}
+                    <ShoppingBasket className={cn("h-4 w-4", pathname === '/marketplace' ? "text-white" : "text-primary")} />
+                    <span className="text-xs font-semibold">Marketplace</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -419,18 +418,7 @@ export function SidebarNav() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-6 bg-slate-50/50 space-y-4">
-        <div className="group-data-[collapsible=icon]:hidden">
-          <div className="p-3 rounded-2xl bg-white border border-border shadow-sm flex items-center gap-3">
-             <div className="h-7 w-7 rounded-xl bg-primary flex items-center justify-center text-white shadow-inner">
-                <span className="text-xs font-black">B</span>
-             </div>
-             <div className="text-left">
-                <p className="text-[8px] font-black text-primary uppercase tracking-widest opacity-60">Status</p>
-                <p className="text-[10px] font-black text-slate-900 uppercase">AI Protected</p>
-             </div>
-          </div>
-        </div>
+      <SidebarFooter className="border-t border-slate-200 p-4 bg-white space-y-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
@@ -438,12 +426,12 @@ export function SidebarNav() {
               tooltip="Settings" 
               onClick={closeOnMobile}
               className={cn(
-                "h-10 rounded-xl px-4 transition-all font-medium",
-                (pathname === '/settings' || pathname === '/profile') ? "bg-primary text-white shadow-md shadow-primary/20" : "text-slate-600 hover:text-primary"
+                "h-9 rounded-xl px-3 transition-colors font-medium",
+                (pathname === '/settings' || pathname === '/profile') ? "bg-slate-900 text-white font-semibold hover:bg-slate-900 hover:text-white" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               )}
             >
               <Link href={isAgent ? "/profile" : "/settings"}>
-                <SettingsIcon className={cn("h-4 w-4", (pathname === '/settings' || pathname === '/profile') ? "text-white" : "")} />
+                <SettingsIcon className={cn("h-4 w-4", (pathname === '/settings' || pathname === '/profile') ? "text-white" : "text-slate-500")} />
                 <span className="text-xs">{isAgent ? "My Profile" : "OS Settings"}</span>
               </Link>
             </SidebarMenuButton>

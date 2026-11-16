@@ -1,96 +1,74 @@
-
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { 
-  Search, 
-  SmartphoneNfc, 
-  Edit2, 
-  Trash2, 
-  MoreVertical, 
-  Send, 
-  MapPin, 
-  ChevronRight,
-  Loader2, 
-  X, 
-  CheckCircle2, 
-  Tag, 
-  Zap, 
-  Trash, 
-  ArrowRight, 
-  ShieldCheck, 
-  BadgeCheck, 
-  ChevronDown, 
-  FolderPlus, 
-  Users, 
-  Grid, 
-  Settings2, 
-  Download, 
-  Plus,
-  Type,
-  FileText
+import { useState, useMemo } from "react";
+import {
+  Search,
+  SmartphoneNfc,
+  Edit2,
+  Trash2,
+  MapPin,
+  Loader2,
+  Zap,
+  ShieldCheck,
+  ChevronDown,
+  FolderPlus,
+  Grid,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
   DialogDescription,
-  DialogClose
 } from "@/components/ui/dialog";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger, 
-  DropdownMenuSeparator, 
-  DropdownMenuLabel 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { SectionCard, EmptyStatePanel } from "@/components/ui/editorial";
 import { cn } from "@/lib/utils";
-import { 
-  useFirestore, 
-  updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking, 
-  addDocumentNonBlocking, 
-  setDocumentNonBlocking, 
-  useCollection, 
-  useMemoFirebase 
+import {
+  useFirestore,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+  setDocumentNonBlocking,
+  useCollection,
+  useMemoFirebase,
 } from "@/firebase";
 import { collection, doc, serverTimestamp, query, orderBy, writeBatch } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { listWhatsAppTemplates, sendWhatsAppTemplate } from "@/app/actions/whatsapp-actions";
+import { Users, Send } from "lucide-react";
 
-/**
- * Helper to ensure phone number has international country code (91 for India)
- */
 function formatPhoneForMeta(phone: string): string {
-  let clean = phone.replace(/\D/g, '');
-  if (clean.startsWith('0')) clean = clean.substring(1);
+  let clean = phone.replace(/\D/g, "");
+  if (clean.startsWith("0")) clean = clean.substring(1);
   if (clean.length === 10) return `91${clean}`;
   return clean;
 }
@@ -99,35 +77,37 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  
-  // Dialog States
+
   const [editingContact, setEditingContact] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  
+
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [selectedTemplateName, setSelectedTemplateName] = useState("");
   const [templates, setTemplates] = useState<any[]>([]);
   const [isTemplateLoading, setIsTemplateLoading] = useState(false);
 
-  // Group Action States
   const [isGroupActionOpen, setIsGroupActionOpen] = useState(false);
-  const [groupActionType, setGroupActionType] = useState<'create' | 'add'>('add');
+  const [groupActionType, setGroupActionType] = useState<"create" | "add">("add");
   const [targetGroupName, setTargetGroupName] = useState("");
   const [targetGroupId, setTargetGroupId] = useState("");
 
-  // Fetch Groups for "Add to Existing"
-  const groupsRawQuery = useMemoFirebase(() => 
-    businessId ? query(collection(firestore, 'businesses', businessId, 'contactGroups'), orderBy('name', 'asc')) : null
-  , [firestore, businessId]);
+  const groupsRawQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(collection(firestore, "businesses", businessId, "contactGroups"), orderBy("name", "asc"))
+        : null,
+    [firestore, businessId]
+  );
   const { data: groupsRaw } = useCollection<any>(groupsRawQuery);
   const groups = groupsRaw || [];
 
   const filteredContacts = useMemo<any[]>(() => {
     const list = contacts || [];
     if (!searchTerm.trim()) return list;
-    return list.filter((c: any) => 
-      (c.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (c.phone || "").includes(searchTerm)
+    return list.filter(
+      (c: any) =>
+        (c.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.phone || "").includes(searchTerm)
     );
   }, [contacts, searchTerm]);
 
@@ -137,25 +117,23 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
     const allSelectedInVisible = allFilteredIds.every((id: string) => selectedIds.includes(id));
 
     if (allSelectedInVisible) {
-      setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+      setSelectedIds((prev) => prev.filter((id) => !allFilteredIds.includes(id)));
     } else {
-      setSelectedIds(prev => Array.from(new Set([...prev, ...allFilteredIds])));
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...allFilteredIds])));
     }
   };
 
   const toggleSelectOne = (id: string) => {
-    setSelectedIds(prev => 
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   };
 
   const handleOpenEdit = (contact: any) => {
     const tagsStr = (contact.tags || []).join(", ");
     const groupsStr = (contact.groups || []).join(", ");
-    setEditingContact({ 
+    setEditingContact({
       ...contact,
       tagsInput: tagsStr,
-      groupsInput: groupsStr
+      groupsInput: groupsStr,
     });
     setIsEditOpen(true);
   };
@@ -164,14 +142,20 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
     if (!businessId || !editingContact) return;
     const oldId = editingContact.id;
     const newPhone = editingContact.phone.trim();
-    
+
     if (!newPhone) {
       toast({ variant: "destructive", title: "Error", description: "Phone number is required." });
       return;
     }
 
-    const finalTags = (editingContact.tagsInput || "").split(',').map((s: string) => s.trim()).filter(Boolean);
-    const finalGroups = (editingContact.groupsInput || "").split(',').map((s: string) => s.trim()).filter(Boolean);
+    const finalTags = (editingContact.tagsInput || "")
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter(Boolean);
+    const finalGroups = (editingContact.groupsInput || "")
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter(Boolean);
 
     const updateData = {
       name: editingContact.name,
@@ -180,17 +164,21 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
       city: editingContact.city || "",
       tags: finalTags,
       groups: finalGroups,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
     if (oldId !== newPhone) {
-      const newRef = doc(firestore, 'businesses', businessId, 'globalContacts', newPhone);
-      setDocumentNonBlocking(newRef, { ...updateData, id: newPhone, createdAt: editingContact.createdAt || serverTimestamp() }, { merge: true });
-      deleteDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'globalContacts', oldId));
-      toast({ title: "Identity Re-mapped" });
+      const newRef = doc(firestore, "businesses", businessId, "globalContacts", newPhone);
+      setDocumentNonBlocking(
+        newRef,
+        { ...updateData, id: newPhone, createdAt: editingContact.createdAt || serverTimestamp() },
+        { merge: true }
+      );
+      deleteDocumentNonBlocking(doc(firestore, "businesses", businessId, "globalContacts", oldId));
+      toast({ title: "Contact Re-mapped" });
     } else {
-      updateDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'globalContacts', oldId), updateData);
-      toast({ title: "Node Updated" });
+      updateDocumentNonBlocking(doc(firestore, "businesses", businessId, "globalContacts", oldId), updateData);
+      toast({ title: "Contact Updated" });
     }
 
     setIsEditOpen(false);
@@ -209,7 +197,7 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
     if (templates.length === 0) {
       setIsTemplateLoading(true);
       try {
-        const res = await listWhatsAppTemplates({ wabaId: waConfig.wabaId, accessToken: waConfig.accessToken });
+        const res = await listWhatsAppTemplates(businessId, { wabaId: waConfig.wabaId, accessToken: waConfig.accessToken });
         if (res.success) setTemplates(res.templates || []);
       } finally {
         setIsTemplateLoading(false);
@@ -226,7 +214,7 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
     let failCount = 0;
 
     try {
-      const template = templates.find(t => t.name === selectedTemplateName);
+      const template = templates.find((t) => t.name === selectedTemplateName);
       const lang = template?.language || "en_US";
 
       for (const id of selectedIds) {
@@ -234,18 +222,21 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
         if (contact?.phone) {
           const targetPhone = formatPhoneForMeta(contact.phone);
           const trackUrl = `${window.location.origin}/loyalty/track/${businessId}/mem_c_${targetPhone.slice(-10)}`;
-          
-          const components = [{
-            type: "body",
-            parameters: [
-              { type: "text", text: contact.name || "Customer" },
-              { type: "text", text: contact.phone || "N/A" },
-              { type: "text", text: trackUrl }
-            ]
-          }];
+
+          const components = [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: contact.name || "Customer" },
+                { type: "text", text: contact.phone || "N/A" },
+                { type: "text", text: trackUrl },
+              ],
+            },
+          ];
 
           try {
             await sendWhatsAppTemplate(
+              businessId,
               { phoneId: waConfig.phoneId, accessToken: waConfig.accessToken },
               targetPhone,
               selectedTemplateName,
@@ -257,17 +248,17 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
             failCount++;
             console.error(`Dispatch failed for ${id}`, e);
           }
-          await new Promise(resolve => setTimeout(resolve, 150));
+          await new Promise((resolve) => setTimeout(resolve, 150));
         }
       }
 
-      toast({ 
-        title: "Bulk Dispatch Complete", 
-        description: `Delivered: ${successCount}, Failed: ${failCount}.` 
+      toast({
+        title: "Bulk Dispatch Complete",
+        description: `Delivered: ${successCount}, Failed: ${failCount}.`,
       });
     } catch (e) {
-    console.error(e);
-      toast({ variant: "destructive", title: "System Error", description: "Internal dispatch loop crashed." });
+      console.error(e);
+      toast({ variant: "destructive", title: "System Error", description: "Dispatch loop failed." });
     } finally {
       setIsTemplateLoading(false);
       setIsTemplateDialogOpen(false);
@@ -284,21 +275,25 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
     const batch = writeBatch(firestore);
     let gName = targetGroupName.trim();
 
-    if (groupActionType === 'create') {
+    if (groupActionType === "create") {
       if (!gName) return;
-      const gid = gName.toLowerCase().replace(/\s+/g, '_');
-      const groupRef = doc(firestore, 'businesses', businessId, 'contactGroups', gid);
-      batch.set(groupRef, { id: gid, name: gName, icon: 'Users', status: 'active', createdAt: serverTimestamp() }, { merge: true });
+      const gid = gName.toLowerCase().replace(/\s+/g, "_");
+      const groupRef = doc(firestore, "businesses", businessId, "contactGroups", gid);
+      batch.set(
+        groupRef,
+        { id: gid, name: gName, icon: "Users", status: "active", createdAt: serverTimestamp() },
+        { merge: true }
+      );
     } else {
       if (!targetGroupId) return;
-      const group = groups.find(g => g.id === targetGroupId);
+      const group = groups.find((g) => g.id === targetGroupId);
       if (!group) return;
       gName = group.name;
     }
 
-    selectedIds.forEach(id => {
-      const cRef = doc(firestore, 'businesses', businessId, 'globalContacts', id);
-      const contact = filteredContacts.find(c => c.id === id);
+    selectedIds.forEach((id) => {
+      const cRef = doc(firestore, "businesses", businessId, "globalContacts", id);
+      const contact = filteredContacts.find((c) => c.id === id);
       const currentGroups = contact?.groups || [];
       if (!currentGroups.includes(gName)) {
         batch.update(cRef, { groups: [...currentGroups, gName] });
@@ -307,9 +302,9 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
 
     try {
       await batch.commit();
-      toast({ title: "Registry Updated", description: `Group mapping applied to ${selectedIds.length} nodes.` });
+      toast({ title: "Registry Updated", description: `Group assigned to ${selectedIds.length} contacts.` });
     } catch (e) {
-    console.error(e);
+      console.error(e);
       toast({ variant: "destructive", title: "Update Failed" });
     }
 
@@ -323,209 +318,434 @@ export function ContactRegistry({ contacts = [], businessId, business }: any) {
 
   const isAllSelected = useMemo(() => {
     if (filteredContacts.length === 0) return false;
-    return filteredContacts.every(c => selectedIds.includes(c.id));
+    return filteredContacts.every((c) => selectedIds.includes(c.id));
   }, [filteredContacts, selectedIds]);
 
   return (
-    <div className="space-y-6 relative pb-10 text-left">
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between px-1">
-        <div className="flex items-center gap-3 w-full md:w-auto">
+    <div className="space-y-5 relative pb-10 text-left">
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-            <Input placeholder="Search name or phone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-11 pl-10 rounded-xl bg-white border-none shadow-inner text-xs font-bold w-full" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search name or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 pl-9 rounded-xl bg-white border-slate-200 text-xs"
+            />
           </div>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button disabled={selectedIds.length === 0} className="h-11 px-6 rounded-xl bg-primary text-white font-black uppercase text-[10px] tracking-widest shadow-xl gap-2 transition-all">
-                <Zap className={cn("h-4 w-4", selectedIds.length > 0 && "fill-current")} />
+              <Button
+                disabled={selectedIds.length === 0}
+                className="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs gap-2"
+              >
+                <Zap className="h-4 w-4" />
                 Actions {selectedIds.length > 0 && `(${selectedIds.length})`}
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                <ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2 animate-in slide-in-from-top-2">
-              <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest p-2 opacity-40">Bulk Logic</DropdownMenuLabel>
-              <DropdownMenuItem onClick={handleOpenBulkTemplate} className="p-3 rounded-xl cursor-pointer hover:bg-primary/5 gap-3">
-                <SmartphoneNfc className="h-4 w-4 text-green-600" />
-                <span className="text-[10px] font-black uppercase">Send Template</span>
+            <DropdownMenuContent align="end" className="w-52 rounded-xl border-slate-200 p-1.5">
+              <DropdownMenuLabel className="text-xs font-semibold text-slate-500 px-2 py-1.5">
+                Bulk Actions
+              </DropdownMenuLabel>
+              <DropdownMenuItem onClick={handleOpenBulkTemplate} className="p-2.5 rounded-lg cursor-pointer gap-2.5 text-xs font-medium">
+                <SmartphoneNfc className="h-4 w-4 text-emerald-600" />
+                Send Template
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setGroupActionType('add'); setIsGroupActionOpen(true); }} className="p-3 rounded-xl cursor-pointer hover:bg-primary/5 gap-3">
-                <Grid className="h-4 w-4 text-blue-600" />
-                <span className="text-[10px] font-black uppercase">Assign Group</span>
+              <DropdownMenuItem
+                onClick={() => {
+                  setGroupActionType("add");
+                  setIsGroupActionOpen(true);
+                }}
+                className="p-2.5 rounded-lg cursor-pointer gap-2.5 text-xs font-medium"
+              >
+                <Grid className="h-4 w-4 text-sky-600" />
+                Assign Group
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setGroupActionType('create'); setIsGroupActionOpen(true); }} className="p-3 rounded-xl cursor-pointer hover:bg-primary/5 gap-3">
-                <FolderPlus className="h-4 w-4 text-orange-600" />
-                <span className="text-[10px] font-black uppercase">Create Group</span>
+              <DropdownMenuItem
+                onClick={() => {
+                  setGroupActionType("create");
+                  setIsGroupActionOpen(true);
+                }}
+                className="p-2.5 rounded-lg cursor-pointer gap-2.5 text-xs font-medium"
+              >
+                <FolderPlus className="h-4 w-4 text-amber-600" />
+                Create Group
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => { selectedIds.forEach(id => deleteDocumentNonBlocking(doc(firestore, 'businesses', businessId!, 'globalContacts', id))); setSelectedIds([]); toast({title:"Nodes Erased"}); }} className="p-3 rounded-xl cursor-pointer text-destructive hover:bg-destructive/5 gap-3 focus:text-destructive">
+              <DropdownMenuItem
+                onClick={() => {
+                  selectedIds.forEach((id) =>
+                    deleteDocumentNonBlocking(doc(firestore, "businesses", businessId!, "globalContacts", id))
+                  );
+                  setSelectedIds([]);
+                  toast({ title: "Selected Contacts Deleted" });
+                }}
+                className="p-2.5 rounded-lg cursor-pointer text-rose-600 focus:text-rose-600 gap-2.5 text-xs font-medium"
+              >
                 <Trash2 className="h-4 w-4" />
-                <span className="text-[10px] font-black uppercase">Erase Selection</span>
+                Delete Selected
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center gap-3">
-           <Badge variant="outline" className="h-6 border-primary/20 text-primary font-black uppercase text-[8px] px-3">{filteredContacts.length} Nodes</Badge>
-           {selectedIds.length > 0 && <Badge className="bg-green-500 text-white border-none text-[8px] font-black h-6 px-3 uppercase animate-in zoom-in">{selectedIds.length} Picked</Badge>}
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="border-slate-200 bg-white text-slate-700 font-mono text-xs tabular-nums">
+            {filteredContacts.length} contacts
+          </Badge>
+          {selectedIds.length > 0 && (
+            <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono text-xs tabular-nums">
+              {selectedIds.length} selected
+            </Badge>
+          )}
         </div>
       </div>
 
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border">
-        <div className="overflow-x-auto scrollbar-hide">
-          <Table className="min-w-[1000px]">
-            <TableHeader>
-              <TableRow className="bg-muted/10 border-b">
-                <TableHead className="w-12 pl-6">
-                  <Checkbox checked={isAllSelected} onCheckedChange={toggleSelectAll} className="data-[state=checked]:bg-primary" />
-                </TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Identity</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Source</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Location</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Clusters</TableHead>
-                <TableHead className="text-right pr-8 h-12 w-48"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredContacts.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="h-60 text-center opacity-30 italic text-sm font-black uppercase">Registry is clear.</TableCell></TableRow>
-              ) : filteredContacts.map((c: any) => {
-                const isSelected = selectedIds.includes(c.id);
-                return (
-                  <TableRow key={c.id} className={cn("group transition-colors border-b cursor-pointer", isSelected ? "bg-primary/5" : "hover:bg-muted/5")}>
-                    <TableCell className="pl-6" onClick={(e) => { e.stopPropagation(); toggleSelectOne(c.id); }}>
-                      <Checkbox 
-                        checked={isSelected} 
-                        className="data-[state=checked]:bg-primary pointer-events-none" 
-                      />
-                    </TableCell>
-                    <TableCell className="py-5" onClick={() => handleOpenEdit(c)}>
-                      <div className="flex items-center gap-4 text-left">
-                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-black text-primary text-xs shrink-0">{c.name?.charAt(0)}</div>
-                        <div className="min-w-0 text-left">
-                          <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{c.name}</p>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">{c.phone}</p>
+      <SectionCard bodyClassName="p-0">
+        {filteredContacts.length === 0 ? (
+          <div className="p-6">
+            <EmptyStatePanel
+              icon={Users}
+              title="No contacts found"
+              description="Sync customers & loyalty members or upload a CSV to populate your audience registry."
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto scrollbar-hide">
+            <Table className="min-w-[820px]">
+              <TableHeader>
+                <TableRow className="bg-slate-50 border-b border-slate-200">
+                  <TableHead className="w-12 pl-5">
+                    <Checkbox
+                      aria-label="Select all contacts"
+                      checked={isAllSelected}
+                      onCheckedChange={toggleSelectAll}
+                      className="data-[state=checked]:bg-slate-900"
+                    />
+                  </TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-600 h-11">Contact</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-600 h-11">Source</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-600 h-11">Location</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-600 h-11">Groups</TableHead>
+                  <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11 w-36">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredContacts.map((c: any) => {
+                  const isSelected = selectedIds.includes(c.id);
+                  return (
+                    <TableRow
+                      key={c.id}
+                      className={cn(
+                        "transition-colors border-b border-slate-100",
+                        isSelected ? "bg-slate-50" : "hover:bg-slate-50/60"
+                      )}
+                    >
+                      <TableCell className="pl-5">
+                        <Checkbox
+                          aria-label={`Select contact ${c.name || c.phone}`}
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectOne(c.id)}
+                          className="data-[state=checked]:bg-slate-900"
+                        />
+                      </TableCell>
+                      <TableCell className="py-3.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(c)}
+                          className="flex items-center gap-3 text-left"
+                        >
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-xs shrink-0">
+                            {c.name?.charAt(0) || "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                            <p className="text-xs font-mono tabular-nums text-slate-500">{c.phone}</p>
+                          </div>
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[11px] font-medium capitalize",
+                            c.source === "member"
+                              ? "bg-slate-900 text-white border-slate-900"
+                              : "bg-slate-50 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {c.source || "customer"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <MapPin className="h-3.5 w-3.5 text-slate-400" /> {c.city || "Global"}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell onClick={() => handleOpenEdit(c)}>
-                      <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-4 px-1.5 border-none shadow-sm", c.source === 'member' ? "bg-primary text-white" : "bg-muted text-slate-600")}>{c.source || 'customer'}</Badge>
-                    </TableCell>
-                    <TableCell onClick={() => handleOpenEdit(c)}><div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase"><MapPin className="h-3 w-3 opacity-30" /> {c.city || 'Global'}</div></TableCell>
-                    <TableCell onClick={() => handleOpenEdit(c)}>
-                      <div className="flex gap-1">
-                        {(c.groups || []).slice(0, 2).map((g: string) => <Badge key={g} variant="secondary" className="bg-orange-50 text-orange-600 border-none text-[7px] font-black uppercase h-4 px-1.5">{g}</Badge>)}
-                        {(c.groups || []).length > 2 && <span className="text-[7px] font-black opacity-30">+{c.groups.length - 2}</span>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right pr-8">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-green-600" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${formatPhoneForMeta(c.phone)}`); }}><SmartphoneNfc className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-primary" onClick={(e) => { e.stopPropagation(); handleOpenEdit(c); }}><Edit2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-destructive" onClick={(e) => { e.stopPropagation(); deleteDocumentNonBlocking(doc(firestore, 'businesses', businessId!, 'globalContacts', c.id)); }}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {(c.groups || []).slice(0, 2).map((g: string) => (
+                            <Badge key={g} variant="secondary" className="bg-amber-50 text-amber-800 border border-amber-200 text-[11px]">
+                              {g}
+                            </Badge>
+                          ))}
+                          {(c.groups || []).length > 2 && (
+                            <span className="text-[11px] font-mono text-slate-400">+{c.groups.length - 2}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Message ${c.name || c.phone} on WhatsApp`}
+                            className="h-8 w-8 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                          >
+                            <a
+                              href={`https://wa.me/${formatPhoneForMeta(c.phone || "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <SmartphoneNfc className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Edit ${c.name || c.phone}`}
+                            className="h-8 w-8 rounded-lg text-slate-600 hover:text-slate-900"
+                            onClick={() => handleOpenEdit(c)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Delete ${c.name || c.phone}`}
+                            className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-50"
+                            onClick={() =>
+                              deleteDocumentNonBlocking(doc(firestore, "businesses", businessId!, "globalContacts", c.id))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </SectionCard>
 
-      {/* Edit Identity Dialog */}
+      {/* Edit Contact Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden text-left w-[95vw]">
-          <DialogHeader className="p-8 bg-primary text-white text-left shrink-0">
-             <div className="flex items-center gap-4 text-left">
-                <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner"><Edit2 className="h-6 w-6 text-white" /></div>
-                <DialogTitle className="text-xl font-black uppercase">Modify Identity Node</DialogTitle>
-             </div>
+        <DialogContent className="sm:max-w-[480px] rounded-2xl border border-slate-200 p-0 overflow-hidden text-left w-[95vw]">
+          <DialogHeader className="p-6 bg-slate-900 text-white border-b border-slate-800 text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <Edit2 className="h-5 w-5 text-white" />
+              </div>
+              <DialogTitle className="text-base font-bold text-white">Edit Contact</DialogTitle>
+            </div>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
-            <div className="p-8 space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Full Name</Label><Input value={editingContact?.name || ""} onChange={(e) => setEditingContact({...editingContact, name: e.target.value})} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-bold" /></div>
-                <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">WhatsApp Identity *</Label><Input value={editingContact?.phone || ""} onChange={(e) => setEditingContact({...editingContact, phone: e.target.value.replace(/\D/g, '')})} className="h-11 rounded-xl bg-primary/5 border-none shadow-inner font-black text-lg text-primary" /></div>
-                <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Email Address</Label><Input value={editingContact?.email || ""} onChange={(e) => setEditingContact({...editingContact, email: e.target.value})} className="h-11 rounded-xl bg-muted/20 border-none" /></div>
-                <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">City / Region</Label><Input value={editingContact?.city || ""} onChange={(e) => setEditingContact({...editingContact, city: e.target.value})} className="h-11 rounded-xl bg-muted/20 border-none" /></div>
-                <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-primary ml-1">Smart Tags (Comma Separated)</Label><Input value={editingContact?.tagsInput || ""} onChange={(e) => setEditingContact({...editingContact, tagsInput: e.target.value})} className="h-11 rounded-xl bg-primary/5 border-none font-bold" /></div>
-                <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-orange-600 ml-1">Group Clusters (Comma Separated)</Label><Input value={editingContact?.groupsInput || ""} onChange={(e) => setEditingContact({...editingContact, groupsInput: e.target.value})} className="h-11 rounded-xl bg-orange-50 border-none font-bold" /></div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Full Name</Label>
+                <Input
+                  value={editingContact?.name || ""}
+                  onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })}
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">WhatsApp Number *</Label>
+                <Input
+                  value={editingContact?.phone || ""}
+                  onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value.replace(/\D/g, "") })}
+                  className="h-10 rounded-xl font-mono tabular-nums font-semibold"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Email Address</Label>
+                <Input
+                  value={editingContact?.email || ""}
+                  onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })}
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">City / Region</Label>
+                <Input
+                  value={editingContact?.city || ""}
+                  onChange={(e) => setEditingContact({ ...editingContact, city: e.target.value })}
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Tags (comma separated)</Label>
+                <Input
+                  value={editingContact?.tagsInput || ""}
+                  onChange={(e) => setEditingContact({ ...editingContact, tagsInput: e.target.value })}
+                  className="h-10 rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Groups (comma separated)</Label>
+                <Input
+                  value={editingContact?.groupsInput || ""}
+                  onChange={(e) => setEditingContact({ ...editingContact, groupsInput: e.target.value })}
+                  className="h-10 rounded-xl"
+                />
               </div>
             </div>
           </ScrollArea>
-          <DialogFooter className="p-8 bg-muted/10 border-t"><Button onClick={handleUpdateContact} className="w-full h-14 bg-primary font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl">Commit Updates</Button></DialogFooter>
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-100">
+            <Button
+              onClick={handleUpdateContact}
+              className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Group Action Dialog */}
       <Dialog open={isGroupActionOpen} onOpenChange={setIsGroupActionOpen}>
-        <DialogContent className="sm:max-w-[450px] rounded-2.5rem border-none shadow-2xl p-0 overflow-hidden text-left w-[95vw]">
-           <DialogHeader className="p-8 bg-slate-900 text-white text-left shrink-0">
-              <div className="flex items-center gap-4">
-                 <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                    {groupActionType === 'create' ? <FolderPlus className="h-6 w-6 text-accent" /> : <Grid className="h-6 w-6 text-accent" />}
-                 </div>
-                 <div>
-                    <DialogTitle className="text-xl font-bold uppercase">{groupActionType === 'create' ? 'New Cluster' : 'Assign to Group'}</DialogTitle>
-                    <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mt-1">{selectedIds.length} Nodes Selected</p>
-                 </div>
+        <DialogContent className="sm:max-w-[440px] rounded-2xl border border-slate-200 p-0 overflow-hidden text-left w-[95vw]">
+          <DialogHeader className="p-6 bg-slate-900 text-white border-b border-slate-800 text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                {groupActionType === "create" ? (
+                  <FolderPlus className="h-5 w-5 text-white" />
+                ) : (
+                  <Grid className="h-5 w-5 text-white" />
+                )}
               </div>
-           </DialogHeader>
-           <div className="p-8 space-y-8">
-              {groupActionType === 'create' ? (
-                <div className="space-y-3 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Group Name</Label><Input value={targetGroupName || ""} onChange={(e) => setTargetGroupName(e.target.value)} className="h-12 rounded-xl font-black text-lg bg-muted/20 border-none" /></div>
-              ) : (
-                <div className="space-y-3 text-left">
-                   <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Select Group</Label>
-                   <Select value={targetGroupId} onValueChange={setTargetGroupId}>
-                      <SelectTrigger className="h-12 rounded-xl border-none bg-muted/20 shadow-inner font-bold"><SelectValue placeholder="Pick Destination..." /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-none shadow-2xl">
-                        {groups.length === 0 ? <SelectItem value="none" disabled>No groups defined</SelectItem> : groups.map(g => <SelectItem key={g.id} value={g.id} className="text-[10px] font-bold uppercase">{g.name}</SelectItem>)}
-                      </SelectContent>
-                   </Select>
-                </div>
-              )}
-           </div>
-           <DialogFooter className="p-8 bg-muted/10 border-t"><Button onClick={handleGroupAction} className="w-full h-14 bg-primary font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl">Execute Mapping</Button></DialogFooter>
+              <div>
+                <DialogTitle className="text-base font-bold text-white">
+                  {groupActionType === "create" ? "New Group" : "Assign to Group"}
+                </DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs mt-0.5 font-mono tabular-nums">
+                  {selectedIds.length} contacts selected
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="p-6 space-y-4">
+            {groupActionType === "create" ? (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Group Name</Label>
+                <Input
+                  value={targetGroupName || ""}
+                  onChange={(e) => setTargetGroupName(e.target.value)}
+                  className="h-10 rounded-xl"
+                />
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Select Group</Label>
+                <Select value={targetGroupId} onValueChange={setTargetGroupId}>
+                  <SelectTrigger className="h-10 rounded-xl bg-white text-xs font-medium">
+                    <SelectValue placeholder="Choose destination group..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {groups.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No groups defined
+                      </SelectItem>
+                    ) : (
+                      groups.map((g) => (
+                        <SelectItem key={g.id} value={g.id} className="text-xs">
+                          {g.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-100">
+            <Button
+              onClick={handleGroupAction}
+              className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
+            >
+              Apply Group
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Template Dispatch Dialog */}
+      {/* Bulk Template Dispatch Dialog */}
       <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-        <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden text-left w-[95vw]">
-          <DialogHeader className="p-8 bg-slate-900 text-white text-left shrink-0">
-            <div className="flex items-center gap-4 text-left">
-               <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20"><Send className="h-6 w-6 text-accent" /></div>
-               <div>
-                  <DialogTitle className="text-xl font-black uppercase tracking-tight">Bulk Meta Dispatch</DialogTitle>
-                  <p className="text-white/40 text-[9px] font-bold uppercase tracking-widest mt-1">{selectedIds.length} Recipient Nodes Targeted</p>
-               </div>
+        <DialogContent className="sm:max-w-[450px] rounded-2xl border border-slate-200 p-0 overflow-hidden text-left w-[95vw]">
+          <DialogHeader className="p-6 bg-slate-900 text-white border-b border-slate-800 text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <Send className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-white">Bulk Template Dispatch</DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs mt-0.5 font-mono tabular-nums">
+                  {selectedIds.length} recipients targeted
+                </DialogDescription>
+              </div>
             </div>
           </DialogHeader>
-          <div className="p-8 space-y-8">
-             <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl space-y-4">
-                <div className="flex items-center gap-3">
-                   <ShieldCheck className="h-5 w-5 text-primary" />
-                   <p className="text-[10px] font-black uppercase text-primary">Compliance Protocol</p>
+          <div className="p-6 space-y-5">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-900">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" /> Compliance Notice
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Select an approved Meta template. Customer name, phone, and portal link will map automatically.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Approved Template</Label>
+              <Select value={selectedTemplateName} onValueChange={setSelectedTemplateName}>
+                <SelectTrigger className="h-10 rounded-xl bg-white text-xs font-medium">
+                  <SelectValue placeholder="Pick template..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {templates.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No templates synced
+                    </SelectItem>
+                  ) : (
+                    templates.map((t) => (
+                      <SelectItem key={t.name} value={t.name} className="text-xs font-mono">
+                        {t.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {isTemplateLoading && (
+                <div className="flex items-center gap-2 pt-2 text-xs text-slate-500">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Loading Meta templates...</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed italic">"Select an approved template. System will automatically map recipient names before dispatch."</p>
-             </div>
-             <div className="space-y-3 text-left">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Pick Approved Template</Label>
-                <Select value={selectedTemplateName} onValueChange={setSelectedTemplateName}>
-                   <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-black text-xs uppercase"><SelectValue placeholder="Pick Meta Node..." /></SelectTrigger>
-                   <SelectContent className="rounded-xl border-none shadow-2xl">
-                      {templates.length === 0 ? <SelectItem value="none" disabled>No templates synced</SelectItem> : templates.map(t => <SelectItem key={t.name} value={t.name} className="text-[10px] font-bold uppercase">{t.name}</SelectItem>)}
-                   </SelectContent>
-                </Select>
-                {isTemplateLoading && <div className="flex items-center gap-2 mt-4 ml-1 animate-pulse"><Loader2 className="h-3 w-3 animate-spin text-primary" /><span className="text-[8px] font-bold text-primary uppercase">Synchronizing Meta Cloud...</span></div>}
-             </div>
+              )}
+            </div>
           </div>
-          <DialogFooter className="p-8 bg-muted/10 border-t">
-            <Button onClick={handleSendBulkTemplates} disabled={isTemplateLoading || !selectedTemplateName} className="w-full h-14 bg-primary font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl text-white">
-               Start Bulk Transmission
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-100">
+            <Button
+              onClick={handleSendBulkTemplates}
+              disabled={isTemplateLoading || !selectedTemplateName}
+              className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
+            >
+              Send Bulk Messages
             </Button>
           </DialogFooter>
         </DialogContent>

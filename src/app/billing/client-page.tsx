@@ -780,8 +780,8 @@ function BillingContent() {
         variant: "destructive",
         title: quoteQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Quotation Limit Reached",
         description: quoteQuota.isLockedByMode
-          ? `Activate ${quoteQuota.menu.addonName} in Marketplace to create quotations.`
-          : `Your plan includes ${quoteQuota.limit} quotations/month. Upgrade ${quoteQuota.menu.addonName} for unlimited estimates.`,
+          ? `Activate ${quoteQuota.menu.addonLabel} in Marketplace to create quotations.`
+          : `Your plan includes ${quoteQuota.limit} quotations/month. Upgrade ${quoteQuota.menu.addonLabel} for unlimited estimates.`,
       });
       return;
     }
@@ -791,8 +791,8 @@ function BillingContent() {
         variant: "destructive",
         title: billingQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Invoice Limit Reached",
         description: billingQuota.isLockedByMode
-          ? `Activate ${billingQuota.menu.addonName} in Marketplace to issue POS invoices.`
-          : `Your plan includes ${billingQuota.limit} POS invoices/month. Upgrade ${billingQuota.menu.addonName} for unlimited billing.`,
+          ? `Activate ${billingQuota.menu.addonLabel} in Marketplace to issue POS invoices.`
+          : `Your plan includes ${billingQuota.limit} POS invoices/month. Upgrade ${billingQuota.menu.addonLabel} for unlimited billing.`,
       });
       return;
     }
@@ -1223,7 +1223,7 @@ function BillingContent() {
         variant: "destructive",
         title: billingQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Invoice Limit Reached",
         description: billingQuota.isLockedByMode
-          ? `Activate ${billingQuota.menu.addonName} in Marketplace to split POS invoices.`
+          ? `Activate ${billingQuota.menu.addonLabel} in Marketplace to split POS invoices.`
           : `Splitting into ${parts.length} bills exceeds your ${billingQuota.limit} invoices/month quota.`,
       });
       return;

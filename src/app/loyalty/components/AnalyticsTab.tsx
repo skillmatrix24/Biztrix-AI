@@ -1,10 +1,9 @@
-
 "use client";
 
 import React from "react";
-import { TrendingUp, Bot, ArrowRight } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionCard } from "@/components/ui/editorial";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import Link from "next/link";
 
@@ -15,48 +14,62 @@ const revenueData = [
   { name: "Week 4", loyalty: 61000, organic: 25000 },
 ];
 
-export function AnalyticsTab({ stats, currencySymbol }: { stats: any, currencySymbol: string }) {
+export function AnalyticsTab({ stats, currencySymbol }: { stats: any; currencySymbol: string }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
       <div className="lg:col-span-8">
-        <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border text-left">
-          <CardHeader className="bg-muted/30 border-b py-5 px-8">
-            <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" /> Revenue Contribution
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 md:p-8">
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueData}>
-                  <defs>
-                    <linearGradient id="colorLoyalty" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} />
-                  <YAxis axisLine={false} tickLine={false} fontSize={10} />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="loyalty" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#colorLoyalty)" strokeWidth={3} />
-                  <Area type="monotone" dataKey="organic" stroke="#e2e8f0" fillOpacity={0.1} fill="#e2e8f0" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <SectionCard
+          title="Revenue Contribution"
+          description={`Member billing contribution (${currencySymbol}${stats.loyaltyRevenueMonth?.toLocaleString() || 0}) vs walk-in sales.`}
+        >
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="colorLoyalty" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0f172a" stopOpacity={0.14} />
+                    <stop offset="95%" stopColor="#0f172a" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} />
+                <YAxis axisLine={false} tickLine={false} fontSize={11} />
+                <Tooltip />
+                <Area
+                  type="monotone"
+                  dataKey="loyalty"
+                  stroke="#0f172a"
+                  fillOpacity={1}
+                  fill="url(#colorLoyalty)"
+                  strokeWidth={2.5}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="organic"
+                  stroke="#cbd5e1"
+                  fillOpacity={0.1}
+                  fill="#cbd5e1"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
       </div>
       <div className="lg:col-span-4">
-         <Card className="border-none shadow-xl bg-slate-900 text-white rounded-3xl p-8 space-y-6 text-left">
-            <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-              <Bot className="h-6 w-6 text-accent" />
+        <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-5 text-left h-full flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+              <Bot className="h-5 w-5 text-white" />
             </div>
-            <h3 className="text-xl font-bold">Growth Strategy</h3>
-            <p className="text-xs text-slate-400 leading-relaxed italic">"Loyalty revenue is up 15%. Recommend a specialized 'VIP Event' campaign this weekend to maximize returns."</p>
-            <Button asChild className="w-full bg-accent text-primary font-black uppercase text-[10px] rounded-xl">
-              <Link href="/loyalty/campaigns">Execute Strategy</Link>
-            </Button>
-         </Card>
+            <h3 className="text-lg font-bold text-white">Growth Strategy</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Rewarded member billing drives stronger repeat visits. Launch a targeted weekend VIP campaign to bring dormant members back to the counter.
+            </p>
+          </div>
+          <Button asChild className="w-full h-10 bg-white text-slate-900 hover:bg-slate-100 font-semibold text-xs rounded-xl">
+            <Link href="/loyalty/campaigns">Launch Campaign</Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

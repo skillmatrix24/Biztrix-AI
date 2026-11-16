@@ -138,17 +138,17 @@ export function EWayApiSettingsCard({
   };
 
   return (
-    <Card className="border border-slate-200 shadow-sm bg-white rounded-[2rem] overflow-hidden text-left">
-      <CardHeader className="bg-slate-50/80 border-b border-slate-200 py-6 px-8 flex flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center shrink-0">
-            <Truck className="h-6 w-6 text-primary" />
+    <Card className="border border-slate-200 bg-white rounded-2xl overflow-hidden text-left">
+      <CardHeader className="bg-slate-50/80 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="h-11 w-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+            <Truck className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-900">
+            <CardTitle className="text-base font-bold text-slate-900">
               Live NIC / GSP E-Way Bill API
             </CardTitle>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 mt-0.5">
               1-Click EWB Generation, Part-B Vehicle Update &amp; 24-Hour Cancel directly from Invoices
             </p>
           </div>
@@ -156,10 +156,10 @@ export function EWayApiSettingsCard({
 
         <span
           className={cn(
-            "px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shrink-0",
+            "text-xs font-semibold shrink-0",
             (provider === "sandbox" ? "sandbox" : mode) === "live"
-              ? "bg-emerald-100 text-emerald-800"
-              : "bg-amber-100 text-amber-800"
+              ? "text-emerald-700"
+              : "text-amber-700"
           )}
         >
           {(provider === "sandbox" ? "sandbox" : mode) === "live"
@@ -276,7 +276,7 @@ export function EWayApiSettingsCard({
                     <Label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                       <span>NIC API Password</span>
                       {savedStatus?.hasPassword && (
-                        <span className="text-[10px] font-mono text-emerald-700">Saved</span>
+                        <span className="text-xs font-mono text-emerald-700">Saved</span>
                       )}
                     </Label>
                     <Input
@@ -298,7 +298,7 @@ export function EWayApiSettingsCard({
                         <Label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                           <span>GSP Client ID</span>
                           {savedStatus?.hasClientId && (
-                            <span className="text-[10px] font-mono text-emerald-700">Saved</span>
+                            <span className="text-xs font-mono text-emerald-700">Saved</span>
                           )}
                         </Label>
                         <Input
@@ -318,7 +318,7 @@ export function EWayApiSettingsCard({
                         <Label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                           <span>GSP Client Secret</span>
                           {savedStatus?.hasClientSecret && (
-                            <span className="text-[10px] font-mono text-emerald-700">Saved</span>
+                            <span className="text-xs font-mono text-emerald-700">Saved</span>
                           )}
                         </Label>
                         <Input
@@ -343,7 +343,7 @@ export function EWayApiSettingsCard({
                           {provider === "cleartax" ? "ClearTax Auth Token" : "API Key / Bearer Token"}
                         </span>
                         {savedStatus?.hasApiKey && (
-                          <span className="text-[10px] font-mono text-emerald-700">Saved</span>
+                          <span className="text-xs font-mono text-emerald-700">Saved</span>
                         )}
                       </Label>
                       <Input

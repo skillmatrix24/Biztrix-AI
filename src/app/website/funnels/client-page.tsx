@@ -25,19 +25,11 @@ import {
   Trash2,
   TrendingUp,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -93,19 +85,22 @@ import {
 import { AddSectionDialog } from "@/components/website/add-section-dialog";
 import { SectionEditDialog } from "@/components/website/section-edit-dialog";
 import { StoreSimulator } from "@/components/website/store-simulator";
+import {
+  PageHeader,
+  KpiStatCard,
+  SectionCard,
+} from "@/components/ui/editorial";
 
 export default function LandingPageBuilderClient() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [isSaving, startSavingTransition] = useTransition();
 
-  // 1. Resolve User & Business Context
   const userProfileRef = useMemoFirebase(
     () => (user?.uid ? doc(firestore, "users", user.uid) : null),
     [firestore, user?.uid]
   );
-  const { data: userProfile, isLoading: isProfileLoading } =
-    useDoc<any>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
   const businessRef = useMemoFirebase(
@@ -115,7 +110,6 @@ export default function LandingPageBuilderClient() {
   const { data: business } = useDoc<any>(businessRef);
   const currencySymbol = getCurrencySymbol(business?.currency);
 
-  // 2. Fetch Websites Docs (Main Storefront + Funnels)
   const websitesQuery = useMemoFirebase(
     () =>
       businessId ? collection(firestore, "businesses", businessId, "websites") : null,
@@ -124,7 +118,6 @@ export default function LandingPageBuilderClient() {
   const { data: websiteDocs = [], isLoading: isWebsitesLoading } =
     useCollection<any>(websitesQuery);
 
-  // 3. Fetch Catalog Products
   const productsQuery = useMemoFirebase(
     () =>
       businessId ? collection(firestore, "businesses", businessId, "products") : null,
@@ -132,7 +125,6 @@ export default function LandingPageBuilderClient() {
   );
   const { data: rawProducts = [] } = useCollection<any>(productsQuery);
 
-  // 4. Fetch Attribution Telemetry (Orders, Events, Leads)
   const eventsQuery = useMemoFirebase(
     () =>
       businessId
@@ -171,7 +163,6 @@ export default function LandingPageBuilderClient() {
   );
   const { data: rawLeads = [] } = useCollection<any>(leadsQuery);
 
-  // Sync relays on mount so funnel leads/orders/views appear immediately
   useEffect(() => {
     if (!businessId || !user?.uid) return;
     let active = true;
@@ -187,7 +178,6 @@ export default function LandingPageBuilderClient() {
     };
   }, [businessId, user]);
 
-  // Derived Main Storefront Config & Catalog
   const mainWebsiteDoc = useMemo(
     () => (websiteDocs || []).find((d: any) => d.id === "main") || {},
     [websiteDocs]
@@ -210,7 +200,6 @@ export default function LandingPageBuilderClient() {
     [rawProducts]
   );
 
-  // Storefront inherited settings
   const storeName = mainWebsiteDoc.storeName || business?.name || "My Store";
   const storeSlug = mainWebsiteDoc.slug || business?.slug || "";
   const storePrimaryColor = mainWebsiteDoc.primaryColor || "#0C83B3";
@@ -232,12 +221,10 @@ export default function LandingPageBuilderClient() {
     [mainWebsiteDoc.coupons]
   );
 
-  // Selected & Draft Funnel State
   const [selectedFunnelId, setSelectedFunnelId] = useState<string | null>(null);
   const [draftFunnel, setDraftFunnel] = useState<StoreFunnelConfig | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Dialogs State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTplId, setNewTplId] = useState<StoreFunnelTemplateId>("product_launch");
   const [newName, setNewName] = useState("");
@@ -250,7 +237,8 @@ export default function LandingPageBuilderClient() {
 
   useEffect(() => {
     if (funnels.length > 0) {
-      const currentExists = selectedFunnelId && funnels.some((f) => f.id === selectedFunnelId);
+      const currentExists =
+        selectedFunnelId && funnels.some((f) => f.id === selectedFunnelId);
       const nextTarget = currentExists
         ? funnels.find((f) => f.id === selectedFunnelId)!
         : funnels[0];
@@ -267,7 +255,6 @@ export default function LandingPageBuilderClient() {
     }
   }, [funnels, selectedFunnelId, hasUnsavedChanges]);
 
-  // Metrics across all funnels & active funnel
   const metricsByFunnelId = useMemo(() => {
     const map: Record<string, ReturnType<typeof computeFunnelMetrics>> = {};
     for (const f of funnels) {
@@ -325,7 +312,6 @@ export default function LandingPageBuilderClient() {
       targetProductId: newProductId === "none" ? "" : newProductId,
       targetProductName: pickedProd?.name,
     });
-    // Avoid slug collision locally before server check
     if (funnels.some((f) => f.slug === created.slug)) {
       created.slug = `${created.slug}-${Math.floor(100 + Math.random() * 900)}`;
     }
@@ -397,7 +383,9 @@ export default function LandingPageBuilderClient() {
       ...draftFunnel,
       id: clonedId,
       name: `${draftFunnel.name} (Copy)`,
-      slug: sanitizeStoreSlug(`${draftFunnel.slug}-copy-${Math.floor(10 + Math.random() * 89)}`),
+      slug: sanitizeStoreSlug(
+        `${draftFunnel.slug}-copy-${Math.floor(10 + Math.random() * 89)}`
+      ),
       status: "draft",
       sections: draftFunnel.sections.map((s) => ({
         ...s,
@@ -468,8 +456,7 @@ export default function LandingPageBuilderClient() {
       funnelSlug: funnel.slug,
       isPreview: funnel.status !== "published",
     });
-    const fullUrl =
-      typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
+    const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${path}` : path;
     navigator.clipboard.writeText(fullUrl);
     setCopiedId(funnel.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -481,9 +468,9 @@ export default function LandingPageBuilderClient() {
 
   if (isProfileLoading || isWebsitesLoading) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
-        <Loader2 className="h-9 w-9 animate-spin text-primary mb-3" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-700" />
+        <p className="text-xs font-medium text-slate-500">
           Loading Landing Page Builder...
         </p>
       </div>
@@ -492,134 +479,76 @@ export default function LandingPageBuilderClient() {
 
   return (
     <div className="space-y-6 pb-16 text-left">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase">
-              Store Builder · Sales Funnels
-            </Badge>
-            <Badge variant="outline" className="text-[10px] font-bold uppercase">
-              Inherits Storefront Theme & Checkout
-            </Badge>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 uppercase">
-            Landing Page Builder
-          </h1>
-          <p className="text-xs text-muted-foreground max-w-2xl">
-            High-converting single-product launch pages, combo COD funnels, and lead capture pages — reusing your Storefront Manager theme, coupons, Razorpay, WhatsApp & shipping rules.
-          </p>
-        </div>
+      <PageHeader
+        breadcrumb="Store Builder · Sales Funnels"
+        title="Landing Page Builder"
+        description="High-converting single-product launch pages, combo COD funnels, and lead capture pages inheriting your Storefront settings."
+        backHref="/website"
+        backLabel="Back to Storefront Manager"
+        icon={Rocket}
+        actions={
+          <>
+            <Button
+              asChild
+              variant="outline"
+              className="h-10 px-4 rounded-xl border-slate-200 bg-white text-xs font-semibold gap-1.5"
+            >
+              <Link href="/website">
+                <ShoppingBag className="h-3.5 w-3.5" /> Storefront Settings
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setIsCreateOpen(true)}
+              className="h-10 px-4 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white gap-1.5"
+            >
+              <Plus className="h-4 w-4" /> Create Sales Funnel
+            </Button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-bold">
-            <Link href="/website">
-              <ShoppingBag className="h-3.5 w-3.5 mr-1.5" /> Storefront Settings
-            </Link>
-          </Button>
-          <Button
-            type="button"
-            onClick={() => setIsCreateOpen(true)}
-            className="rounded-xl text-xs font-black uppercase bg-primary text-white shadow-md"
-          >
-            <Plus className="h-4 w-4 mr-1.5" /> Create Sales Funnel
-          </Button>
-        </div>
-      </div>
-
-      {/* Funnel KPIs Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-none shadow-sm bg-white rounded-2xl">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                Total Funnels
-              </p>
-              <p className="text-2xl font-black text-slate-900 mt-1">
-                {aggregateStats.totalFunnels}
-              </p>
-              <p className="text-[10px] text-emerald-700 font-bold mt-0.5">
-                {aggregateStats.publishedCount} Published Live
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Layers className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                Funnel Visits
-              </p>
-              <p className="text-2xl font-black text-slate-900 mt-1">
-                {aggregateStats.totalViews.toLocaleString()}
-              </p>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-                Tracked per campaign
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-              <MousePointer2 className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                Funnel Revenue
-              </p>
-              <p className="text-2xl font-black text-emerald-700 mt-1 tabular-nums">
-                {currencySymbol}
-                {aggregateStats.totalRevenue.toLocaleString()}
-              </p>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-                Attributed paid orders
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl">
-          <CardContent className="p-5 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">
-                Avg Conversion
-              </p>
-              <p className="text-2xl font-black text-slate-900 mt-1 tabular-nums">
-                {aggregateStats.convRate}%
-              </p>
-              <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
-                Orders + Leads / Visits
-              </p>
-            </div>
-            <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-              <Target className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
+        <KpiStatCard
+          label="Total Funnels"
+          value={aggregateStats.totalFunnels}
+          subtext={`${aggregateStats.publishedCount} Published Live`}
+          icon={Layers}
+        />
+        <KpiStatCard
+          label="Funnel Visits"
+          value={aggregateStats.totalViews.toLocaleString()}
+          subtext="Tracked per campaign"
+          icon={MousePointer2}
+        />
+        <KpiStatCard
+          label="Funnel Revenue"
+          value={`${currencySymbol}${aggregateStats.totalRevenue.toLocaleString()}`}
+          subtext="Attributed paid orders"
+          icon={TrendingUp}
+          tone="positive"
+        />
+        <KpiStatCard
+          label="Avg Conversion"
+          value={`${aggregateStats.convRate}%`}
+          subtext="Orders + Leads / Visits"
+          icon={Target}
+        />
       </div>
 
-      {/* Funnels Switcher & Quick Cards */}
       {funnels.length === 0 ? (
-        <Card className="border-dashed border-2 bg-white rounded-3xl">
-          <CardContent className="p-8 md:p-10 space-y-6">
+        <SectionCard>
+          <div className="space-y-6 py-4">
             <div className="text-center max-w-xl mx-auto space-y-2">
-              <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                <Rocket className="h-6 w-6" />
+              <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200 text-slate-900 flex items-center justify-center mx-auto">
+                <Rocket className="h-5 w-5" />
               </div>
-              <h2 className="text-xl font-black uppercase text-slate-900">
-                Launch Your First High-Converting Sales Funnel
+              <h2 className="text-lg font-bold text-slate-900">
+                Launch Your First Sales Funnel
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Pick a pre-built conversion template below. All Storefront colors, logos, coupons, shipping rules, and Razorpay/COD/WhatsApp settings sync automatically.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Pick a conversion template below. Storefront colors, logos, coupons, shipping
+                rules, and payment settings sync automatically.
               </p>
             </div>
 
@@ -627,18 +556,14 @@ export default function LandingPageBuilderClient() {
               {STORE_FUNNEL_TEMPLATES.map((tpl) => (
                 <div
                   key={tpl.id}
-                  className="p-5 rounded-2xl border bg-slate-50/70 hover:border-primary hover:bg-primary/5 transition-all flex flex-col justify-between gap-4"
+                  className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:border-slate-300 transition-colors flex flex-col justify-between gap-4"
                 >
                   <div className="space-y-2">
-                    <Badge className="text-[9px] font-black uppercase bg-slate-900 text-white border-none">
+                    <Badge className="text-[11px] font-semibold bg-slate-900 text-white border-none">
                       {tpl.sectionTypes.length} Funnel Blocks
                     </Badge>
-                    <h3 className="text-sm font-black uppercase text-slate-900">
-                      {tpl.name}
-                    </h3>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      {tpl.tagline}
-                    </p>
+                    <h3 className="text-sm font-bold text-slate-900">{tpl.name}</h3>
+                    <p className="text-xs text-slate-600 leading-relaxed">{tpl.tagline}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -650,11 +575,18 @@ export default function LandingPageBuilderClient() {
                         setNewSlug(tpl.defaultSlug);
                         setIsCreateOpen(true);
                       }}
-                      className="flex-1 rounded-xl text-[11px] font-black uppercase"
+                      className="flex-1 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold"
                     >
                       Use Template
                     </Button>
-                    <Button asChild type="button" variant="outline" size="sm" className="rounded-xl text-[11px] font-bold">
+                    <Button
+                      asChild
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-label={`Preview ${tpl.name}`}
+                      className="h-9 rounded-xl text-xs"
+                    >
                       <Link
                         href={resolveFunnelPreviewUrl({
                           businessId,
@@ -663,18 +595,17 @@ export default function LandingPageBuilderClient() {
                         })}
                         target="_blank"
                       >
-                        <Eye className="h-3.5 w-3.5" />
+                        <Eye className="h-4 w-4" />
                       </Link>
                     </Button>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       ) : (
         <>
-          {/* Existing Funnels Selector Strip */}
           <div className="flex flex-wrap items-center gap-2.5">
             {funnels.map((f) => {
               const m = metricsByFunnelId[f.id];
@@ -689,22 +620,22 @@ export default function LandingPageBuilderClient() {
                     setHasUnsavedChanges(false);
                   }}
                   className={cn(
-                    "px-4 py-2.5 rounded-2xl border text-left transition-all flex items-center gap-3",
+                    "px-4 py-2.5 rounded-xl border text-left transition-colors flex items-center gap-3",
                     isSelected
-                      ? "bg-slate-900 text-white border-slate-900 shadow-lg"
-                      : "bg-white text-slate-900 hover:border-primary"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-900 border-slate-200 hover:border-slate-300"
                   )}
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-black uppercase truncate max-w-[180px]">
+                      <span className="text-xs font-semibold truncate max-w-[180px]">
                         {f.name}
                       </span>
                       <Badge
                         className={cn(
-                          "text-[8px] font-black uppercase h-4 px-1.5 border-none",
+                          "text-[11px] font-medium h-5 px-1.5 border-none capitalize",
                           f.status === "published"
-                            ? "bg-emerald-500 text-white"
+                            ? "bg-emerald-600 text-white"
                             : isSelected
                               ? "bg-white/20 text-white"
                               : "bg-amber-100 text-amber-800"
@@ -715,8 +646,8 @@ export default function LandingPageBuilderClient() {
                     </div>
                     <p
                       className={cn(
-                        "text-[10px] font-mono mt-0.5",
-                        isSelected ? "text-slate-300" : "text-muted-foreground"
+                        "text-xs font-mono tabular-nums mt-0.5",
+                        isSelected ? "text-slate-300" : "text-slate-500"
                       )}
                     >
                       /{f.slug} · {m?.ordersCount || 0} orders · {m?.views || 0} views
@@ -729,28 +660,27 @@ export default function LandingPageBuilderClient() {
 
           {draftFunnel && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-              {/* Left 7 Columns: Funnel Settings + Section Controls */}
               <div className="xl:col-span-7 space-y-6 min-w-0">
-                {/* Action Bar & Status */}
-                <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden">
-                  <CardHeader className="bg-slate-900 text-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-sm font-black uppercase tracking-tight flex items-center gap-2">
-                        <Flame className="h-4 w-4 text-amber-400" />
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                  <div className="bg-slate-900 text-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="text-base font-bold text-white flex items-center gap-2 truncate">
+                        <Flame className="h-4 w-4 text-amber-400 shrink-0" />
                         {draftFunnel.name}
-                      </CardTitle>
-                      <CardDescription className="text-slate-300 text-[11px]">
-                        Public URL slug: <span className="font-mono text-white">/{draftFunnel.slug}</span>
+                      </h3>
+                      <p className="text-slate-300 text-xs mt-0.5">
+                        Public URL slug:{" "}
+                        <span className="font-mono text-white">/{draftFunnel.slug}</span>
                         {hasUnsavedChanges && " · Unsaved edits pending"}
-                      </CardDescription>
+                      </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => copyShareUrl(draftFunnel)}
-                        className="h-8 rounded-xl text-[10px] font-black uppercase bg-white/10 text-white border-white/20 hover:bg-white/20"
+                        className="h-8 rounded-lg text-xs font-medium bg-white/10 text-white border-white/20 hover:bg-white/20"
                       >
                         {copiedId === draftFunnel.id ? (
                           <Check className="h-3.5 w-3.5 mr-1 text-emerald-400" />
@@ -764,7 +694,7 @@ export default function LandingPageBuilderClient() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 rounded-xl text-[10px] font-black uppercase bg-white/10 text-white border-white/20 hover:bg-white/20"
+                        className="h-8 rounded-lg text-xs font-medium bg-white/10 text-white border-white/20 hover:bg-white/20"
                       >
                         <Link href={activePreviewUrl} target="_blank">
                           <ExternalLink className="h-3.5 w-3.5 mr-1" /> Live View
@@ -775,19 +705,19 @@ export default function LandingPageBuilderClient() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 rounded-xl text-[10px] font-black uppercase bg-white/10 text-white border-white/20 hover:bg-white/20"
+                        className="h-8 rounded-lg text-xs font-medium bg-white/10 text-white border-white/20 hover:bg-white/20"
                       >
                         <Link href={`/website/editor/${draftFunnel.id}`}>
                           <Layout className="h-3.5 w-3.5 mr-1" /> Visual Editor
                         </Link>
                       </Button>
                     </div>
-                  </CardHeader>
+                  </div>
 
-                  <CardContent className="p-6 space-y-5">
+                  <div className="p-6 space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Funnel Campaign Name
                         </Label>
                         <Input
@@ -795,11 +725,11 @@ export default function LandingPageBuilderClient() {
                           onChange={(e) =>
                             updateDraft((p) => ({ ...p, name: e.target.value }))
                           }
-                          className="h-10 rounded-xl font-bold"
+                          className="h-10 rounded-xl border-slate-200 text-sm font-medium"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Funnel Slug (URL Key)
                         </Label>
                         <Input
@@ -810,14 +740,14 @@ export default function LandingPageBuilderClient() {
                               slug: sanitizeStoreSlug(e.target.value),
                             }))
                           }
-                          className="h-10 rounded-xl font-mono text-xs font-bold"
+                          className="h-10 rounded-xl border-slate-200 font-mono text-xs"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Conversion Goal
                         </Label>
                         <Select
@@ -829,19 +759,25 @@ export default function LandingPageBuilderClient() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl text-xs font-bold">
+                          <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="direct_checkout">Direct Express Checkout</SelectItem>
-                            <SelectItem value="lead_capture">Lead / Callback Capture</SelectItem>
-                            <SelectItem value="whatsapp_consult">WhatsApp Consultation</SelectItem>
+                            <SelectItem value="direct_checkout">
+                              Direct Express Checkout
+                            </SelectItem>
+                            <SelectItem value="lead_capture">
+                              Lead / Callback Capture
+                            </SelectItem>
+                            <SelectItem value="whatsapp_consult">
+                              WhatsApp Consultation
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Hero Target Product
                         </Label>
                         <Select
@@ -853,11 +789,13 @@ export default function LandingPageBuilderClient() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl text-xs font-bold">
+                          <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
                             <SelectValue placeholder="First online item" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Auto-select First Online Item</SelectItem>
+                            <SelectItem value="none">
+                              Auto-select First Online Item
+                            </SelectItem>
                             {onlineProducts.map((prod: any) => (
                               <SelectItem key={prod.id} value={prod.id}>
                                 {prod.name} (₹{prod.onlinePrice ?? prod.price ?? 0})
@@ -868,7 +806,7 @@ export default function LandingPageBuilderClient() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Default Promo Coupon
                         </Label>
                         <Select
@@ -880,7 +818,7 @@ export default function LandingPageBuilderClient() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl text-xs font-bold">
+                          <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
                             <SelectValue placeholder="None" />
                           </SelectTrigger>
                           <SelectContent>
@@ -902,16 +840,17 @@ export default function LandingPageBuilderClient() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="p-3.5 rounded-2xl border bg-slate-50 flex items-center justify-between gap-3">
+                      <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                         <div>
-                          <Label className="text-xs font-black uppercase text-slate-900">
+                          <Label className="text-xs font-semibold text-slate-900">
                             Sticky Bottom CTA Bar
                           </Label>
-                          <p className="text-[10px] text-muted-foreground">
-                            Persistent mobile conversion bar scrolling straight to checkout
+                          <p className="text-xs text-slate-500">
+                            Persistent mobile bar scrolling to checkout
                           </p>
                         </div>
                         <Switch
+                          aria-label="Enable sticky bottom CTA bar"
                           checked={draftFunnel.stickyCtaEnabled}
                           onCheckedChange={(v) =>
                             updateDraft((p) => ({ ...p, stickyCtaEnabled: v }))
@@ -920,7 +859,7 @@ export default function LandingPageBuilderClient() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Sticky CTA Button Text
                         </Label>
                         <Input
@@ -932,22 +871,23 @@ export default function LandingPageBuilderClient() {
                             }))
                           }
                           placeholder="Claim Launch Offer Now"
-                          className="h-10 rounded-xl text-xs font-bold"
+                          className="h-10 rounded-xl border-slate-200 text-xs font-medium"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-                      <div className="p-3.5 rounded-2xl border bg-slate-50 flex items-center justify-between gap-3">
+                      <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                         <div>
-                          <Label className="text-xs font-black uppercase text-slate-900">
+                          <Label className="text-xs font-semibold text-slate-900">
                             Inherit Storefront Theme
                           </Label>
-                          <p className="text-[10px] text-muted-foreground">
-                            Uses your Storefront primary color, surface & typography
+                          <p className="text-xs text-slate-500">
+                            Uses your Storefront primary color & typography
                           </p>
                         </div>
                         <Switch
+                          aria-label="Inherit storefront theme"
                           checked={draftFunnel.inheritStoreTheme}
                           onCheckedChange={(v) =>
                             updateDraft((p) => ({ ...p, inheritStoreTheme: v }))
@@ -957,12 +897,13 @@ export default function LandingPageBuilderClient() {
 
                       {!draftFunnel.inheritStoreTheme && (
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                          <Label className="text-xs font-semibold text-slate-700">
                             Campaign Accent Color Override
                           </Label>
                           <div className="flex gap-2">
                             <Input
                               type="color"
+                              aria-label="Campaign accent color picker"
                               value={draftFunnel.accentColorOverride || storePrimaryColor}
                               onChange={(e) =>
                                 updateDraft((p) => ({
@@ -970,7 +911,7 @@ export default function LandingPageBuilderClient() {
                                   accentColorOverride: e.target.value,
                                 }))
                               }
-                              className="h-10 w-14 p-1 rounded-xl"
+                              className="h-10 w-12 p-1 rounded-xl border-slate-200"
                             />
                             <Input
                               value={draftFunnel.accentColorOverride || storePrimaryColor}
@@ -980,17 +921,16 @@ export default function LandingPageBuilderClient() {
                                   accentColorOverride: e.target.value,
                                 }))
                               }
-                              className="h-10 rounded-xl font-mono text-xs font-bold uppercase flex-1"
+                              className="h-10 rounded-xl border-slate-200 font-mono text-xs flex-1"
                             />
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* SEO Fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Funnel Meta Title (SEO)
                         </Label>
                         <Input
@@ -998,11 +938,11 @@ export default function LandingPageBuilderClient() {
                           onChange={(e) =>
                             updateDraft((p) => ({ ...p, seoTitle: e.target.value }))
                           }
-                          className="h-9 rounded-xl text-xs"
+                          className="h-9 rounded-xl border-slate-200 text-xs"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Funnel Meta Description
                         </Label>
                         <Input
@@ -1013,12 +953,12 @@ export default function LandingPageBuilderClient() {
                               seoDescription: e.target.value,
                             }))
                           }
-                          className="h-9 rounded-xl text-xs"
+                          className="h-9 rounded-xl border-slate-200 text-xs"
                         />
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200">
                       <div className="flex items-center gap-2">
                         <Button
                           type="button"
@@ -1026,7 +966,7 @@ export default function LandingPageBuilderClient() {
                           size="sm"
                           disabled={isSaving}
                           onClick={handleCloneFunnel}
-                          className="rounded-xl text-xs font-bold"
+                          className="h-9 rounded-xl text-xs font-semibold"
                         >
                           Clone Funnel
                         </Button>
@@ -1036,7 +976,7 @@ export default function LandingPageBuilderClient() {
                           size="sm"
                           disabled={isSaving}
                           onClick={() => handleDeleteFunnel(draftFunnel.id)}
-                          className="rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50"
+                          className="h-9 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50"
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
                         </Button>
@@ -1048,7 +988,7 @@ export default function LandingPageBuilderClient() {
                           variant="outline"
                           disabled={isSaving}
                           onClick={() => handleSaveDraft("draft")}
-                          className="rounded-xl text-xs font-black uppercase"
+                          className="h-9 rounded-xl text-xs font-semibold"
                         >
                           {isSaving ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
@@ -1061,7 +1001,7 @@ export default function LandingPageBuilderClient() {
                           type="button"
                           disabled={isSaving}
                           onClick={() => handleSaveDraft("published")}
-                          className="rounded-xl text-xs font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+                          className="h-9 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
                           {draftFunnel.status === "published"
                             ? "Update Live Funnel"
@@ -1069,36 +1009,29 @@ export default function LandingPageBuilderClient() {
                         </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                {/* Reused Section & Layout Controls */}
-                <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden">
-                  <CardHeader className="p-5 border-b flex flex-row items-center justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-sm font-black uppercase tracking-tight">
-                        Funnel Sections ({draftFunnel.sections.length})
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        Reorder, customize copy/pricing tiers/order bump, or add any of the 23 Storefront & Funnel blocks.
-                      </CardDescription>
-                    </div>
+                <SectionCard
+                  title={`Funnel Sections (${draftFunnel.sections.length})`}
+                  description="Reorder, customize copy/pricing tiers, or add any of the 23 Storefront & Funnel blocks."
+                  headerRight={
                     <Button
                       type="button"
                       size="sm"
                       onClick={() => setIsAddSectionOpen(true)}
-                      className="rounded-xl text-[11px] font-black uppercase shrink-0"
+                      className="h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shrink-0"
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" /> Add Section
                     </Button>
-                  </CardHeader>
-
-                  <CardContent className="p-4 space-y-2.5">
+                  }
+                >
+                  <div className="space-y-2.5">
                     {draftFunnel.sections.map((section, idx) => (
                       <div
                         key={section.id}
                         className={cn(
-                          "p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all",
+                          "p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-colors",
                           section.status === "Active"
                             ? "bg-white border-slate-200"
                             : "bg-slate-50 border-slate-100 opacity-65"
@@ -1106,18 +1039,18 @@ export default function LandingPageBuilderClient() {
                       >
                         <div className="min-w-0 space-y-0.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-mono text-muted-foreground">
+                            <span className="text-xs font-mono text-slate-400">
                               #{idx + 1}
                             </span>
-                            <span className="text-xs font-black uppercase text-slate-900 truncate">
+                            <span className="text-xs font-semibold text-slate-900 truncate">
                               {section.content.title || section.label}
                             </span>
-                            <Badge variant="outline" className="text-[9px] font-bold uppercase">
+                            <Badge variant="outline" className="text-[11px] font-medium">
                               {section.type}
                             </Badge>
                           </div>
                           {section.content.subtitle && (
-                            <p className="text-[11px] text-muted-foreground truncate max-w-md">
+                            <p className="text-xs text-slate-500 truncate max-w-md">
                               {section.content.subtitle}
                             </p>
                           )}
@@ -1128,7 +1061,7 @@ export default function LandingPageBuilderClient() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            aria-label="Move up"
+                            aria-label="Move section up"
                             disabled={idx === 0}
                             onClick={() =>
                               updateDraft((p) => ({
@@ -1144,7 +1077,7 @@ export default function LandingPageBuilderClient() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            aria-label="Move down"
+                            aria-label="Move section down"
                             disabled={idx === draftFunnel.sections.length - 1}
                             onClick={() =>
                               updateDraft((p) => ({
@@ -1160,7 +1093,7 @@ export default function LandingPageBuilderClient() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            aria-label="Toggle visibility"
+                            aria-label="Toggle section visibility"
                             onClick={() =>
                               updateDraft((p) => ({
                                 ...p,
@@ -1183,7 +1116,7 @@ export default function LandingPageBuilderClient() {
                             variant="outline"
                             size="sm"
                             onClick={() => setEditingSectionId(section.id)}
-                            className="h-8 px-2.5 rounded-lg text-[10px] font-black uppercase"
+                            className="h-8 px-2.5 rounded-lg text-xs font-semibold"
                           >
                             <Edit2 className="h-3 w-3 mr-1" /> Edit
                           </Button>
@@ -1207,11 +1140,10 @@ export default function LandingPageBuilderClient() {
                         </div>
                       </div>
                     ))}
-                  </CardContent>
-                </Card>
+                  </div>
+                </SectionCard>
               </div>
 
-              {/* Right 5 Columns: Live Funnel Simulator */}
               <div className="xl:col-span-5 xl:sticky xl:top-20 space-y-4 min-w-0">
                 <StoreSimulator
                   storeName={storeName}
@@ -1236,22 +1168,21 @@ export default function LandingPageBuilderClient() {
         </>
       )}
 
-      {/* Create Sales Funnel Modal */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-2xl rounded-3xl p-0 overflow-hidden bg-white text-left">
+        <DialogContent className="sm:max-w-2xl rounded-2xl border border-slate-200 p-0 overflow-hidden bg-white text-left">
           <DialogHeader className="p-6 bg-slate-900 text-white text-left">
-            <DialogTitle className="text-base font-black uppercase tracking-tight text-white flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-400" /> Create High-Converting Sales Funnel
+            <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-400" /> Create Sales Funnel
             </DialogTitle>
             <DialogDescription className="text-slate-300 text-xs">
-              Select a proven conversion template and link a flagship catalog item.
+              Select a conversion template and link a flagship catalog item.
             </DialogDescription>
           </DialogHeader>
 
           <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">
-                1. Choose Funnel Blueprint Template
+              <Label className="text-xs font-semibold text-slate-700">
+                1. Choose Funnel Template
               </Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {STORE_FUNNEL_TEMPLATES.map((tpl) => (
@@ -1264,21 +1195,19 @@ export default function LandingPageBuilderClient() {
                       if (!newSlug) setNewSlug(tpl.defaultSlug);
                     }}
                     className={cn(
-                      "p-3.5 rounded-2xl border text-left transition-all space-y-1.5",
+                      "p-3.5 rounded-xl border text-left transition-colors space-y-1.5",
                       newTplId === tpl.id
-                        ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                        ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
                         : "border-slate-200 hover:border-slate-300"
                     )}
                   >
-                    <Badge variant="outline" className="text-[8px] font-black uppercase">
+                    <Badge variant="outline" className="text-[11px] font-medium">
                       {tpl.sectionTypes.length} Sections
                     </Badge>
-                    <p className="text-xs font-black uppercase text-slate-900 leading-tight">
+                    <p className="text-xs font-bold text-slate-900 leading-tight">
                       {tpl.name}
                     </p>
-                    <p className="text-[10px] text-muted-foreground leading-snug">
-                      {tpl.tagline}
-                    </p>
+                    <p className="text-xs text-slate-500 leading-snug">{tpl.tagline}</p>
                   </button>
                 ))}
               </div>
@@ -1286,35 +1215,33 @@ export default function LandingPageBuilderClient() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   2. Funnel Campaign Name
                 </Label>
                 <Input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. Monsoon Mega Launch Offer"
-                  className="h-10 rounded-xl font-bold"
+                  className="h-10 rounded-xl border-slate-200 text-sm"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
-                  3. URL Slug
-                </Label>
+                <Label className="text-xs font-semibold text-slate-700">3. URL Slug</Label>
                 <Input
                   value={newSlug}
                   onChange={(e) => setNewSlug(sanitizeStoreSlug(e.target.value))}
                   placeholder="monsoon-mega-offer"
-                  className="h-10 rounded-xl font-mono text-xs font-bold"
+                  className="h-10 rounded-xl border-slate-200 font-mono text-xs"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">
+              <Label className="text-xs font-semibold text-slate-700">
                 4. Link Primary Catalog Product (Optional)
               </Label>
               <Select value={newProductId || "none"} onValueChange={setNewProductId}>
-                <SelectTrigger className="h-10 rounded-xl text-xs font-bold">
+                <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
                   <SelectValue placeholder="Choose flagship item" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1329,12 +1256,12 @@ export default function LandingPageBuilderClient() {
             </div>
           </div>
 
-          <DialogFooter className="p-5 bg-slate-50 border-t gap-2">
+          <DialogFooter className="p-4 bg-slate-50 border-t border-slate-200 gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsCreateOpen(false)}
-              className="rounded-xl text-xs font-bold"
+              className="rounded-xl text-xs font-semibold"
             >
               Cancel
             </Button>
@@ -1342,16 +1269,15 @@ export default function LandingPageBuilderClient() {
               type="button"
               disabled={isSaving}
               onClick={handleCreateFunnel}
-              className="rounded-xl text-xs font-black uppercase bg-primary text-white"
+              className="rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white"
             >
               {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
-              Launch Funnel Workspace
+              Create Funnel Workspace
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Reused "+ Add Section" Picker Modal */}
       {draftFunnel && (
         <AddSectionDialog
           open={isAddSectionOpen}
@@ -1372,7 +1298,6 @@ export default function LandingPageBuilderClient() {
         />
       )}
 
-      {/* Reused Section Editor Modal */}
       <SectionEditDialog
         section={editingSection}
         open={Boolean(editingSection)}
@@ -1380,7 +1305,10 @@ export default function LandingPageBuilderClient() {
           if (!open) setEditingSectionId(null);
         }}
         products={onlineProducts}
-        onSaveSection={(id: string, patch: { label: string; content: StoreSectionContent }) => {
+        onSaveSection={(
+          id: string,
+          patch: { label: string; content: StoreSectionContent }
+        ) => {
           updateDraft((p) => ({
             ...p,
             sections: updateStoreSectionItem(p.sections, id, patch),

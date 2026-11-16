@@ -126,9 +126,9 @@ export function StoreSimulator({
         ].slice(0, viewport === "desktop" ? themeConfig.gridColumns : 2);
 
   return (
-    <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] overflow-hidden border w-full min-w-0">
-      <CardHeader className="bg-slate-900 border-b py-3.5 px-4 sm:px-5 flex flex-row flex-wrap items-center justify-between gap-2">
-        <CardTitle className="text-white text-[10px] font-black uppercase tracking-[0.22em] flex items-center gap-2 whitespace-nowrap">
+    <Card className="border border-slate-200 shadow-none bg-white rounded-2xl overflow-hidden w-full min-w-0">
+      <CardHeader className="bg-slate-900 border-b border-slate-800 py-3.5 px-4 sm:px-5 flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle className="text-white text-xs font-bold flex items-center gap-2 whitespace-nowrap">
           <Monitor className="h-4 w-4 text-accent shrink-0" /> Live Simulator
         </CardTitle>
         <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl shrink-0">
@@ -164,8 +164,8 @@ export function StoreSimulator({
       <CardContent className="p-3 sm:p-5 bg-slate-100">
         <div
           className={cn(
-            "mx-auto border-[6px] border-slate-900 shadow-2xl overflow-hidden flex flex-col relative transition-all min-w-0",
-            viewport === "mobile" ? "w-full max-w-[320px] h-[520px] rounded-[2rem]" : "w-full h-[500px] rounded-2xl",
+            "mx-auto border-[6px] border-slate-900 rounded-2xl overflow-hidden flex flex-col relative transition-all min-w-0",
+            viewport === "mobile" ? "w-full max-w-[320px] h-[520px]" : "w-full h-[500px]",
             surfaceBg
           )}
           style={{ fontFamily: fonts.bodyFont }}
@@ -177,13 +177,13 @@ export function StoreSimulator({
               <div className="h-1.5 w-1.5 rounded-full bg-white/25" />
             </div>
             <div className="h-1 w-12 bg-white/15 rounded-full" />
-            <span className="text-[7px] font-mono uppercase text-white/40">{uiStyle}</span>
+            <span className="text-[11px] font-mono text-white/60 leading-none">{uiStyle}</span>
           </div>
 
           {/* Announcement Bar Preview */}
           {announcementBar.enabled && announcementBar.text && (
             <div
-              className="px-3 py-1.5 text-center text-[9px] font-bold tracking-wide truncate shrink-0"
+              className="px-3 py-1.5 text-center text-[11px] font-semibold truncate shrink-0"
               style={{
                 backgroundColor: announcementBar.bgColor,
                 color: announcementBar.textColor,
@@ -203,20 +203,20 @@ export function StoreSimulator({
           >
             <div className="flex items-center gap-2 min-w-0">
               {logoUrl ? (
-                <img src={logoUrl} alt="" className="h-5 w-5 rounded object-cover shrink-0" />
+                <img src={logoUrl} alt={storeName ? `${storeName} logo` : "Store logo"} referrerPolicy="no-referrer" className="h-5 w-5 rounded object-cover shrink-0" />
               ) : (
                 <div
-                  className="h-5 w-5 rounded flex items-center justify-center text-white text-[9px] font-black shrink-0"
+                  className="h-5 w-5 rounded flex items-center justify-center text-white text-[11px] font-bold shrink-0"
                   style={{ backgroundColor: primaryColor }}
                 >
                   {(storeName || "S").charAt(0)}
                 </div>
               )}
               <span
-                className="text-[10px] font-black uppercase truncate"
+                className="text-xs font-bold truncate"
                 style={{ fontFamily: fonts.headingFont, color: isDark ? "#FFFFFF" : primaryColor }}
               >
-                {storeName || "MY BRAND"}
+                {storeName || "My Brand"}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -239,17 +239,17 @@ export function StoreSimulator({
                         className={cn("p-3 border grid gap-2.5 items-center min-w-0", radiusClass, cardBg, viewport === "desktop" ? "grid-cols-2" : "grid-cols-1")}
                       >
                         <div className="space-y-1.5 text-left min-w-0">
-                          <span className="text-[7px] font-black uppercase tracking-widest opacity-70 block">
+                          <span className="text-[11px] font-semibold opacity-75 block">
                             {s.content.badgeText || "Verified Store"}
                           </span>
                           <p
-                            className="text-xs font-extrabold leading-tight"
+                            className="text-xs font-bold leading-tight"
                             style={{ fontFamily: fonts.headingFont }}
                           >
                             {s.content.title || storeName || "Your Storefront"}
                           </p>
                           <div
-                            className={cn("inline-block px-2.5 py-1 text-[8px] font-bold text-white", btnRadiusClass)}
+                            className={cn("inline-block px-2.5 py-1 text-[11px] font-semibold text-white", btnRadiusClass)}
                             style={{ backgroundColor: primaryColor }}
                           >
                             {s.content.cta || "Explore"}
@@ -257,7 +257,7 @@ export function StoreSimulator({
                         </div>
                         <div className={cn("aspect-[4/3] overflow-hidden bg-slate-200 flex items-center justify-center", radiusClass)}>
                           {hasImg ? (
-                            <img src={themeConfig.heroImageUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={themeConfig.heroImageUrl} alt="Storefront hero preview" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                           ) : (
                             <Sparkles className="h-5 w-5 opacity-40" style={{ color: primaryColor }} />
                           )}
@@ -276,7 +276,8 @@ export function StoreSimulator({
                         <>
                           <img
                             src={themeConfig.heroImageUrl}
-                            alt=""
+                            alt="Storefront cover preview"
+                            referrerPolicy="no-referrer"
                             className="absolute inset-0 w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/25" />
@@ -288,11 +289,11 @@ export function StoreSimulator({
                           themeConfig.heroLayout === "editorial_cover" ? "pt-6 text-left" : "text-center"
                         )}
                       >
-                        <p className="text-[7px] font-bold uppercase tracking-widest opacity-85">
+                        <p className="text-[11px] font-semibold opacity-90">
                           {s.content.badgeText || "Official Storefront"}
                         </p>
                         <p
-                          className="text-sm font-extrabold leading-tight"
+                          className="text-sm font-bold leading-tight"
                           style={{ fontFamily: fonts.headingFont }}
                         >
                           {s.content.title || storeName || "Welcome to Store"}
@@ -300,7 +301,7 @@ export function StoreSimulator({
                         <div className="pt-1">
                           <span
                             className={cn(
-                              "inline-block px-3 py-1 text-[8px] font-black uppercase",
+                              "inline-block px-3 py-1 text-[11px] font-semibold",
                               btnRadiusClass,
                               themeConfig.buttonStyle === "outline"
                                 ? "border border-white text-white bg-white/10"
@@ -322,22 +323,22 @@ export function StoreSimulator({
                       : DEFAULT_TRUST_ITEMS;
                   return (
                     <div key={s.id} className={cn("p-2.5 border space-y-1.5 text-left", radiusClass, cardBg)}>
-                      <p className="text-[8px] font-black uppercase tracking-wider" style={{ color: primaryColor }}>
+                      <p className="text-[11px] font-bold" style={{ color: primaryColor }}>
                         {s.content.title || s.label}
                       </p>
                       <div className={cn("grid gap-1.5", viewport === "desktop" ? "grid-cols-4" : "grid-cols-2")}>
                         {items.slice(0, 4).map((item, idx) => (
                           <div key={idx} className={cn("p-1.5 border text-left space-y-0.5 min-w-0", radiusClass, isDark ? "border-slate-800 bg-slate-950/60" : "border-slate-100 bg-slate-50/70")}>
                             {item.icon === "Truck" ? (
-                              <Truck className="h-2.5 w-2.5" style={{ color: primaryColor }} />
+                              <Truck className="h-3 w-3" style={{ color: primaryColor }} />
                             ) : item.icon === "Banknote" ? (
-                              <Banknote className="h-2.5 w-2.5" style={{ color: primaryColor }} />
+                              <Banknote className="h-3 w-3" style={{ color: primaryColor }} />
                             ) : item.icon === "BadgeCheck" ? (
-                              <BadgeCheck className="h-2.5 w-2.5" style={{ color: primaryColor }} />
+                              <BadgeCheck className="h-3 w-3" style={{ color: primaryColor }} />
                             ) : (
-                              <ShieldCheck className="h-2.5 w-2.5" style={{ color: primaryColor }} />
+                              <ShieldCheck className="h-3 w-3" style={{ color: primaryColor }} />
                             )}
-                            <p className="text-[7px] font-black uppercase truncate">{item.title}</p>
+                            <p className="text-[11px] font-semibold truncate">{item.title}</p>
                           </div>
                         ))}
                       </div>
@@ -356,15 +357,15 @@ export function StoreSimulator({
                   const chips = derived.length > 0 ? derived : ["Bestsellers", "New Stock", "Essentials"];
                   return (
                     <div key={s.id} className="space-y-1.5 text-left">
-                      <p className="text-[8px] font-black uppercase tracking-wider flex items-center gap-1" style={{ fontFamily: fonts.headingFont }}>
-                        <LayoutGrid className="h-2.5 w-2.5 shrink-0" style={{ color: primaryColor }} />
+                      <p className="text-[11px] font-bold flex items-center gap-1" style={{ fontFamily: fonts.headingFont }}>
+                        <LayoutGrid className="h-3 w-3 shrink-0" style={{ color: primaryColor }} />
                         <span className="truncate">{s.content.title || "Shop by Category"}</span>
                       </p>
                       <div className={cn("grid gap-1.5", viewport === "desktop" ? "grid-cols-3" : "grid-cols-2")}>
                         {chips.map((cat) => (
                           <div key={cat} className={cn("p-2 border text-left min-w-0", radiusClass, cardBg)}>
-                            <p className="text-[8px] font-black uppercase truncate">{cat}</p>
-                            <p className="text-[7px] opacity-60 truncate">Browse collection →</p>
+                            <p className="text-[11px] font-semibold truncate">{cat}</p>
+                            <p className="text-[11px] opacity-65 truncate">Browse collection →</p>
                           </div>
                         ))}
                       </div>
@@ -376,14 +377,14 @@ export function StoreSimulator({
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1.5", radiusClass, cardBg)}>
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[8px] font-black uppercase flex items-center gap-1" style={{ color: primaryColor }}>
-                          <Ticket className="h-2.5 w-2.5" />
+                        <p className="text-[11px] font-bold flex items-center gap-1" style={{ color: primaryColor }}>
+                          <Ticket className="h-3 w-3" />
                           {s.content.title || "Active Offers & Promo Codes"}
                         </p>
                       </div>
                       <div className={cn("p-2 border border-dashed flex items-center justify-between gap-2", radiusClass, isDark ? "border-slate-700 bg-slate-950/60" : "border-slate-300 bg-slate-50")}>
-                        <span className="text-[8px] font-mono font-black tracking-wider">WELCOME10</span>
-                        <span className={cn("px-2 py-0.5 text-[7px] font-black uppercase text-white", btnRadiusClass)} style={{ backgroundColor: primaryColor }}>
+                        <span className="text-[11px] font-mono font-bold tracking-wider">WELCOME10</span>
+                        <span className={cn("px-2 py-0.5 text-[11px] font-semibold text-white", btnRadiusClass)} style={{ backgroundColor: primaryColor }}>
                           {s.content.cta || "Apply Code"}
                         </span>
                       </div>
@@ -398,12 +399,12 @@ export function StoreSimulator({
                       className={cn("p-2.5 bg-slate-900 text-white flex items-center justify-between gap-2", radiusClass)}
                     >
                       <div className="min-w-0 text-left">
-                        <p className="text-[8px] font-black uppercase truncate">
+                        <p className="text-[11px] font-bold truncate">
                           {s.content.title || "Flash Deal"}
                         </p>
                       </div>
-                      <div className="text-[8px] font-mono bg-white/10 px-2 py-1 rounded flex items-center gap-1 shrink-0">
-                        <Clock className="h-2.5 w-2.5 text-amber-400" /> 05:42:18
+                      <div className="text-[11px] font-mono tabular-nums bg-white/10 px-2 py-1 rounded flex items-center gap-1 shrink-0">
+                        <Clock className="h-3 w-3 text-amber-400" /> 05:42:18
                       </div>
                     </div>
                   );
@@ -414,11 +415,11 @@ export function StoreSimulator({
                     <div key={s.id} className="space-y-2 text-left min-w-0">
                       <div className="flex items-center justify-between min-w-0">
                         <p
-                          className="text-[9px] font-extrabold uppercase tracking-wider flex items-center gap-1 truncate"
+                          className="text-xs font-bold flex items-center gap-1 truncate"
                           style={{ fontFamily: fonts.headingFont }}
                         >
-                          {s.type === "featured" && <Layers className="h-2.5 w-2.5 shrink-0" style={{ color: primaryColor }} />}
-                          {s.type === "new_arrivals" && <Sparkles className="h-2.5 w-2.5 shrink-0" style={{ color: primaryColor }} />}
+                          {s.type === "featured" && <Layers className="h-3 w-3 shrink-0" style={{ color: primaryColor }} />}
+                          {s.type === "new_arrivals" && <Sparkles className="h-3 w-3 shrink-0" style={{ color: primaryColor }} />}
                           <span className="truncate">{s.content.title || s.label}</span>
                         </p>
                       </div>
@@ -432,23 +433,27 @@ export function StoreSimulator({
                               : "grid-cols-2"
                         )}
                       >
-                        {previewItems.map((item) => (
-                          <div key={item.id} className={cn("border p-1.5 space-y-1 min-w-0", radiusClass, cardBg)}>
-                            <div className={cn("aspect-square overflow-hidden flex items-center justify-center", isDark ? "bg-slate-800" : "bg-slate-100", radiusClass)}>
-                              {item.images?.[0] ? (
-                                <img src={item.images[0]} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <Package className="h-4 w-4 opacity-25" />
+                        {previewItems.map((item) => {
+                          const itemImages = "images" in item ? item.images : undefined;
+                          const itemOnlinePrice = "onlinePrice" in item ? item.onlinePrice : undefined;
+                          return (
+                            <div key={item.id} className={cn("border p-1.5 space-y-1 min-w-0", radiusClass, cardBg)}>
+                              <div className={cn("aspect-square overflow-hidden flex items-center justify-center", isDark ? "bg-slate-800" : "bg-slate-100", radiusClass)}>
+                                {itemImages?.[0] ? (
+                                  <img src={itemImages[0]} alt={item.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                ) : (
+                                  <Package className="h-4 w-4 opacity-25" />
+                                )}
+                              </div>
+                              <p className="text-[11px] font-semibold truncate">{item.name}</p>
+                              {s.content.showPricing !== false && (
+                                <p className="text-[11px] font-bold font-mono tabular-nums truncate" style={{ color: primaryColor }}>
+                                  ₹{(itemOnlinePrice ?? item.price ?? 499).toLocaleString()}
+                                </p>
                               )}
                             </div>
-                            <p className="text-[8px] font-bold truncate">{item.name}</p>
-                            {s.content.showPricing !== false && (
-                              <p className="text-[8px] font-black truncate" style={{ color: primaryColor }}>
-                                ₹{(item.onlinePrice ?? item.price ?? 499).toLocaleString()}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -459,11 +464,11 @@ export function StoreSimulator({
                     <div key={s.id} className={cn("p-2.5 border grid gap-2 items-center text-left", radiusClass, cardBg, viewport === "desktop" ? "grid-cols-2" : "grid-cols-1")}>
                       <div className={cn("aspect-video bg-slate-900 text-white flex items-center justify-center gap-1.5", radiusClass)}>
                         <PlayCircle className="h-4 w-4 opacity-90" />
-                        <span className="text-[7px] font-black uppercase tracking-wider">Product Demo</span>
+                        <span className="text-[11px] font-semibold">Product Demo</span>
                       </div>
                       <div className="space-y-1 min-w-0">
-                        <p className="text-[7px] font-black uppercase opacity-60">{s.content.badgeText || "Product Spotlight"}</p>
-                        <p className="text-[9px] font-black uppercase truncate">{s.content.title || "See Our Quality Up Close"}</p>
+                        <p className="text-[11px] font-semibold opacity-65">{s.content.badgeText || "Product Spotlight"}</p>
+                        <p className="text-xs font-bold truncate">{s.content.title || "See Our Quality Up Close"}</p>
                       </div>
                     </div>
                   );
@@ -473,13 +478,13 @@ export function StoreSimulator({
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1", radiusClass, cardBg)}>
                       <div className="flex items-center gap-0.5 text-amber-500">
-                        <Star className="h-2.5 w-2.5 fill-current" />
-                        <Star className="h-2.5 w-2.5 fill-current" />
-                        <Star className="h-2.5 w-2.5 fill-current" />
-                        <Star className="h-2.5 w-2.5 fill-current" />
-                        <Star className="h-2.5 w-2.5 fill-current" />
+                        <Star className="h-3 w-3 fill-current" />
+                        <Star className="h-3 w-3 fill-current" />
+                        <Star className="h-3 w-3 fill-current" />
+                        <Star className="h-3 w-3 fill-current" />
+                        <Star className="h-3 w-3 fill-current" />
                       </div>
-                      <p className="text-[8px] opacity-80 italic truncate">
+                      <p className="text-[11px] opacity-85 italic truncate">
                         &ldquo;{s.content.testimonials?.[0]?.quote || "Genuine quality products."}&rdquo;
                       </p>
                     </div>
@@ -493,14 +498,14 @@ export function StoreSimulator({
                       : DEFAULT_FAQ_ITEMS;
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1.5", radiusClass, cardBg)}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1" style={{ color: primaryColor }}>
-                        <HelpCircle className="h-2.5 w-2.5" />
+                      <p className="text-[11px] font-bold flex items-center gap-1" style={{ color: primaryColor }}>
+                        <HelpCircle className="h-3 w-3" />
                         {s.content.title || "Frequently Asked Questions"}
                       </p>
                       {faqs.slice(0, 2).map((faq, idx) => (
-                        <div key={idx} className={cn("px-2 py-1 border flex items-center justify-between gap-2 text-[7px] font-bold", radiusClass, isDark ? "border-slate-800" : "border-slate-100")}>
+                        <div key={idx} className={cn("px-2 py-1 border flex items-center justify-between gap-2 text-[11px] font-medium", radiusClass, isDark ? "border-slate-800" : "border-slate-100")}>
                           <span className="truncate">{faq.question}</span>
-                          <ChevronDown className="h-2.5 w-2.5 shrink-0 opacity-60" />
+                          <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
                         </div>
                       ))}
                     </div>
@@ -510,11 +515,11 @@ export function StoreSimulator({
                 if (s.type === "store_location") {
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1", radiusClass, cardBg)}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1" style={{ color: primaryColor }}>
-                        <MapPin className="h-2.5 w-2.5" />
+                      <p className="text-[11px] font-bold flex items-center gap-1" style={{ color: primaryColor }}>
+                        <MapPin className="h-3 w-3" />
                         {s.content.title || "Store Location & Pickup"}
                       </p>
-                      <p className="text-[7px] opacity-75 truncate">
+                      <p className="text-[11px] opacity-75 truncate">
                         {s.content.deliveryZones || "Local Same-Day Delivery · Pan-India Insured Dispatch"}
                       </p>
                     </div>
@@ -524,15 +529,15 @@ export function StoreSimulator({
                 if (s.type === "newsletter") {
                   return (
                     <div key={s.id} className="p-2.5 bg-slate-900 text-white rounded-xl text-left space-y-1.5 min-w-0">
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1 text-amber-300 truncate">
-                        <BellRing className="h-2.5 w-2.5 shrink-0" />
+                      <p className="text-[11px] font-bold flex items-center gap-1 text-amber-300 truncate">
+                        <BellRing className="h-3 w-3 shrink-0" />
                         <span className="truncate">{s.content.title || "Get Early Access to Deals"}</span>
                       </p>
                       <div className={cn("flex gap-1.5 min-w-0", viewport === "desktop" ? "items-center" : "flex-col items-stretch")}>
-                        <div className="h-5 flex-1 min-w-0 rounded bg-white/10 px-2 flex items-center text-[7px] text-white/60 truncate">
+                        <div className="h-6 flex-1 min-w-0 rounded bg-white/10 px-2 flex items-center text-[11px] text-white/65 truncate">
                           WhatsApp / Email...
                         </div>
-                        <span className="px-2 py-1 rounded text-[7px] font-black uppercase text-white text-center shrink-0" style={{ backgroundColor: primaryColor }}>
+                        <span className="px-2 py-1 rounded text-[11px] font-semibold text-white text-center shrink-0" style={{ backgroundColor: primaryColor }}>
                           {s.content.cta || "Notify Me"}
                         </span>
                       </div>
@@ -544,16 +549,16 @@ export function StoreSimulator({
                   return (
                     <div key={s.id} className={cn("p-2.5 border grid gap-2 text-left min-w-0", viewport === "desktop" ? "grid-cols-2" : "grid-cols-1", radiusClass, cardBg)}>
                       <div className="p-2 rounded bg-rose-50 text-rose-900 space-y-0.5 min-w-0">
-                        <p className="text-[7px] font-black uppercase flex items-center gap-1 truncate">
-                          <Target className="h-2.5 w-2.5 shrink-0" /> {s.content.painTitle || "Frustrations"}
+                        <p className="text-[11px] font-bold flex items-center gap-1 truncate">
+                          <Target className="h-3 w-3 shrink-0" /> {s.content.painTitle || "Frustrations"}
                         </p>
-                        <p className="text-[7px] opacity-80 truncate">• {(s.content.painPoints || ["Middleman markups"])[0]}</p>
+                        <p className="text-[11px] opacity-85 truncate">• {(s.content.painPoints || ["Middleman markups"])[0]}</p>
                       </div>
                       <div className="p-2 rounded bg-emerald-50 text-emerald-900 space-y-0.5 min-w-0">
-                        <p className="text-[7px] font-black uppercase flex items-center gap-1 truncate">
-                          <CheckCircle2 className="h-2.5 w-2.5 shrink-0" /> {s.content.solutionTitle || "Our Fix"}
+                        <p className="text-[11px] font-bold flex items-center gap-1 truncate">
+                          <CheckCircle2 className="h-3 w-3 shrink-0" /> {s.content.solutionTitle || "Our Fix"}
                         </p>
-                        <p className="text-[7px] opacity-80 truncate">✓ {(s.content.solutionPoints || ["Direct merchant stock"])[0]}</p>
+                        <p className="text-[11px] opacity-85 truncate">✓ {(s.content.solutionPoints || ["Direct merchant stock"])[0]}</p>
                       </div>
                     </div>
                   );
@@ -562,14 +567,14 @@ export function StoreSimulator({
                 if (s.type === "comparison_table") {
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1 min-w-0", radiusClass, cardBg)}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1 truncate" style={{ color: primaryColor }}>
-                        <Scale className="h-2.5 w-2.5 shrink-0" /> {s.content.title || "Us vs Others"}
+                      <p className="text-[11px] font-bold flex items-center gap-1 truncate" style={{ color: primaryColor }}>
+                        <Scale className="h-3 w-3 shrink-0" /> {s.content.title || "Us vs Others"}
                       </p>
-                      <div className="text-[7px] flex items-center justify-between gap-2 border-b pb-0.5 font-bold min-w-0">
+                      <div className="text-[11px] flex items-center justify-between gap-2 border-b pb-0.5 font-semibold min-w-0">
                         <span className="truncate">Verified Quality</span>
                         <span className="text-emerald-600 shrink-0">✓ {s.content.usLabel || "Us"}</span>
                       </div>
-                      <div className="text-[7px] flex items-center justify-between gap-2 opacity-75 min-w-0">
+                      <div className="text-[11px] flex items-center justify-between gap-2 opacity-80 min-w-0">
                         <span className="truncate">Same-Day Dispatch</span>
                         <span className="text-emerald-600 shrink-0">✓ Yes</span>
                       </div>
@@ -580,12 +585,12 @@ export function StoreSimulator({
                 if (s.type === "how_it_works") {
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1 min-w-0", radiusClass, cardBg)}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1 truncate" style={{ color: primaryColor }}>
-                        <ListChecks className="h-2.5 w-2.5 shrink-0" /> {s.content.title || "3 Simple Steps"}
+                      <p className="text-[11px] font-bold flex items-center gap-1 truncate" style={{ color: primaryColor }}>
+                        <ListChecks className="h-3 w-3 shrink-0" /> {s.content.title || "3 Simple Steps"}
                       </p>
                       <div className={cn("grid gap-1", viewport === "desktop" ? "grid-cols-3" : "grid-cols-1")}>
                         {["01 Select", "02 Order", "03 Delivered"].map((label) => (
-                          <div key={label} className="p-1.5 rounded bg-slate-100 text-[7px] font-bold text-center text-slate-800 truncate min-w-0">
+                          <div key={label} className="p-1.5 rounded bg-slate-100 text-[11px] font-semibold text-center text-slate-800 truncate min-w-0">
                             {label}
                           </div>
                         ))}
@@ -597,10 +602,10 @@ export function StoreSimulator({
                 if (s.type === "offer_stack") {
                   return (
                     <div key={s.id} className={cn("p-2.5 border-2 text-left space-y-1 min-w-0", radiusClass, cardBg)} style={{ borderColor: primaryColor }}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1 truncate" style={{ color: primaryColor }}>
-                        <Gift className="h-2.5 w-2.5 shrink-0" /> {s.content.title || "Bundle Value Stack"}
+                      <p className="text-[11px] font-bold flex items-center gap-1 truncate" style={{ color: primaryColor }}>
+                        <Gift className="h-3 w-3 shrink-0" /> {s.content.title || "Bundle Value Stack"}
                       </p>
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-[8px] font-black">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-bold font-mono tabular-nums">
                         <span className="line-through opacity-50">₹{(s.content.regularPrice ?? 2996).toLocaleString()}</span>
                         <span style={{ color: primaryColor }}>Today ₹{(s.content.offerPrice ?? 999).toLocaleString()}</span>
                       </div>
@@ -614,8 +619,8 @@ export function StoreSimulator({
                     : DEFAULT_PRICING_TIERS).slice(0, 3);
                   return (
                     <div key={s.id} className={cn("p-2.5 border text-left space-y-1.5 min-w-0", radiusClass, cardBg)}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1 truncate" style={{ color: primaryColor }}>
-                        <Flame className="h-2.5 w-2.5 shrink-0" /> {s.content.title || "Choose Your Package"}
+                      <p className="text-[11px] font-bold flex items-center gap-1 truncate" style={{ color: primaryColor }}>
+                        <Flame className="h-3 w-3 shrink-0" /> {s.content.title || "Choose Your Package"}
                       </p>
                       <div className={cn("grid gap-1.5", viewport === "desktop" ? "grid-cols-3" : "grid-cols-1")}>
                         {tiers.map((tier) => (
@@ -627,8 +632,8 @@ export function StoreSimulator({
                               tier.highlight ? "border-primary bg-primary/5" : "border-slate-200"
                             )}
                           >
-                            <p className="text-[7px] font-black uppercase truncate">{tier.name}</p>
-                            <p className="text-[8px] font-black shrink-0" style={{ color: primaryColor }}>₹{tier.price}</p>
+                            <p className="text-[11px] font-semibold truncate">{tier.name}</p>
+                            <p className="text-[11px] font-bold font-mono tabular-nums shrink-0" style={{ color: primaryColor }}>₹{tier.price}</p>
                           </div>
                         ))}
                       </div>
@@ -641,10 +646,10 @@ export function StoreSimulator({
                     <div key={s.id} className="p-2.5 rounded-xl bg-emerald-950 text-white text-left flex items-center gap-2">
                       <Award className="h-4 w-4 text-amber-400 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-[8px] font-black uppercase truncate">
+                        <p className="text-[11px] font-bold truncate">
                           {s.content.guaranteeDays ?? 7}-Day Risk-Free Guarantee
                         </p>
-                        <p className="text-[7px] text-emerald-200 truncate">{s.content.title || "Direct Merchant Warranty"}</p>
+                        <p className="text-[11px] text-emerald-200 truncate">{s.content.title || "Direct Merchant Warranty"}</p>
                       </div>
                     </div>
                   );
@@ -653,15 +658,15 @@ export function StoreSimulator({
                 if (s.type === "express_checkout") {
                   return (
                     <div key={s.id} className={cn("p-2.5 border-2 text-left space-y-1.5", radiusClass, cardBg)} style={{ borderColor: primaryColor }}>
-                      <p className="text-[8px] font-black uppercase flex items-center gap-1" style={{ color: primaryColor }}>
-                        <Zap className="h-2.5 w-2.5" /> {s.content.title || "Express Checkout"}
+                      <p className="text-[11px] font-bold flex items-center gap-1" style={{ color: primaryColor }}>
+                        <Zap className="h-3 w-3" /> {s.content.title || "Express Checkout"}
                       </p>
                       {s.content.orderBumpEnabled !== false && (
-                        <div className="p-1.5 rounded border border-dashed border-amber-400 bg-amber-50 text-[7px] font-bold text-amber-900 truncate">
+                        <div className="p-1.5 rounded border border-dashed border-amber-400 bg-amber-50 text-[11px] font-semibold text-amber-900 truncate">
                           + Add Bump (+₹{s.content.orderBumpPrice ?? 199})
                         </div>
                       )}
-                      <div className={cn("py-1 text-center text-[7px] font-black uppercase text-white", btnRadiusClass)} style={{ backgroundColor: primaryColor }}>
+                      <div className={cn("py-1 text-center text-[11px] font-semibold text-white", btnRadiusClass)} style={{ backgroundColor: primaryColor }}>
                         {s.content.cta || "Confirm Order Now"}
                       </div>
                     </div>
@@ -670,7 +675,7 @@ export function StoreSimulator({
 
                 return (
                   <div key={s.id} className={cn("p-2.5 border text-left", radiusClass, cardBg)}>
-                    <p className="text-[8px] font-black uppercase" style={{ color: primaryColor }}>
+                    <p className="text-[11px] font-bold" style={{ color: primaryColor }}>
                       {s.content.title || s.label}
                     </p>
                   </div>
@@ -678,25 +683,25 @@ export function StoreSimulator({
               })}
 
               {activeSections.length === 0 && (
-                <div className="p-8 text-center text-[10px] opacity-60 italic">
+                <div className="p-8 text-center text-xs opacity-60 italic">
                   No sections active. Enable sections in Layout Controls.
                 </div>
               )}
 
               {/* Footer Preview */}
               <div className={cn("pt-2 border-t text-center space-y-1", isDark ? "border-slate-800" : "border-slate-200")}>
-                <p className="text-[8px] opacity-65 truncate">{footerConfig.tagline}</p>
+                <p className="text-[11px] opacity-70 truncate">{footerConfig.tagline}</p>
               </div>
             </div>
           </div>
 
           {mode === "funnel" && stickyCtaLabel && (
             <div className="px-3 py-2 border-t bg-white/95 flex items-center justify-between gap-2 shrink-0">
-              <span className="text-[8px] font-black uppercase text-slate-700 truncate">
+              <span className="text-[11px] font-semibold text-slate-700 truncate">
                 {storeName || "Special Funnel Offer"}
               </span>
               <span
-                className={cn("px-2.5 py-1 text-[7px] font-black uppercase text-white shrink-0", btnRadiusClass)}
+                className={cn("px-2.5 py-1 text-[11px] font-semibold text-white shrink-0", btnRadiusClass)}
                 style={{ backgroundColor: primaryColor }}
               >
                 {stickyCtaLabel}
@@ -705,7 +710,7 @@ export function StoreSimulator({
           )}
         </div>
 
-        <p className="text-[9px] text-center text-slate-400 font-bold uppercase mt-4 tracking-widest">
+        <p className="text-xs text-center text-slate-500 font-medium mt-3">
           {viewport === "mobile" ? "Mobile 390px" : `Desktop ${themeConfig.gridColumns}-Col`} · {fonts.label}
         </p>
       </CardContent>

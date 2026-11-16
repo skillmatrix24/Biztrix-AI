@@ -143,7 +143,7 @@ export function EWayBillModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl w-[95vw] bg-white text-left">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border border-slate-200 w-[95vw] bg-white text-left">
         <DialogHeader className="px-6 py-5 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">

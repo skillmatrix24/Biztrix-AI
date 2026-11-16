@@ -115,17 +115,15 @@ import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
 import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
 import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
+import { PageHeader, KpiStatCard, SectionCard } from "@/components/ui/editorial";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
   "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", 
   "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Chandigarh"
 ];
-
-// ... imports
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-
-// ... (existing code: INDIAN_STATES constant)
 
 export default function VendorsPage() {
   const firestore = useFirestore();
@@ -169,13 +167,11 @@ export default function VendorsPage() {
     [vendorList.length, limits, business]
   );
   
-  // New Filter State
   const [filterCity, setFilterCity] = useState("all");
   const [filterState, setFilterState] = useState("all");
 
   const cities = useMemo(() => Array.from(new Set(vendorList.map(v => v.city || "Unknown"))), [vendorList]);
 
-  // Enhanced Filtering
   const filteredVendors = useMemo(() => {
     return vendorList.filter(v => {
       const q = searchTerm.toLowerCase();
@@ -199,7 +195,6 @@ export default function VendorsPage() {
   const totalPayables = useMemo(() => vendorList.reduce((acc, v) => acc + (Number(v.pendingBalance) || 0), 0), [vendorList]);
   const totalVolume = useMemo(() => vendorList.reduce((acc, v) => acc + (Number(v.totalPurchase) || 0), 0), [vendorList]);
 
-  // Payment Trends Data
   const paymentTrends = useMemo(() => {
     return [
       { name: 'Mon', amount: 4000 },
@@ -254,7 +249,7 @@ export default function VendorsPage() {
     setDocumentNonBlocking(vendorRef, payload, { merge: true });
     setIsAddVendorOpen(false);
     setFormData({});
-    toast({ title: isEditing ? "Supplier Updated" : "Supplier Registered", description: `${payload.name} saved to supply registry.` });
+    toast({ title: isEditing ? "Supplier Updated" : "Supplier Registered", description: `${payload.name} saved to supplier directory.` });
   };
 
   const handleDeleteVendor = () => {
@@ -267,7 +262,7 @@ export default function VendorsPage() {
     }
     setVendorToDelete(null);
     setIsDeleteModalOpen(false);
-    toast({ title: "Vendor Removed", description: "Supplier node deleted from registry." });
+    toast({ title: "Vendor Removed", description: "Supplier profile removed from directory." });
   };
 
   const handleRecordPayment = () => {
@@ -319,133 +314,152 @@ export default function VendorsPage() {
   };
 
   return (
-    <div className="space-y-6 md:space-y-10 pb-10 px-2 sm:px-0 text-left">
+    <div className="space-y-6 pb-10 text-left">
       <CoreQuotaBanner quota={vendorQuota} />
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-primary/20 text-primary bg-primary/5">Supply Chain Registry</Badge>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">Suppliers & Payables</h1>
-          <p className="text-xs text-muted-foreground font-medium">Manage trade vendors, purchase ledgers, and payable settlements.</p>
-        </div>
-        <div className="flex items-center gap-3">
+
+      <PageHeader
+        title="Suppliers & Payables"
+        description="Manage trade vendors, purchase ledgers, and payable settlements."
+        breadcrumb="Supply Chain Directory"
+        icon={Truck}
+        actions={
           <Button
             disabled={vendorQuota.isReached}
             onClick={() => {
               setFormData({ status: "Active", state: business?.state || "Maharashtra" });
               setIsAddVendorOpen(true);
             }}
-            className="h-11 px-6 rounded-2xl bg-primary font-black uppercase text-[10px] tracking-widest shadow-lg gap-2"
+            className="h-10 px-5 rounded-xl bg-primary text-white font-semibold text-xs gap-2"
           >
             <Plus className="h-4 w-4" /> Register Supplier
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Suppliers</p>
-          <p className="text-2xl font-black text-slate-900 mt-1">{vendorList.length}</p>
-        </Card>
-        <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Payable Dues</p>
-          <p className="text-2xl font-black text-red-600 mt-1">{currencySymbol}{totalPayables.toLocaleString()}</p>
-        </Card>
-        <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Cumulative Purchases</p>
-          <p className="text-2xl font-black text-primary mt-1">{currencySymbol}{totalVolume.toLocaleString()}</p>
-        </Card>
+        <KpiStatCard
+          label="Active Suppliers"
+          value={vendorList.length}
+          subtext="Registered in directory"
+          icon={Users}
+        />
+        <KpiStatCard
+          label="Total Payable Dues"
+          value={`${currencySymbol}${totalPayables.toLocaleString()}`}
+          subtext="Outstanding vendor balance"
+          tone="danger"
+          icon={Wallet}
+        />
+        <KpiStatCard
+          label="Cumulative Purchases"
+          value={`${currencySymbol}${totalVolume.toLocaleString()}`}
+          subtext="Total recorded purchase volume"
+          icon={TrendingUp}
+        />
       </div>
 
       {/* Analytics Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         <Card className="lg:col-span-2 border-none shadow-sm rounded-3xl p-6">
-            <CardTitle className="text-sm font-black uppercase mb-6">Payment Trends</CardTitle>
-            <div className="h-[200px]">
-               <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={paymentTrends}>
-                     <XAxis dataKey="name" fontSize={10} />
-                     <YAxis fontSize={10} />
-                     <Tooltip />
-                     <Bar dataKey="amount" fill="#3b82f6" radius={[4,4,0,0]}>
-                       {paymentTrends.map((entry, index) => <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#93c5fd'} />)}
-                     </Bar>
-                  </BarChart>
-               </ResponsiveContainer>
-            </div>
-         </Card>
-         <Card className="border-none shadow-sm rounded-3xl p-6">
-            <CardTitle className="text-sm font-black uppercase mb-6">Top Suppliers (Volume)</CardTitle>
-            <div className="space-y-4">
-              {[...vendorList].sort((a,b) => (b.totalPurchase || 0) - (a.totalPurchase || 0)).slice(0, 3).map(v => (
-                <div key={v.id} className="flex items-center justify-between">
-                   <p className="text-xs font-bold truncate">{v.name}</p>
-                   <p className="text-xs font-black text-primary">{currencySymbol}{(v.totalPurchase || 0).toLocaleString()}</p>
-                </div>
-              ))}
-              {vendorList.length === 0 && (
-                <p className="text-xs text-muted-foreground italic">No supplier records yet.</p>
-              )}
-            </div>
-         </Card>
+        <SectionCard
+          title="Payment Trends"
+          description="Weekly supplier settlement outflow"
+          className="lg:col-span-2"
+        >
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={paymentTrends}>
+                <XAxis dataKey="name" fontSize={11} stroke="#64748b" tickLine={false} axisLine={false} />
+                <YAxis fontSize={11} stroke="#64748b" tickLine={false} axisLine={false} />
+                <Tooltip />
+                <Bar dataKey="amount" fill="#3b82f6" radius={[6, 6, 0, 0]}>
+                  {paymentTrends.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#0f172a' : '#94a3b8'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Top Suppliers (Volume)"
+          description="Highest purchase value partners"
+        >
+          <div className="space-y-3.5">
+            {[...vendorList].sort((a, b) => (b.totalPurchase || 0) - (a.totalPurchase || 0)).slice(0, 3).map((v) => (
+              <div key={v.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
+                <p className="text-sm font-medium text-slate-800 truncate pr-3">{v.name}</p>
+                <p className="text-sm font-semibold font-mono tabular-nums text-slate-900 shrink-0">
+                  {currencySymbol}{(v.totalPurchase || 0).toLocaleString()}
+                </p>
+              </div>
+            ))}
+            {vendorList.length === 0 && (
+              <p className="text-xs text-slate-500">No supplier records yet.</p>
+            )}
+          </div>
+        </SectionCard>
       </div>
 
-      {/* Advanced Filters */}
-      <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-2xl shadow-sm border">
-         <div className="flex flex-wrap gap-3 items-center flex-1 min-w-[240px]">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
-               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-               <Input
-                 placeholder="Search supplier, phone, GSTIN..."
-                 value={searchTerm}
-                 onChange={(e) => setSearchTerm(e.target.value)}
-                 className="pl-10 h-10 rounded-xl text-xs font-bold"
-               />
-            </div>
-            <Select value={filterCity} onValueChange={setFilterCity}>
-               <SelectTrigger className="w-[150px] h-10 rounded-xl font-bold text-xs"><SelectValue placeholder="Filter City" /></SelectTrigger>
-               <SelectContent><SelectItem value="all">All Cities</SelectItem>{cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-            </Select>
-            <Select value={filterState} onValueChange={setFilterState}>
-               <SelectTrigger className="w-[160px] h-10 rounded-xl font-bold text-xs"><SelectValue placeholder="Filter State" /></SelectTrigger>
-               <SelectContent><SelectItem value="all">All States</SelectItem>{INDIAN_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
-         </div>
-         <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="h-10 rounded-xl">
-               <TabsTrigger value="all" className="text-[10px] font-black uppercase rounded-lg">All ({vendorList.length})</TabsTrigger>
-               <TabsTrigger value="dues" className="text-[10px] font-black uppercase rounded-lg">With Dues</TabsTrigger>
-               <TabsTrigger value="settled" className="text-[10px] font-black uppercase rounded-lg">Settled</TabsTrigger>
-            </TabsList>
-         </Tabs>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center justify-between bg-white p-4 rounded-2xl border border-slate-200">
+        <div className="flex flex-wrap gap-3 items-center flex-1 min-w-[240px]">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search supplier, phone, GSTIN..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-10 rounded-xl text-xs bg-white border-slate-200"
+            />
+          </div>
+          <Select value={filterCity} onValueChange={setFilterCity}>
+            <SelectTrigger className="w-[150px] h-10 rounded-xl text-xs bg-white border-slate-200"><SelectValue placeholder="Filter City" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Cities</SelectItem>{cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={filterState} onValueChange={setFilterState}>
+            <SelectTrigger className="w-[160px] h-10 rounded-xl text-xs bg-white border-slate-200"><SelectValue placeholder="Filter State" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All States</SelectItem>{INDIAN_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="all">All ({vendorList.length})</TabsTrigger>
+            <TabsTrigger value="dues">With Dues</TabsTrigger>
+            <TabsTrigger value="settled">Settled</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Vendors Directory Table */}
-      <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-white">
+      <SectionCard
+        title="Supplier Directory"
+        description={`${filteredVendors.length} supplier ${filteredVendors.length === 1 ? 'record' : 'records'} shown`}
+        bodyClassName="p-0"
+      >
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/20">
-                <TableHead className="pl-6 text-[10px] font-black uppercase">Supplier</TableHead>
-                <TableHead className="text-[10px] font-black uppercase">Phone / GSTIN</TableHead>
-                <TableHead className="text-[10px] font-black uppercase">Location</TableHead>
-                <TableHead className="text-right text-[10px] font-black uppercase">Total Purchase</TableHead>
-                <TableHead className="text-right text-[10px] font-black uppercase">Pending Dues</TableHead>
-                <TableHead className="text-right pr-6 text-[10px] font-black uppercase">Actions</TableHead>
+              <TableRow>
+                <TableHead className="pl-6">Supplier</TableHead>
+                <TableHead>Phone / GSTIN</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead className="text-right">Total Purchase</TableHead>
+                <TableHead className="text-right">Pending Dues</TableHead>
+                <TableHead className="text-right pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isVendorsLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-40 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary opacity-40" />
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-slate-400" />
                   </TableCell>
                 </TableRow>
               ) : filteredVendors.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-40 text-center text-xs text-muted-foreground italic">
+                  <TableCell colSpan={6} className="h-40 text-center text-sm text-slate-500">
                     No suppliers match your filter criteria.
                   </TableCell>
                 </TableRow>
@@ -453,35 +467,35 @@ export default function VendorsPage() {
                 filteredVendors.map((v) => (
                   <TableRow
                     key={v.id}
-                    className="cursor-pointer hover:bg-muted/10 transition-colors"
+                    className="cursor-pointer"
                   >
                     <TableCell className="pl-6 py-4" onClick={() => router.push(`/vendors/${v.id}`)}>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 rounded-xl bg-primary/10 text-primary font-black">
-                          <AvatarFallback className="rounded-xl bg-primary/10 text-primary font-black text-xs">
+                        <Avatar className="h-9 w-9 rounded-xl bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+                          <AvatarFallback className="rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs">
                             {v.name?.charAt(0)?.toUpperCase() || "V"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-xs font-black text-slate-900">{v.name}</p>
+                          <p className="text-sm font-semibold text-slate-900">{v.name}</p>
                           {v.businessName && v.businessName !== v.name && (
-                            <p className="text-[10px] text-muted-foreground font-medium">{v.businessName}</p>
+                            <p className="text-xs text-slate-500">{v.businessName}</p>
                           )}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="text-xs font-bold text-slate-700">{v.phone}</p>
-                      <p className="text-[10px] font-mono text-muted-foreground uppercase">{v.gstin || "Unregistered"}</p>
+                      <p className="text-xs font-mono tabular-nums font-medium text-slate-800">{v.phone}</p>
+                      <p className="text-xs font-mono text-slate-500 mt-0.5">{v.gstin || "Unregistered"}</p>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs font-medium text-slate-600">{[v.city, v.state].filter(Boolean).join(", ") || "N/A"}</span>
+                      <span className="text-xs text-slate-600">{[v.city, v.state].filter(Boolean).join(", ") || "N/A"}</span>
                     </TableCell>
-                    <TableCell className="text-right font-black text-xs text-slate-900">
+                    <TableCell className="text-right font-mono tabular-nums font-semibold text-xs text-slate-900">
                       {currencySymbol}{(v.totalPurchase || 0).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-right font-black text-xs">
-                      <span className={cn((v.pendingBalance || 0) > 0 ? "text-red-600" : "text-green-600")}>
+                    <TableCell className="text-right font-mono tabular-nums font-semibold text-xs">
+                      <span className={cn((v.pendingBalance || 0) > 0 ? "text-rose-600" : "text-emerald-700")}>
                         {currencySymbol}{(v.pendingBalance || 0).toLocaleString()}
                       </span>
                     </TableCell>
@@ -491,6 +505,7 @@ export default function VendorsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-lg"
+                          aria-label={`Record payout for ${v.name}`}
                           onClick={() => {
                             setSelectedVendor(v);
                             setIsPaymentModalOpen(true);
@@ -503,6 +518,7 @@ export default function VendorsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-lg"
+                          aria-label={`Edit ${v.name}`}
                           onClick={() => {
                             setFormData(v);
                             setIsAddVendorOpen(true);
@@ -515,13 +531,14 @@ export default function VendorsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 rounded-lg"
+                          aria-label={`Delete ${v.name}`}
                           onClick={() => {
                             setVendorToDelete(v);
                             setIsDeleteModalOpen(true);
                           }}
                           title="Delete Supplier"
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                          <Trash2 className="h-3.5 w-3.5 text-rose-500" />
                         </Button>
                       </div>
                     </TableCell>
@@ -531,25 +548,26 @@ export default function VendorsPage() {
             </TableBody>
           </Table>
         </div>
-      </Card>
-
+      </SectionCard>
 
       {/* DELETE DIALOG */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-           <DialogHeader>
-              <DialogTitle>Delete Vendor</DialogTitle>
-              <DialogDescription>Are you sure you want to delete {vendorToDelete?.name}? This action cannot be undone.</DialogDescription>
-           </DialogHeader>
-           <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDeleteVendor}>Delete</Button>
-           </DialogFooter>
+        <DialogContent className="sm:max-w-[420px] rounded-2xl border border-slate-200 bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900">Delete Vendor</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm text-slate-600">
+              Are you sure you want to delete {vendorToDelete?.name}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-2">
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteVendor}>Delete</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col border-none shadow-2xl overflow-hidden bg-background">
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-slate-200 overflow-hidden bg-slate-50">
           {selectedVendor && (
             <VendorInspector 
               vendor={selectedVendor} 
@@ -564,91 +582,114 @@ export default function VendorsPage() {
 
       {/* SETTLEMENT DIALOG */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden text-left">
-           <DialogHeader className="p-8 bg-slate-900 text-white text-left shrink-0">
-              <div className="flex items-center gap-4">
-                 <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                    <Handshake className="h-6 w-6 text-accent" />
-                 </div>
-                 <div>
-                    <DialogTitle className="text-xl font-bold">Record Payout</DialogTitle>
-                    <DialogDescription className="text-white/40 text-[9px] font-bold uppercase tracking-widest mt-1">Settle trade payable dues</DialogDescription>
-                 </div>
+        <DialogContent className="sm:max-w-[440px] rounded-2xl border border-slate-200 p-0 overflow-hidden text-left bg-white">
+          <DialogHeader className="p-6 bg-slate-900 text-white text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <Handshake className="h-5 w-5 text-white" />
               </div>
-           </DialogHeader>
-           <div className="p-8 space-y-8">
-              <div className="space-y-1.5">
-                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Payout Amount ({currencySymbol})</Label>
-                 <Input 
-                   type="number" 
-                   value={payAmount} 
-                   onChange={(e) => setPayAmount(e.target.value)} 
-                   placeholder="0.00" 
-                   className="h-14 rounded-2xl bg-muted/20 border-none shadow-inner font-black text-2xl text-primary" 
-                 />
+              <div>
+                <DialogTitle className="text-lg font-bold text-white">Record Payout</DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs mt-0.5">
+                  Settle trade payable dues{selectedVendor ? ` for ${selectedVendor.name}` : ""}
+                </DialogDescription>
               </div>
-              <div className="space-y-1.5">
-                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Payment Mode</Label>
-                 <Select value={payMode} onValueChange={setPayMode}>
-                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                       <SelectItem value="Bank Transfer" className="text-xs font-bold uppercase">Bank / NEFT</SelectItem>
-                       <SelectItem value="UPI" className="text-xs font-bold uppercase">UPI / QR</SelectItem>
-                       <SelectItem value="Cash" className="text-xs font-bold uppercase">Cash Desk</SelectItem>
-                       <SelectItem value="Cheque" className="text-xs font-bold uppercase">Cheque</SelectItem>
-                    </SelectContent>
-                 </Select>
-              </div>
-              <div className="space-y-1.5">
-                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Memo / Remark</Label>
-                 <Textarea value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Transaction ref or reason..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner p-3 text-xs" />
-              </div>
-           </div>
-           <DialogFooter className="p-8 bg-muted/10 border-t">
-              <Button onClick={handleRecordPayment} disabled={!payAmount} className="w-full h-14 bg-primary font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl">
-                 Commit Settlement Node
-              </Button>
-           </DialogFooter>
+            </div>
+          </DialogHeader>
+          <div className="p-6 space-y-5">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Payout Amount ({currencySymbol})</Label>
+              <Input 
+                type="number" 
+                value={payAmount} 
+                onChange={(e) => setPayAmount(e.target.value)} 
+                placeholder="0.00" 
+                className="h-12 rounded-xl font-mono tabular-nums font-bold text-xl text-slate-900" 
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Payment Mode</Label>
+              <Select value={payMode} onValueChange={setPayMode}>
+                <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium"><SelectValue /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="Bank Transfer" className="text-xs">Bank / NEFT</SelectItem>
+                  <SelectItem value="UPI" className="text-xs">UPI / QR</SelectItem>
+                  <SelectItem value="Cash" className="text-xs">Cash Desk</SelectItem>
+                  <SelectItem value="Cheque" className="text-xs">Cheque</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Memo / Remark</Label>
+              <Textarea value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Transaction ref or reason..." className="min-h-[80px] rounded-xl border-slate-200 p-3 text-xs" />
+            </div>
+          </div>
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200">
+            <Button onClick={handleRecordPayment} disabled={!payAmount} className="w-full h-11 bg-primary text-white font-semibold text-xs rounded-xl">
+              Record Payout
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isAddVendorOpen} onOpenChange={setIsAddVendorOpen}>
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl text-left w-[95vw]">
-
-          <DialogHeader className="p-8 bg-primary text-white text-left">
-            <div className="flex items-center gap-4">
-               <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
-                  <UserPlus className="h-6 w-6 text-white" />
-               </div>
-               <div>
-                  <DialogTitle className="text-xl">Register Supplier Node</DialogTitle>
-                  <DialogDescription className="text-white/70 text-[9px] font-bold uppercase tracking-widest mt-1">Identity & Global Parameters</DialogDescription>
-               </div>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden rounded-2xl border border-slate-200 text-left w-[95vw] bg-white">
+          <DialogHeader className="p-6 bg-slate-900 text-white text-left">
+            <div className="flex items-center gap-3.5">
+              <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <UserPlus className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-white">
+                  {formData.id ? "Edit Supplier Profile" : "Register Supplier"}
+                </DialogTitle>
+                <DialogDescription className="text-slate-300 text-xs mt-0.5">
+                  Contact identity, GST details, and opening payable balance
+                </DialogDescription>
+              </div>
             </div>
           </DialogHeader>
-          <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Full Name *</Label><Input value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl font-bold bg-white border" /></div>
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">WhatsApp *</Label><Input value={formData.phone || ""} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="91XXXXXXXX" className="h-12 rounded-xl font-bold bg-white border" /></div>
+          <div className="p-6 space-y-5 max-h-[62vh] overflow-y-auto scrollbar-hide">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Full Name *</Label>
+                <Input value={formData.name || ""} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-10 rounded-xl font-medium" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">WhatsApp Phone *</Label>
+                <Input value={formData.phone || ""} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="91XXXXXXXX" className="h-10 rounded-xl font-mono tabular-nums" />
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">State *</Label>
-                  <Select value={formData.state || ""} onValueChange={(v) => setFormData({...formData, state: v})}>
-                    <SelectTrigger className="h-12 rounded-xl bg-white border"><SelectValue placeholder="Select State" /></SelectTrigger>
-                    <SelectContent className="max-h-60 rounded-xl">
-                      {INDIAN_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">GSTIN</Label><Input value={formData.gstin || ""} onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} className="h-12 rounded-xl font-mono uppercase bg-white border" /></div>
-             </div>
-            <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Billing Address</Label><Textarea value={formData.address || ""} onChange={(e) => setFormData({...formData, address: e.target.value})} className="h-20 rounded-xl bg-white border text-xs" /></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-               <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Opening Dues ({currencySymbol})</Label><Input type="number" value={formData.openingBalance ?? ""} onChange={(e) => setFormData({...formData, openingBalance: parseFloat(e.target.value) || 0})} className="h-12 rounded-xl bg-white border text-red-600 font-bold" /></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">State *</Label>
+                <Select value={formData.state || ""} onValueChange={(v) => setFormData({...formData, state: v})}>
+                  <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs"><SelectValue placeholder="Select State" /></SelectTrigger>
+                  <SelectContent className="max-h-60 rounded-xl">
+                    {INDIAN_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">GSTIN</Label>
+                <Input value={formData.gstin || ""} onChange={(e) => setFormData({...formData, gstin: e.target.value.toUpperCase()})} className="h-10 rounded-xl font-mono uppercase" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Billing Address</Label>
+              <Textarea value={formData.address || ""} onChange={(e) => setFormData({...formData, address: e.target.value})} className="h-20 rounded-xl border-slate-200 text-xs" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Opening Dues ({currencySymbol})</Label>
+                <Input type="number" value={formData.openingBalance ?? ""} onChange={(e) => setFormData({...formData, openingBalance: parseFloat(e.target.value) || 0})} className="h-10 rounded-xl font-mono tabular-nums text-rose-600 font-semibold" />
+              </div>
             </div>
           </div>
-          <DialogFooter className="p-8 bg-muted/10 border-t">
-            <Button onClick={handleSaveVendor} className="w-full h-14 bg-primary font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl">Establish Supply Node</Button>
+          <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200">
+            <Button onClick={handleSaveVendor} className="w-full h-11 bg-primary text-white font-semibold text-xs rounded-xl">
+              {formData.id ? "Update Supplier" : "Save Supplier"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -656,14 +697,9 @@ export default function VendorsPage() {
   );
 }
 
-
-
-
-
 function VendorInspector({ vendor, businessId, currencySymbol, onClose, onOpenPayment }: any) {
   const firestore = useFirestore();
 
-  // 1. Fetch real-time Ledger from Cashbook
   const ledgerQuery = useMemoFirebase(() => {
     return query(
       collection(firestore, 'businesses', businessId, 'cashbook'),
@@ -677,21 +713,17 @@ function VendorInspector({ vendor, businessId, currencySymbol, onClose, onOpenPa
   const calculatedLedger = useMemo(() => {
     if (!ledgerData) return [];
     
-    // Starting point: Opening Balance (as a virtual Credit entry)
     let currentBalance = vendor.openingBalance || 0;
     const initialEntry = {
       id: 'opening',
       date: vendor.createdAt?.toDate ? format(vendor.createdAt.toDate(), 'yyyy-MM-dd') : 'Original',
-      particulars: 'Opening Balance Node',
+      particulars: 'Opening Balance',
       type: 'credit',
       amount: currentBalance,
       balance: currentBalance
     };
 
     const entries = ledgerData.map((t: any) => {
-      // In Vendor context: 
-      // Credit = Bill received (Liability increases)
-      // Debit = Payment made (Liability decreases)
       if (t.type === 'debit') currentBalance -= t.amount;
       else currentBalance += t.amount;
 
@@ -706,113 +738,150 @@ function VendorInspector({ vendor, businessId, currencySymbol, onClose, onOpenPa
 
   return (
     <>
-      <div className="p-8 bg-primary text-white shrink-0 relative">
-        <div className="absolute top-0 right-0 p-8 opacity-10"><Building2 className="h-40 w-40" /></div>
-        <div className="text-left space-y-6 relative z-10">
-          <Badge variant="outline" className="bg-white/10 text-white border-white/20 uppercase text-[9px] font-black px-3 py-1">NODE ID: {vendor.id.slice(-8).toUpperCase()}</Badge>
-          <div className="flex items-center gap-6">
-            <div className="h-20 w-20 rounded-3xl bg-white flex items-center justify-center text-primary font-black text-3xl shrink-0 shadow-2xl">
+      <div className="p-6 bg-slate-900 text-white shrink-0 relative">
+        <div className="text-left space-y-4">
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-300">
+            <span className="font-mono">Supplier ID: {vendor.id.slice(-8).toUpperCase()}</span>
+            <span className="rounded-md bg-emerald-500/20 text-emerald-300 px-2 py-0.5 text-xs font-medium">
+              {vendor.status}
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center text-white font-bold text-xl shrink-0">
               {vendor.name?.charAt(0)}
             </div>
-            <div className="space-y-1">
-              <h2 className="text-2xl font-black text-white">{vendor.name}</h2>
-              <div className="flex items-center gap-3">
-                <span className="text-accent text-[10px] font-bold uppercase tracking-widest">{vendor.phone}</span>
-                <Separator orientation="vertical" className="h-3 bg-white/20" />
-                <Badge className="bg-green-500 text-white border-none font-black text-[9px] h-5 uppercase px-2">{vendor.status}</Badge>
-              </div>
+            <div className="space-y-0.5 min-w-0">
+              <h2 className="text-xl font-bold text-white truncate">{vendor.name}</h2>
+              <p className="text-xs font-mono text-slate-300">{vendor.phone}</p>
             </div>
           </div>
         </div>
       </div>
 
       <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-8 border-b bg-muted/5">
-          <TabsList className="bg-transparent h-12 gap-8 p-0 border-none overflow-x-auto scrollbar-hide">
-            <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">Overview</TabsTrigger>
-            <TabsTrigger value="ledger" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0"><History className="h-3 w-3 mr-2" /> Node Ledger</TabsTrigger>
-            <TabsTrigger value="contact" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">Registry Profile</TabsTrigger>
+        <div className="px-6 py-2.5 border-b border-slate-200 bg-white">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="ledger">Ledger</TabsTrigger>
+            <TabsTrigger value="contact">Profile & GST</TabsTrigger>
           </TabsList>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 scrollbar-hide text-left">
-          <TabsContent value="overview" className="m-0 space-y-10">
-             <div className="grid grid-cols-2 gap-4 md:gap-6">
-                <div className="p-6 bg-muted/20 rounded-[2rem] border-none space-y-1 text-left">
-                   <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Total Liability</p>
-                   <p className="text-2xl font-black text-red-600">{currencySymbol}{vendor.pendingBalance?.toLocaleString()}</p>
-                </div>
-                <div className="p-6 bg-muted/20 rounded-[2rem] border-none space-y-1 text-left">
-                   <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Trading Volume</p>
-                   <p className="text-2xl font-black text-slate-900">{currencySymbol}{vendor.totalPurchase?.toLocaleString()}</p>
-                </div>
-             </div>
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-hide text-left">
+          <TabsContent value="overview" className="m-0 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <KpiStatCard
+                label="Total Liability"
+                value={`${currencySymbol}${(vendor.pendingBalance || 0).toLocaleString()}`}
+                tone="danger"
+              />
+              <KpiStatCard
+                label="Trading Volume"
+                value={`${currencySymbol}${(vendor.totalPurchase || 0).toLocaleString()}`}
+              />
+            </div>
 
-             <div className="space-y-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Clock className="h-4 w-4" /> Activity Pulse</h4>
-                <div className="grid grid-cols-1 gap-3">
-                   <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex justify-between items-center">
-                      <div><p className="text-[8px] font-bold text-muted-foreground uppercase">Last Bill Entry</p><p className="text-sm font-black text-slate-700">{vendor.lastPurchaseDate || 'N/A'}</p></div>
-                      <Badge variant="outline" className="bg-white text-primary border-primary/20 text-[7px] font-black h-5 uppercase">AUTOMATED SYNC</Badge>
-                   </div>
+            <SectionCard title="Recent Activity" bodyClassName="p-4">
+              <div className="flex justify-between items-center text-sm">
+                <div>
+                  <p className="text-xs text-slate-500">Last Bill Entry</p>
+                  <p className="font-semibold text-slate-900 mt-0.5 font-mono tabular-nums">{vendor.lastPurchaseDate || 'N/A'}</p>
                 </div>
-             </div>
+                <span className="rounded-md bg-slate-100 text-slate-700 px-2.5 py-1 text-xs font-medium">
+                  Ledger Synced
+                </span>
+              </div>
+            </SectionCard>
 
-             <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">Internal Remarks</p>
-                <div className="p-5 bg-muted/20 rounded-3xl border border-transparent italic">
-                  <p className="text-sm text-slate-600 leading-relaxed">"{vendor.notes || 'No specific node remarks.'}"</p>
-                </div>
-             </div>
+            <SectionCard title="Internal Remarks" bodyClassName="p-4">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                {vendor.notes || 'No specific supplier remarks.'}
+              </p>
+            </SectionCard>
           </TabsContent>
 
-          <TabsContent value="ledger" className="m-0 space-y-6">
-             <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border">
-                <div className="overflow-x-auto">
-                   <Table>
-                      <TableHeader><TableRow className="bg-muted/10"><TableHead className="pl-6 text-[9px] font-black uppercase h-10">Date</TableHead><TableHead className="text-[9px] font-black uppercase h-10">Particulars</TableHead><TableHead className="text-right text-[9px] font-black uppercase h-10">Outflow (-)</TableHead><TableHead className="text-right text-[9px) font-black uppercase h-10">Inflow (+)</TableHead><TableHead className="text-right pr-6 text-[9px] font-black uppercase h-10">Balance node</TableHead></TableRow></TableHeader>
-                      <TableBody>
-                         {isLoading ? (
-                           <TableRow><TableCell colSpan={5} className="h-40 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary opacity-20" /></TableCell></TableRow>
-                         ) : calculatedLedger.length === 0 ? (
-                           <TableRow><TableCell colSpan={5} className="h-40 text-center opacity-30 italic text-xs uppercase">No ledger traffic.</TableCell></TableRow>
-                         ) : calculatedLedger.map((entry) => (
-                           <TableRow key={entry.id} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
-                              <TableCell className="pl-6 py-4"><span className="text-[10px] font-black text-slate-400 uppercase">{entry.date?.split('-').reverse().slice(0, 2).join('/')}</span></TableCell>
-                              <TableCell><div className="flex flex-col"><span className="text-xs font-bold text-slate-700 truncate block max-w-[150px]">{entry.particulars}</span><span className="text-[8px] font-black text-muted-foreground uppercase opacity-40">{entry.mode || 'Registry'}</span></div></TableCell>
-                              <TableCell className="text-right font-black text-xs text-green-600">{entry.type === 'debit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}</TableCell>
-                              <TableCell className="text-right font-black text-xs text-red-600">{entry.type === 'credit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}</TableCell>
-                              <TableCell className="text-right pr-6 font-black text-xs text-slate-900">{currencySymbol}{entry.balance.toLocaleString()}</TableCell>
-                           </TableRow>
-                         ))}
-                      </TableBody>
-                   </Table>
-                </div>
-             </Card>
+          <TabsContent value="ledger" className="m-0 space-y-4">
+            <SectionCard bodyClassName="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-5">Date</TableHead>
+                      <TableHead>Particulars</TableHead>
+                      <TableHead className="text-right">Paid (-)</TableHead>
+                      <TableHead className="text-right">Billed (+)</TableHead>
+                      <TableHead className="text-right pr-5">Balance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow><TableCell colSpan={5} className="h-36 text-center"><Loader2 className="animate-spin h-5 w-5 mx-auto text-slate-400" /></TableCell></TableRow>
+                    ) : calculatedLedger.length === 0 ? (
+                      <TableRow><TableCell colSpan={5} className="h-36 text-center text-xs text-slate-500">No ledger transactions recorded.</TableCell></TableRow>
+                    ) : calculatedLedger.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="pl-5 py-3 text-xs font-mono text-slate-500">
+                          {entry.date?.split('-').reverse().slice(0, 2).join('/')}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-slate-800 truncate max-w-[160px]">{entry.particulars}</span>
+                            <span className="text-xs text-slate-500">{entry.mode || 'Registry'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono tabular-nums font-semibold text-xs text-emerald-700">
+                          {entry.type === 'debit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono tabular-nums font-semibold text-xs text-rose-600">
+                          {entry.type === 'credit' ? `${currencySymbol}${entry.amount.toLocaleString()}` : '-'}
+                        </TableCell>
+                        <TableCell className="text-right pr-5 font-mono tabular-nums font-semibold text-xs text-slate-900">
+                          {currencySymbol}{entry.balance.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </SectionCard>
           </TabsContent>
 
-          <TabsContent value="contact" className="m-0 space-y-8">
-             <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Business GSTIN</p><p className="text-sm font-mono font-black text-primary uppercase">{vendor.gstin || 'Unregistered'}</p></div>
-                <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Location Node</p><p className="text-sm font-black text-slate-900">{vendor.city}, {vendor.state}</p></div>
-                <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Global Email</p><p className="text-sm font-black text-slate-900">{vendor.email || 'N/A'}</p></div>
-                <div className="space-y-1"><p className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Identity Status</p><Badge className="bg-green-50 text-green-700 border-none font-black text-[9px] uppercase h-5">{vendor.status}</Badge></div>
-             </div>
-             <Separator className="opacity-40" />
-             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Billing Address Registry</Label>
-                <div className="p-6 bg-muted/20 rounded-[2rem] border-none shadow-inner">
-                   <p className="text-sm font-bold text-slate-700 leading-relaxed uppercase tracking-tight">{vendor.address}</p>
+          <TabsContent value="contact" className="m-0 space-y-5">
+            <SectionCard title="Business Profile">
+              <div className="grid grid-cols-2 gap-5 text-sm">
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500">Business GSTIN</p>
+                  <p className="font-mono font-semibold text-slate-900">{vendor.gstin || 'Unregistered'}</p>
                 </div>
-             </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500">Location</p>
+                  <p className="font-semibold text-slate-900">{[vendor.city, vendor.state].filter(Boolean).join(', ')}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500">Email</p>
+                  <p className="font-medium text-slate-900">{vendor.email || 'N/A'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-slate-500">Status</p>
+                  <span className="inline-block rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs font-medium">{vendor.status}</span>
+                </div>
+              </div>
+              <Separator className="my-5" />
+              <div className="space-y-1.5">
+                <p className="text-xs text-slate-500">Billing Address</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{vendor.address || 'No billing address on file.'}</p>
+              </div>
+            </SectionCard>
           </TabsContent>
         </div>
       </Tabs>
 
-      <div className="p-8 border-t bg-muted/20 flex gap-4 shrink-0">
-        <Button variant="outline" className="flex-1 h-16 bg-white font-black uppercase text-[11px] tracking-widest rounded-2xl shadow-sm border-slate-200" onClick={onClose}>Close Profile</Button>
-        <Button className="flex-1 h-16 bg-primary font-black shadow-xl uppercase tracking-widest text-[11px] gap-3 rounded-2xl active:scale-95 transition-all text-white" onClick={onOpenPayment}>
-          <DollarSign className="h-6 w-6" /> Record Payout
+      <div className="p-4 border-t border-slate-200 bg-white flex gap-3 shrink-0">
+        <Button variant="outline" className="flex-1 h-11 rounded-xl font-semibold text-xs" onClick={onClose}>
+          Close Profile
+        </Button>
+        <Button className="flex-1 h-11 bg-primary text-white font-semibold text-xs gap-2 rounded-xl" onClick={onOpenPayment}>
+          <DollarSign className="h-4 w-4" /> Record Payout
         </Button>
       </div>
     </>

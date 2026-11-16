@@ -121,6 +121,7 @@ import {
 import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
 import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
 import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
+import { PageHeader, KpiStatCard, SectionCard } from "@/components/ui/editorial";
 
 const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", 
@@ -571,123 +572,111 @@ export default function CustomersPage() {
     );
   }
 
-  return (
-    <div className="space-y-6 md:space-y-8 pb-10 text-left">
-      <CoreQuotaBanner quota={customerQuota} />
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
-        <div className="flex items-center gap-4 text-left">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 shadow-inner">
-            <Users className="h-7 w-7 md:h-8 md:w-8 text-primary" />
-          </div>
-          <div className="text-left">
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">
-              Customer Registry
-            </h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1.5 opacity-60">
-              Profiles, Order Histories & Unified Identity
-            </p>
-          </div>
-        </div>
+  const repeatPurchaseRate = registryStats.customersWithOrders > 0
+    ? `${Math.round((customerList.filter(c => getCustomerMetrics(c).totalOrders >= 2).length / registryStats.customersWithOrders) * 100)}%`
+    : "0%";
 
-        <div className="flex items-center gap-3">
+  return (
+    <div className="space-y-6 pb-10 text-left">
+      <CoreQuotaBanner quota={customerQuota} />
+
+      <PageHeader
+        title="Customer Registry"
+        description="Profiles, order histories, and unified customer identity."
+        breadcrumb="CRM & Accounts"
+        icon={Users}
+        actions={
           <Dialog open={isAddCustomerOpen} onOpenChange={(o) => { setIsAddCustomerOpen(o); if(!o) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button disabled={customerQuota.isReached} className="w-full sm:w-auto bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
+              <Button disabled={customerQuota.isReached} className="w-full sm:w-auto bg-primary hover:bg-primary/90 h-10 px-5 font-semibold text-xs rounded-xl text-white">
                 <UserPlus className="mr-1.5 h-4 w-4" /> Add Customer
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl w-[95vw] sm:w-full">
-              <DialogHeader className="p-6 sm:p-8 bg-primary text-white text-left">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0 shadow-inner">
-                    {customerFormData.id ? <Edit2 className="h-6 w-6 text-white" /> : <UserPlus className="h-6 w-6 text-white" />}
+            <DialogContent className="sm:max-w-[680px] p-0 overflow-hidden rounded-2xl border border-slate-200 w-[95vw] sm:w-full bg-white">
+              <DialogHeader className="p-6 bg-slate-900 text-white text-left">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/15 shrink-0">
+                    {customerFormData.id ? <Edit2 className="h-5 w-5 text-white" /> : <UserPlus className="h-5 w-5 text-white" />}
                   </div>
                   <div>
-                    <DialogTitle className="text-xl font-black uppercase">
+                    <DialogTitle className="text-lg font-bold text-white">
                       {customerFormData.id ? "Edit Customer Profile" : "Register Customer"}
                     </DialogTitle>
-                    <DialogDescription className="text-white/70 text-[9px] font-bold uppercase tracking-widest mt-1">
-                      Authoritative Directory • Deterministic Phone Deduplication
+                    <DialogDescription className="text-slate-300 text-xs mt-0.5">
+                      Authoritative directory with phone-based deduplication
                     </DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
 
               <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
-                <div className="px-6 sm:px-8 border-b bg-muted/10">
-                  <TabsList className="bg-transparent h-12 p-0 gap-6 border-none overflow-x-auto scrollbar-hide flex">
-                    <TabsTrigger value="basic" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      Basic Identity
-                    </TabsTrigger>
-                    <TabsTrigger value="billing" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      Address & GST
-                    </TabsTrigger>
-                    <TabsTrigger value="notes" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      Internal Notes
-                    </TabsTrigger>
+                <div className="px-6 py-2.5 border-b border-slate-200 bg-slate-50/70">
+                  <TabsList className="w-full sm:w-auto">
+                    <TabsTrigger value="basic">Basic Identity</TabsTrigger>
+                    <TabsTrigger value="billing">Address & GST</TabsTrigger>
+                    <TabsTrigger value="notes">Internal Notes</TabsTrigger>
                   </TabsList>
                 </div>
 
                 <ScrollArea className="max-h-[60vh]">
-                  <div className="p-6 sm:p-8 text-left">
+                  <div className="p-6 text-left">
                     <TabsContent value="basic" className="m-0 space-y-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase ml-1 opacity-70">Customer Name *</Label>
+                        <Label className="text-xs font-semibold text-slate-700">Customer Name *</Label>
                         <Input 
                           value={customerFormData.name} 
                           onChange={(e) => setCustomerFormData({ ...customerFormData, name: e.target.value })} 
                           placeholder="e.g. Rahul Sharma" 
-                          className="h-11 rounded-xl text-sm font-bold bg-muted/20 border-none"
+                          className="h-10 rounded-xl text-sm"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase ml-1 opacity-70">Mobile Phone *</Label>
+                          <Label className="text-xs font-semibold text-slate-700">Mobile Phone *</Label>
                           <Input 
                             value={customerFormData.phone} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, phone: e.target.value })} 
                             placeholder="e.g. 9876543210" 
-                            className="h-11 rounded-xl font-mono text-sm font-bold bg-muted/20 border-none"
+                            className="h-10 rounded-xl font-mono tabular-nums text-sm"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Email Address</Label>
+                          <Label className="text-xs font-semibold text-slate-700">Email Address</Label>
                           <Input 
                             type="email" 
                             value={customerFormData.email} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, email: e.target.value })} 
                             placeholder="customer@example.com" 
-                            className="h-11 rounded-xl text-sm bg-muted/20 border-none"
+                            className="h-10 rounded-xl text-sm"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Classification</Label>
+                          <Label className="text-xs font-semibold text-slate-700">Classification</Label>
                           <Select 
                             value={customerFormData.customerType} 
                             onValueChange={(val: any) => setCustomerFormData({ ...customerFormData, customerType: val })}
                           >
-                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none text-xs font-bold uppercase">
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
                               {CUSTOMER_TYPES.map(t => (
-                                <SelectItem key={t} value={t} className="text-xs font-bold uppercase">{t}</SelectItem>
+                                <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Company / Business Name</Label>
+                          <Label className="text-xs font-semibold text-slate-700">Company / Business Name</Label>
                           <Input 
                             value={customerFormData.businessName} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, businessName: e.target.value })} 
                             placeholder="Optional enterprise name" 
-                            className="h-11 rounded-xl text-sm bg-muted/20 border-none"
+                            className="h-10 rounded-xl text-sm"
                           />
                         </div>
                       </div>
@@ -695,23 +684,23 @@ export default function CustomersPage() {
 
                     <TabsContent value="billing" className="m-0 space-y-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Delivery / Billing Address</Label>
+                        <Label className="text-xs font-semibold text-slate-700">Delivery / Billing Address</Label>
                         <Textarea 
                           value={customerFormData.address} 
                           onChange={(e) => setCustomerFormData({ ...customerFormData, address: e.target.value })} 
                           placeholder="Complete street address, building, locality, pincode..." 
-                          className="min-h-[80px] rounded-xl bg-muted/20 border-none text-xs leading-relaxed"
+                          className="min-h-[84px] rounded-xl border-slate-200 text-xs leading-relaxed"
                         />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">State</Label>
+                          <Label className="text-xs font-semibold text-slate-700">State</Label>
                           <Select 
                             value={customerFormData.state} 
                             onValueChange={(val) => setCustomerFormData({ ...customerFormData, state: val })}
                           >
-                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none text-xs font-bold">
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
@@ -723,12 +712,12 @@ export default function CustomersPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">GSTIN</Label>
+                          <Label className="text-xs font-semibold text-slate-700">GSTIN</Label>
                           <Input 
                             value={customerFormData.gstin} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, gstin: e.target.value.toUpperCase() })} 
                             placeholder="e.g. 27AABCU9603R1ZN" 
-                            className="h-11 rounded-xl font-mono text-xs font-bold uppercase bg-muted/20 border-none"
+                            className="h-10 rounded-xl font-mono text-xs uppercase"
                           />
                         </div>
                       </div>
@@ -736,15 +725,15 @@ export default function CustomersPage() {
 
                     <TabsContent value="notes" className="m-0 space-y-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase ml-1 opacity-60">Internal Merchant Notes</Label>
+                        <Label className="text-xs font-semibold text-slate-700">Internal Merchant Notes</Label>
                         <Textarea 
                           value={customerFormData.notes} 
                           onChange={(e) => setCustomerFormData({ ...customerFormData, notes: e.target.value })} 
                           placeholder="Private notes about customer preferences, VIP requirements, special terms..." 
-                          className="min-h-[100px] rounded-xl bg-muted/20 border-none text-xs leading-relaxed"
+                          className="min-h-[110px] rounded-xl border-slate-200 text-xs leading-relaxed"
                         />
-                        <p className="text-[9px] text-muted-foreground ml-1">
-                          Private to your team. Never exposed to customers on the storefront.
+                        <p className="text-xs text-slate-500">
+                          Private to your team and never exposed on the storefront.
                         </p>
                       </div>
                     </TabsContent>
@@ -752,11 +741,11 @@ export default function CustomersPage() {
                 </ScrollArea>
               </Tabs>
 
-              <DialogFooter className="p-6 bg-muted/10 border-t">
+              <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200">
                 <Button 
                   onClick={handleSaveCustomer} 
                   disabled={isSubmittingForm}
-                  className="w-full h-12 bg-primary font-black uppercase text-xs tracking-wider rounded-xl shadow-xl text-white"
+                  className="w-full h-11 bg-primary font-semibold text-xs rounded-xl text-white"
                 >
                   {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
                   {customerFormData.id ? "Save Customer Profile" : "Register New Customer"}
@@ -764,68 +753,65 @@ export default function CustomersPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+        }
+      />
 
       {/* Metrics Banner */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border border-border/50 text-left">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Total Registered</p>
-          <div className="text-2xl font-black text-slate-900">{registryStats.totalCustomers} Customers</div>
-          <p className="text-[10px] text-muted-foreground font-semibold mt-1">
-            <span className="text-primary font-bold">{registryStats.activeCustomers}</span> active in directory
-          </p>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-emerald-500 text-left">
-          <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1">Purchasing Customers</p>
-          <div className="text-2xl font-black text-emerald-900">{registryStats.customersWithOrders} Buyers</div>
-          <p className="text-[10px] text-muted-foreground font-semibold mt-1">Placed at least 1 order</p>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-indigo-500 text-left">
-          <p className="text-[10px] font-black text-indigo-700 uppercase tracking-widest mb-1">Repeat Purchase Rate</p>
-          <div className="text-2xl font-black text-indigo-900">
-            {registryStats.customersWithOrders > 0
-              ? `${Math.round((customerList.filter(c => getCustomerMetrics(c).totalOrders >= 2).length / registryStats.customersWithOrders) * 100)}%`
-              : "0%"}
-          </div>
-          <p className="text-[10px] text-muted-foreground font-semibold mt-1">Customers with 2+ orders</p>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-slate-900 text-white rounded-3xl p-6 text-left">
-          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Customer Paid Revenue</p>
-          <div className="text-2xl font-black text-white">{currencySymbol}{registryStats.totalRevenueFromCustomers.toLocaleString()}</div>
-          <p className="text-[10px] text-slate-400 font-semibold mt-1">Verified settled payments</p>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiStatCard
+          label="Total Registered"
+          value={registryStats.totalCustomers}
+          subtext={`${registryStats.activeCustomers} active in directory`}
+          icon={Users}
+        />
+        <KpiStatCard
+          label="Purchasing Customers"
+          value={registryStats.customersWithOrders}
+          subtext="Placed at least 1 order"
+          tone="positive"
+          icon={ShoppingBag}
+        />
+        <KpiStatCard
+          label="Repeat Purchase Rate"
+          value={repeatPurchaseRate}
+          subtext="Customers with 2+ orders"
+          icon={History}
+        />
+        <KpiStatCard
+          label="Customer Paid Revenue"
+          value={`${currencySymbol}${registryStats.totalRevenueFromCustomers.toLocaleString()}`}
+          subtext="Verified settled payments"
+          tone="dark"
+          icon={CreditCard}
+        />
       </div>
 
       {/* Main Customers Table Card */}
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border text-left">
+      <SectionCard bodyClassName="p-0">
         {/* Filters Bar */}
-        <div className="p-5 border-b bg-muted/20 space-y-4">
+        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
             {/* Search */}
             <div className="lg:col-span-4 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-              <Input 
-                placeholder="Search name, phone, email, enterprise..." 
-                className="h-11 pl-10 text-xs bg-white border-none shadow-inner rounded-xl w-full font-bold" 
-                value={searchTerm} 
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search name, phone, email, business..."
+                className="h-10 pl-10 text-sm bg-white border-slate-200 rounded-xl w-full"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
             </div>
 
             {/* Classification Filter */}
             <div className="lg:col-span-2">
               <Select value={classificationFilter} onValueChange={(v) => { setClassificationFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Classification" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-[10px] font-bold uppercase">All Types</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="all" className="text-xs font-medium">All types</SelectItem>
                   {CUSTOMER_TYPES.map(t => (
-                    <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">{t}</SelectItem>
+                    <SelectItem key={t} value={t} className="text-xs font-medium">{t}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -834,13 +820,13 @@ export default function CustomersPage() {
             {/* Spending Filter */}
             <div className="lg:col-span-2">
               <Select value={spendingFilter} onValueChange={(v) => { setSpendingFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Spending" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-[10px] font-bold uppercase">All Spending</SelectItem>
-                  <SelectItem value="spenders" className="text-[10px] font-bold uppercase text-emerald-700">With Purchases</SelectItem>
-                  <SelectItem value="high" className="text-[10px] font-bold uppercase text-primary">High Spenders ({currencySymbol}5K+)</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="all" className="text-xs font-medium">All spending</SelectItem>
+                  <SelectItem value="spenders" className="text-xs font-medium text-emerald-700">With purchases</SelectItem>
+                  <SelectItem value="high" className="text-xs font-medium text-slate-900">High spenders ({currencySymbol}5K+)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -848,14 +834,14 @@ export default function CustomersPage() {
             {/* Orders Count Filter */}
             <div className="lg:col-span-2">
               <Select value={ordersFilter} onValueChange={(v) => { setOrdersFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Orders" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="all" className="text-[10px] font-bold uppercase">All Order Counts</SelectItem>
-                  <SelectItem value="repeat" className="text-[10px] font-bold uppercase text-indigo-700">Repeat Buyers (2+)</SelectItem>
-                  <SelectItem value="one_time" className="text-[10px] font-bold uppercase">One-time (1)</SelectItem>
-                  <SelectItem value="no_orders" className="text-[10px] font-bold uppercase text-muted-foreground">No Orders (0)</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="all" className="text-xs font-medium">All order counts</SelectItem>
+                  <SelectItem value="repeat" className="text-xs font-medium text-indigo-700">Repeat buyers (2+)</SelectItem>
+                  <SelectItem value="one_time" className="text-xs font-medium">One-time (1)</SelectItem>
+                  <SelectItem value="no_orders" className="text-xs font-medium text-slate-500">No orders (0)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -863,14 +849,14 @@ export default function CustomersPage() {
             {/* Sort Filter */}
             <div className="lg:col-span-2">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-11 w-full rounded-xl bg-white border-none shadow-inner text-[10px] font-black uppercase text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-none shadow-2xl">
-                  <SelectItem value="recent" className="text-[10px] font-bold uppercase">Recent Activity</SelectItem>
-                  <SelectItem value="name" className="text-[10px] font-bold uppercase">Name (A-Z)</SelectItem>
-                  <SelectItem value="orders_high" className="text-[10px] font-bold uppercase">Orders (High to Low)</SelectItem>
-                  <SelectItem value="spending_high" className="text-[10px] font-bold uppercase">Spending (High to Low)</SelectItem>
+                <SelectContent className="rounded-xl border-slate-200">
+                  <SelectItem value="recent" className="text-xs font-medium">Recent activity</SelectItem>
+                  <SelectItem value="name" className="text-xs font-medium">Name (A–Z)</SelectItem>
+                  <SelectItem value="orders_high" className="text-xs font-medium">Orders (High to low)</SelectItem>
+                  <SelectItem value="spending_high" className="text-xs font-medium">Spending (High to low)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -879,30 +865,30 @@ export default function CustomersPage() {
 
         {/* Table Body */}
         <div className="overflow-x-auto scrollbar-hide">
-          <Table className="min-w-[1050px]">
+          <Table className="min-w-[1000px]">
             <TableHeader>
-              <TableRow className="bg-muted/10 border-b">
-                <TableHead className="pl-8 text-[10px] font-black uppercase h-12">Customer Identity</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Contact Details</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase h-12">Classification</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase h-12">Orders</TableHead>
-                <TableHead className="text-right text-[10px] font-black uppercase h-12">Total Spending</TableHead>
-                <TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12 w-48">Actions</TableHead>
+              <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
+                <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11">Customer</TableHead>
+                <TableHead className="text-xs font-semibold text-slate-600 h-11">Contact</TableHead>
+                <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">Classification</TableHead>
+                <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">Orders</TableHead>
+                <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">Total spending</TableHead>
+                <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11 w-32">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isCustomersLoading ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-44 text-center">
-                    <Loader2 className="h-7 w-7 animate-spin mx-auto mb-2 text-primary opacity-30" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                      Loading Customer Registry...
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-slate-400" />
+                    <span className="text-xs font-medium text-slate-500">
+                      Loading customer directory...
                     </span>
                   </TableCell>
                 </TableRow>
               ) : paginatedCustomers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-44 text-center opacity-40 italic text-sm">
+                  <TableCell colSpan={6} className="h-44 text-center text-slate-500 text-sm">
                     No customers found matching your filter criteria.
                   </TableCell>
                 </TableRow>
@@ -912,32 +898,32 @@ export default function CustomersPage() {
                   const isArchived = Boolean(customer.isArchived);
 
                   return (
-                    <TableRow 
-                      key={customer.id} 
+                    <TableRow
+                      key={customer.id}
                       className={cn(
-                        "hover:bg-muted/5 cursor-pointer group transition-colors border-b",
+                        "hover:bg-slate-50/80 cursor-pointer group transition-colors border-b border-slate-100",
                         isArchived && "opacity-60 bg-slate-50/50"
-                      )} 
+                      )}
                       onClick={() => handleOpenDetail(customer)}
                     >
                       {/* Name & ID */}
-                      <TableCell className="pl-8 py-4">
+                      <TableCell className="pl-6 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm shrink-0 border border-primary/20 shadow-inner">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-semibold text-sm shrink-0">
                             {customer.name?.charAt(0).toUpperCase() || "C"}
                           </div>
                           <div className="flex flex-col text-left min-w-0">
-                            <span className="font-black text-slate-900 text-sm group-hover:text-primary transition-colors truncate uppercase tracking-tight">
+                            <span className="font-semibold text-slate-900 text-sm group-hover:text-slate-950 transition-colors truncate">
                               {customer.name}
                             </span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500">
                               {customer.businessName && (
-                                <span className="text-[9px] text-muted-foreground font-semibold truncate max-w-[140px]">
+                                <span className="truncate max-w-[160px]">
                                   {customer.businessName} •
                                 </span>
                               )}
-                              <span className="text-[9px] text-muted-foreground font-mono">
-                                ID: {customer.id.slice(-8).toUpperCase()}
+                              <span className="font-mono tabular-nums text-[11px] text-slate-400">
+                                #{customer.id.slice(-8).toUpperCase()}
                               </span>
                             </div>
                           </div>
@@ -947,12 +933,12 @@ export default function CustomersPage() {
                       {/* Contact */}
                       <TableCell className="text-left">
                         <div className="flex flex-col text-left">
-                          <span className="text-xs font-mono font-bold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-                            <Phone className="h-3 w-3 text-muted-foreground" /> {customer.phone}
+                          <span className="text-xs font-mono tabular-nums font-medium text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
+                            <Phone className="h-3 w-3 text-slate-400" /> {customer.phone}
                           </span>
                           {customer.email && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1 truncate max-w-[180px] mt-0.5">
-                              <Mail className="h-2.5 w-2.5" /> {customer.email}
+                            <span className="text-xs text-slate-500 flex items-center gap-1 truncate max-w-[200px] mt-0.5">
+                              <Mail className="h-3 w-3 text-slate-400 shrink-0" /> {customer.email}
                             </span>
                           )}
                         </div>
@@ -960,28 +946,27 @@ export default function CustomersPage() {
 
                       {/* Classification Badge */}
                       <TableCell className="text-center">
-                        <Badge 
-                          variant="outline" 
+                        <span
                           className={cn(
-                            "text-[8px] font-black uppercase px-2 h-5 border-none shadow-sm",
-                            customer.customerType === 'VIP' ? "bg-amber-100 text-amber-800" :
-                            customer.customerType === 'Wholesale' ? "bg-indigo-100 text-indigo-800" :
-                            customer.customerType === 'B2B' ? "bg-purple-100 text-purple-800" :
-                            "bg-slate-100 text-slate-700"
+                            "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border",
+                            customer.customerType === 'VIP' ? "bg-amber-50 text-amber-800 border-amber-200" :
+                            customer.customerType === 'Wholesale' ? "bg-indigo-50 text-indigo-800 border-indigo-200" :
+                            customer.customerType === 'B2B' ? "bg-purple-50 text-purple-800 border-purple-200" :
+                            "bg-slate-100 text-slate-700 border-slate-200"
                           )}
                         >
                           {customer.customerType || 'Regular'}
-                        </Badge>
+                        </span>
                       </TableCell>
 
                       {/* Orders Count */}
                       <TableCell className="text-center">
                         <div className="flex flex-col items-center">
-                          <span className={cn("text-xs font-black", metrics.totalOrders > 0 ? "text-slate-900" : "text-muted-foreground opacity-50")}>
+                          <span className={cn("text-xs font-semibold tabular-nums", metrics.totalOrders > 0 ? "text-slate-900" : "text-slate-400")}>
                             {metrics.totalOrders} {metrics.totalOrders === 1 ? 'order' : 'orders'}
                           </span>
                           {metrics.lastOrderDate && (
-                            <span className="text-[9px] text-muted-foreground font-mono mt-0.5">
+                            <span className="text-[11px] text-slate-500 font-mono tabular-nums mt-0.5">
                               {format(new Date(metrics.lastOrderDate), 'dd MMM yyyy')}
                             </span>
                           )}
@@ -991,11 +976,11 @@ export default function CustomersPage() {
                       {/* Total Spending */}
                       <TableCell className="text-right">
                         <div className="flex flex-col items-end">
-                          <span className={cn("font-black text-sm", metrics.totalSpent > 0 ? "text-emerald-700" : "text-slate-500")}>
+                          <span className={cn("font-mono tabular-nums font-semibold text-sm", metrics.totalSpent > 0 ? "text-emerald-700" : "text-slate-500")}>
                             {currencySymbol}{metrics.totalSpent.toLocaleString()}
                           </span>
                           {metrics.paidOrders > 0 && (
-                            <span className="text-[9px] text-muted-foreground font-semibold">
+                            <span className="text-[11px] text-slate-500 tabular-nums">
                               {metrics.paidOrders} settled
                             </span>
                           )}
@@ -1003,22 +988,24 @@ export default function CustomersPage() {
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell className="text-right pr-8" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-primary hover:bg-primary/5" 
+                      <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                             title="Edit Customer"
+                            aria-label={`Edit customer ${customer.name}`}
                             onClick={(e) => handleOpenEdit(e, customer)}
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-50" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                             title="Delete / Archive Customer"
+                            aria-label={`Remove customer ${customer.name}`}
                             onClick={(e) => openDeleteConfirm(e, customer)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -1034,107 +1021,122 @@ export default function CustomersPage() {
         </div>
 
         {/* Bounded Pagination Footer */}
-        <div className="p-4 border-t bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-          <div className="text-muted-foreground font-semibold text-[11px]">
-            Showing <span className="font-bold text-slate-900">{filteredCustomers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to{" "}
-            <span className="font-bold text-slate-900">{Math.min(currentPage * pageSize, filteredCustomers.length)}</span> of{" "}
-            <span className="font-bold text-slate-900">{filteredCustomers.length}</span> customers
+        <div className="px-5 py-3.5 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="text-slate-500 font-medium tabular-nums">
+            Showing <span className="font-semibold text-slate-900">{filteredCustomers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to{" "}
+            <span className="font-semibold text-slate-900">{Math.min(currentPage * pageSize, filteredCustomers.length)}</span> of{" "}
+            <span className="font-semibold text-slate-900">{filteredCustomers.length}</span> customers
           </div>
 
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 rounded-lg text-xs font-bold"
+              className="h-8 px-3 rounded-lg text-xs font-medium border-slate-200 bg-white"
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             >
-              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+              <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
             </Button>
-            <span className="text-[11px] font-mono font-bold px-2">
+            <span className="text-xs font-mono tabular-nums font-medium text-slate-600 px-2">
               Page {currentPage} of {totalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 rounded-lg text-xs font-bold"
+              className="h-8 px-3 rounded-lg text-xs font-medium border-slate-200 bg-white"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             >
-              Next <ChevronRight className="h-4 w-4 ml-1" />
+              Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
             </Button>
           </div>
         </div>
-      </Card>
+      </SectionCard>
 
       {/* CUSTOMER DETAIL PROFILE SLIDE-OVER SHEET */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col border-none shadow-2xl overflow-y-auto bg-slate-50 text-left">
+        <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-slate-200 overflow-y-auto bg-slate-50 text-left">
           {selectedCustomer && (
             <>
               {/* Header */}
               <div className="p-6 bg-slate-900 text-white shrink-0 relative text-left">
                 <div className="flex items-center justify-between pb-3">
-                  <Badge variant="outline" className="bg-white/10 text-white border-white/20 uppercase text-[9px] font-black px-2.5 py-0.5 rounded-full">
-                    CUSTOMER ID: {selectedCustomer.id}
-                  </Badge>
+                  <span className="inline-flex items-center rounded-md bg-white/10 text-slate-200 border border-white/15 font-mono tabular-nums text-[11px] font-medium px-2.5 py-0.5">
+                    ID: {selectedCustomer.id}
+                  </span>
                   <SheetClose asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-white/70 hover:text-white rounded-full">
-                      <X className="h-5 w-5" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Close customer profile"
+                      className="h-8 w-8 text-white/70 hover:text-white rounded-lg"
+                    >
+                      <X className="h-4 w-4" />
                     </Button>
                   </SheetClose>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="h-16 w-16 rounded-2xl bg-white/10 border border-white/20 overflow-hidden shrink-0 flex items-center justify-center text-white font-black text-2xl">
+                  <div className="h-14 w-14 rounded-xl bg-white/10 border border-white/15 overflow-hidden shrink-0 flex items-center justify-center text-white font-bold text-xl">
                     {selectedCustomer.name?.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xl font-black text-white uppercase tracking-tight truncate">
+                    <h3 className="text-xl font-bold text-white tracking-tight truncate">
                       {selectedCustomer.name}
                     </h3>
-                    <p className="text-xs text-emerald-400 font-mono font-bold mt-0.5 flex items-center gap-1.5">
+                    <p className="text-xs text-emerald-400 font-mono tabular-nums font-medium mt-0.5 flex items-center gap-1.5">
                       <Phone className="h-3 w-3" /> {selectedCustomer.phone}
                     </p>
                     <div className="flex items-center gap-2 pt-2 flex-wrap">
-                      <Badge className="bg-white/10 text-white border-white/20 text-[8px] font-black uppercase">
+                      <span className="inline-flex items-center rounded-md bg-white/10 text-white border border-white/15 px-2 py-0.5 text-xs font-medium">
                         {selectedCustomer.customerType || 'Regular'}
-                      </Badge>
+                      </span>
                       {selectedCustomer.businessName && (
-                        <Badge variant="outline" className="bg-white/5 text-slate-300 border-white/10 text-[8px] font-bold">
+                        <span className="inline-flex items-center rounded-md bg-white/5 text-slate-300 border border-white/10 px-2 py-0.5 text-xs">
                           {selectedCustomer.businessName}
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Direct Action Chips */}
+                {/* Direct Action Links */}
                 <div className="flex items-center gap-2 mt-4 pt-3 border-t border-white/10">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="h-8 bg-white/10 hover:bg-white/20 border-white/20 text-white text-[10px] font-black uppercase rounded-xl"
-                    onClick={() => window.open(`https://wa.me/${selectedCustomer.phone.replace(/\D/g, '')}`, '_blank')}
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 bg-white/10 hover:bg-white/20 border-white/15 text-white text-xs font-medium rounded-lg"
                   >
-                    <SmartphoneNfc className="h-3 w-3 mr-1 text-emerald-400" /> WhatsApp
+                    <a
+                      href={`https://wa.me/${selectedCustomer.phone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <SmartphoneNfc className="h-3.5 w-3.5 mr-1.5 text-emerald-400" /> WhatsApp
+                    </a>
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="h-8 bg-white/10 hover:bg-white/20 border-white/20 text-white text-[10px] font-black uppercase rounded-xl"
-                    onClick={() => window.open(`tel:${selectedCustomer.phone}`, '_self')}
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-8 bg-white/10 hover:bg-white/20 border-white/15 text-white text-xs font-medium rounded-lg"
                   >
-                    <Phone className="h-3 w-3 mr-1" /> Call
+                    <a href={`tel:${selectedCustomer.phone}`}>
+                      <Phone className="h-3.5 w-3.5 mr-1.5" /> Call
+                    </a>
                   </Button>
                   {selectedCustomer.email && (
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="h-8 bg-white/10 hover:bg-white/20 border-white/20 text-white text-[10px] font-black uppercase rounded-xl"
-                      onClick={() => window.open(`mailto:${selectedCustomer.email}`, '_self')}
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="h-8 bg-white/10 hover:bg-white/20 border-white/15 text-white text-xs font-medium rounded-lg"
                     >
-                      <Mail className="h-3 w-3 mr-1" /> Email
+                      <a href={`mailto:${selectedCustomer.email}`}>
+                        <Mail className="h-3.5 w-3.5 mr-1.5" /> Email
+                      </a>
                     </Button>
                   )}
                 </div>
@@ -1142,68 +1144,66 @@ export default function CustomersPage() {
 
               {/* Drawer Tabs */}
               <Tabs defaultValue="orders" className="flex-1 flex flex-col">
-                <div className="px-6 border-b bg-white">
-                  <TabsList className="bg-transparent h-12 gap-6 p-0 border-none flex">
-                    <TabsTrigger value="orders" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      <ShoppingBag className="h-3.5 w-3.5 mr-1.5" /> Order History
+                <div className="px-6 border-b border-slate-200 bg-white overflow-x-auto">
+                  <TabsList className="bg-transparent h-11 gap-6 p-0 border-none flex">
+                    <TabsTrigger value="orders" className="data-[state=active]:border-b-2 data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:bg-transparent rounded-none h-11 text-xs font-semibold text-slate-500 px-0">
+                      <ShoppingBag className="h-3.5 w-3.5 mr-1.5" /> Order history
                     </TabsTrigger>
-                    <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      <User className="h-3.5 w-3.5 mr-1.5" /> Identity & Address
+                    <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:bg-transparent rounded-none h-11 text-xs font-semibold text-slate-500 px-0">
+                      <User className="h-3.5 w-3.5 mr-1.5" /> Identity & address
                     </TabsTrigger>
-                    <TabsTrigger value="notes" className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      <Save className="h-3.5 w-3.5 mr-1.5" /> Internal Notes
+                    <TabsTrigger value="notes" className="data-[state=active]:border-b-2 data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:bg-transparent rounded-none h-11 text-xs font-semibold text-slate-500 px-0">
+                      <Save className="h-3.5 w-3.5 mr-1.5" /> Internal notes
                     </TabsTrigger>
-                    <TabsTrigger value="intelligence" onClick={handleAiAnalysis} className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent rounded-none h-12 text-[10px] font-black uppercase tracking-widest px-0">
-                      <BrainCircuit className="h-3.5 w-3.5 mr-1.5" /> AI Loyalty
+                    <TabsTrigger value="intelligence" onClick={handleAiAnalysis} className="data-[state=active]:border-b-2 data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:bg-transparent rounded-none h-11 text-xs font-semibold text-slate-500 px-0">
+                      <BrainCircuit className="h-3.5 w-3.5 mr-1.5" /> AI loyalty
                     </TabsTrigger>
                   </TabsList>
                 </div>
 
-                <div className="p-6 space-y-6 flex-1 overflow-y-auto scrollbar-hide text-left">
+                <div className="p-6 space-y-5 flex-1 overflow-y-auto scrollbar-hide text-left">
                   {/* Order History Tab */}
-                  <TabsContent value="orders" className="m-0 space-y-6">
+                  <TabsContent value="orders" className="m-0 space-y-5">
                     {/* Customer Statistics Card */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <div className="p-4 bg-white rounded-2xl border shadow-sm space-y-1">
-                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Total Orders</span>
-                        <p className="text-xl font-black text-slate-900">{customerStats?.totalOrders || customerOrders.length}</p>
-                        <p className="text-[9px] text-muted-foreground">{customerStats?.paidOrders || 0} paid & settled</p>
-                      </div>
-
-                      <div className="p-4 bg-white rounded-2xl border shadow-sm space-y-1">
-                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Total Paid Revenue</span>
-                        <p className="text-xl font-black text-emerald-700">{currencySymbol}{(customerStats?.totalPaidAmount || 0).toLocaleString()}</p>
-                        <p className="text-[9px] text-muted-foreground">Excludes unverified</p>
-                      </div>
-
-                      <div className="p-4 bg-white rounded-2xl border shadow-sm space-y-1 col-span-2 sm:col-span-1">
-                        <span className="text-[9px] font-black uppercase text-muted-foreground tracking-wider">Avg Order Value</span>
-                        <p className="text-xl font-black text-primary">{currencySymbol}{(customerStats?.averageOrderValue || 0).toLocaleString()}</p>
-                        <p className="text-[9px] text-muted-foreground">Per paid transaction</p>
-                      </div>
+                      <KpiStatCard
+                        label="Total Orders"
+                        value={customerStats?.totalOrders || customerOrders.length}
+                        subtext={`${customerStats?.paidOrders || 0} paid & settled`}
+                      />
+                      <KpiStatCard
+                        label="Paid Revenue"
+                        value={`${currencySymbol}${(customerStats?.totalPaidAmount || 0).toLocaleString()}`}
+                        subtext="Excludes unverified"
+                        tone="positive"
+                      />
+                      <KpiStatCard
+                        label="Avg Order Value"
+                        value={`${currencySymbol}${(customerStats?.averageOrderValue || 0).toLocaleString()}`}
+                        subtext="Per paid order"
+                        className="col-span-2 sm:col-span-1"
+                      />
                     </div>
 
                     {/* Orders List */}
-                    <Card className="border-none shadow-sm bg-white rounded-2xl p-5 border space-y-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-800 flex items-center gap-1.5">
-                          <History className="h-3.5 w-3.5 text-primary" /> Chronological Transactions
-                        </p>
-                        <Link 
-                          href="/website/orders" 
-                          className="text-[10px] font-black text-primary uppercase hover:underline flex items-center gap-1"
+                    <SectionCard
+                      title="Chronological transactions"
+                      headerRight={
+                        <Link
+                          href="/website/orders"
+                          className="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline flex items-center gap-1"
                         >
-                          Full Orders Ledger <ExternalLink className="h-3 w-3" />
+                          Full orders ledger <ExternalLink className="h-3 w-3" />
                         </Link>
-                      </div>
-
+                      }
+                    >
                       {isLoadingProfileDetails ? (
                         <div className="py-8 text-center">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary opacity-40" />
-                          <p className="text-[10px] font-bold text-muted-foreground mt-2">Loading transactions...</p>
+                          <Loader2 className="h-5 w-5 animate-spin mx-auto text-slate-400" />
+                          <p className="text-xs font-medium text-slate-500 mt-2">Loading transactions...</p>
                         </div>
                       ) : customerOrders.length === 0 ? (
-                        <p className="text-xs text-muted-foreground italic py-4 text-center">
+                        <p className="text-xs text-slate-500 py-4 text-center">
                           No order records found for this customer.
                         </p>
                       ) : (
@@ -1211,44 +1211,43 @@ export default function CustomersPage() {
                           {customerOrders.map((ord) => {
                             const dateStr = ord.createdAt?.toDate ? ord.createdAt.toDate() : new Date(ord.createdAt || Date.now());
                             return (
-                              <div key={ord.id} className="p-4 rounded-xl bg-slate-50 border text-xs space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono font-black text-slate-900">{ord.id}</span>
-                                    <Badge 
+                              <div key={ord.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-mono tabular-nums font-semibold text-slate-900 truncate">{ord.id}</span>
+                                    <span
                                       className={cn(
-                                        "text-[8px] font-black uppercase px-1.5 py-0 h-4",
-                                        ord.status === 'paid' ? "bg-emerald-100 text-emerald-800" :
-                                        ord.status === 'processing' ? "bg-amber-100 text-amber-800" :
-                                        ord.status === 'delivered' ? "bg-teal-100 text-teal-800" :
-                                        ord.status === 'payment_captured_unsettled' ? "bg-rose-100 text-rose-800" :
-                                        ord.status === 'cancelled' ? "bg-rose-100 text-rose-800" :
-                                        "bg-slate-200 text-slate-700"
+                                        "inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium border capitalize",
+                                        ord.status === 'paid' ? "bg-emerald-50 text-emerald-800 border-emerald-200" :
+                                        ord.status === 'processing' ? "bg-amber-50 text-amber-800 border-amber-200" :
+                                        ord.status === 'delivered' ? "bg-teal-50 text-teal-800 border-teal-200" :
+                                        ord.status === 'payment_captured_unsettled' || ord.status === 'cancelled' ? "bg-rose-50 text-rose-800 border-rose-200" :
+                                        "bg-slate-100 text-slate-700 border-slate-200"
                                       )}
                                     >
                                       {ord.status}
-                                    </Badge>
+                                    </span>
                                   </div>
-                                  <span className="font-black text-slate-900 text-sm">
+                                  <span className="font-mono tabular-nums font-semibold text-slate-900 text-sm shrink-0">
                                     {currencySymbol}{(parseFloat(ord.amount) || 0).toLocaleString()}
                                   </span>
                                 </div>
 
-                                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                <div className="flex items-center justify-between text-xs text-slate-500 font-mono tabular-nums">
                                   <span>{format(dateStr, 'dd MMM yyyy, hh:mm a')}</span>
                                   <span>{ord.items?.length || 0} items</span>
                                 </div>
 
                                 {ord.items && ord.items.length > 0 && (
-                                  <div className="pt-1 border-t border-slate-200/60 flex items-center justify-between">
-                                    <p className="text-[10px] text-slate-600 truncate max-w-[280px]">
+                                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
+                                    <p className="text-xs text-slate-600 truncate">
                                       {ord.items.map((it: any) => `${it.quantity}x ${it.name}`).join(", ")}
                                     </p>
-                                    <Link 
-                                      href="/website/orders" 
-                                      className="text-[9px] font-black text-primary hover:underline shrink-0 ml-2"
+                                    <Link
+                                      href="/website/orders"
+                                      className="text-xs font-medium text-slate-700 hover:text-slate-900 hover:underline shrink-0"
                                     >
-                                      View Order →
+                                      View order →
                                     </Link>
                                   </div>
                                 )}
@@ -1257,131 +1256,121 @@ export default function CustomersPage() {
                           })}
                         </div>
                       )}
-                    </Card>
+                    </SectionCard>
                   </TabsContent>
 
                   {/* Overview Tab */}
-                  <TabsContent value="overview" className="m-0 space-y-6">
-                    <Card className="border-none shadow-sm bg-white rounded-2xl p-5 border space-y-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-800 flex items-center gap-1.5">
-                        <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Identity & Billing Profile
-                      </p>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                        <div className="p-3 bg-slate-50 rounded-xl border">
-                          <span className="text-[9px] font-black uppercase text-muted-foreground">Mobile Phone</span>
-                          <p className="font-mono font-bold text-slate-800 mt-0.5">{selectedCustomer.phone}</p>
+                  <TabsContent value="overview" className="m-0 space-y-5">
+                    <SectionCard title="Identity & billing profile">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-xs font-medium text-slate-500">Mobile phone</span>
+                          <p className="font-mono tabular-nums font-semibold text-slate-900 mt-1">{selectedCustomer.phone}</p>
                         </div>
-                        <div className="p-3 bg-slate-50 rounded-xl border">
-                          <span className="text-[9px] font-black uppercase text-muted-foreground">Email Address</span>
-                          <p className="font-bold text-slate-800 mt-0.5 truncate">{selectedCustomer.email || "Not provided"}</p>
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-xs font-medium text-slate-500">Email address</span>
+                          <p className="font-semibold text-slate-900 mt-1 truncate">{selectedCustomer.email || "Not provided"}</p>
                         </div>
-                        <div className="p-3 bg-slate-50 rounded-xl border">
-                          <span className="text-[9px] font-black uppercase text-muted-foreground">GSTIN ID</span>
-                          <p className="font-mono font-bold text-slate-800 mt-0.5">{selectedCustomer.gstin || "Unregistered"}</p>
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-xs font-medium text-slate-500">GSTIN</span>
+                          <p className="font-mono tabular-nums font-semibold text-slate-900 mt-1">{selectedCustomer.gstin || "Unregistered"}</p>
                         </div>
-                        <div className="p-3 bg-slate-50 rounded-xl border">
-                          <span className="text-[9px] font-black uppercase text-muted-foreground">State Registry</span>
-                          <p className="font-bold text-slate-800 mt-0.5">{selectedCustomer.state || "Maharashtra"}</p>
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-xs font-medium text-slate-500">State</span>
+                          <p className="font-semibold text-slate-900 mt-1">{selectedCustomer.state || "Maharashtra"}</p>
                         </div>
-                        <div className="sm:col-span-2 p-3 bg-slate-50 rounded-xl border">
-                          <span className="text-[9px] font-black uppercase text-muted-foreground">Delivery / Postal Address</span>
-                          <p className="font-medium text-slate-800 mt-0.5 leading-relaxed">
+                        <div className="sm:col-span-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <span className="text-xs font-medium text-slate-500">Delivery / postal address</span>
+                          <p className="font-medium text-slate-800 mt-1 leading-relaxed">
                             {selectedCustomer.address || "No delivery address on file"}
                           </p>
                         </div>
                       </div>
-                    </Card>
+                    </SectionCard>
                   </TabsContent>
 
                   {/* Internal Notes Tab */}
                   <TabsContent value="notes" className="m-0 space-y-4">
-                    <Card className="border-none shadow-sm bg-white rounded-2xl p-5 border space-y-3">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-800 flex items-center gap-1.5">
-                        <Save className="h-3.5 w-3.5 text-primary" /> Merchant Internal Notes
-                      </p>
+                    <SectionCard title="Merchant internal notes" description="Private notes are strictly visible to business staff only.">
+                      <div className="space-y-4">
+                        <Textarea
+                          value={customerNotes}
+                          onChange={(e) => setCustomerNotes(e.target.value)}
+                          placeholder="Add private operational notes about this customer (e.g. preferred delivery days, payment terms, special pricing)..."
+                          className="min-h-[140px] rounded-xl text-sm leading-relaxed p-3.5 bg-slate-50 border-slate-200"
+                        />
 
-                      <Textarea 
-                        value={customerNotes}
-                        onChange={(e) => setCustomerNotes(e.target.value)}
-                        placeholder="Add private operational notes about this customer (e.g. preferred delivery days, payment guarantees, special discounts)..."
-                        className="min-h-[140px] rounded-xl text-xs leading-relaxed p-3.5 bg-slate-50"
-                      />
-
-                      <div className="flex justify-between items-center pt-2">
-                        <p className="text-[9px] text-muted-foreground">
-                          Private notes are strictly visible to business staff only.
-                        </p>
-                        <Button 
-                          onClick={handleSaveNotes} 
-                          disabled={isSavingNotes}
-                          className="h-9 px-4 bg-primary text-white text-[10px] font-black uppercase rounded-xl shadow-md"
-                        >
-                          {isSavingNotes ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-                          Save Notes
-                        </Button>
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={handleSaveNotes}
+                            disabled={isSavingNotes}
+                            className="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl"
+                          >
+                            {isSavingNotes ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                            Save notes
+                          </Button>
+                        </div>
                       </div>
-                    </Card>
+                    </SectionCard>
                   </TabsContent>
 
                   {/* AI Loyalty Intelligence Tab */}
-                  <TabsContent value="intelligence" className="m-0 space-y-6">
+                  <TabsContent value="intelligence" className="m-0 space-y-5">
                     {isAiLoading ? (
-                      <div className="p-16 text-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                          AI analyzing customer transaction frequency...
+                      <div className="p-12 text-center rounded-2xl border border-slate-200 bg-white">
+                        <Loader2 className="h-6 w-6 animate-spin text-slate-500 mx-auto mb-3" />
+                        <p className="text-xs font-medium text-slate-500">
+                          Analyzing customer transaction frequency...
                         </p>
                       </div>
                     ) : aiResult ? (
-                      <div className="space-y-6">
-                        <Card className="border-none bg-primary/5 rounded-2xl p-6 border border-primary/20 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <Bot className="h-6 w-6 text-primary" />
-                            <div>
-                              <p className="text-[10px] font-black uppercase text-primary">Behavioral Retention Index</p>
-                              <p className="text-xs text-muted-foreground font-semibold">Automated engagement recommendations</p>
+                      <SectionCard
+                        title="Behavioral retention index"
+                        description="Automated engagement recommendations"
+                      >
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                              <span className="text-xs font-medium text-slate-500">Loyalty score</span>
+                              <p className="text-xl font-bold font-mono tabular-nums text-emerald-700 mt-1">{aiResult.scores?.loyalty || 85}/100</p>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4 text-xs">
-                            <div className="p-3 bg-white rounded-xl border">
-                              <span className="text-[9px] font-black uppercase text-muted-foreground">Loyalty Score</span>
-                              <p className="text-lg font-black text-emerald-700 mt-0.5">{aiResult.scores?.loyalty || 85}/100</p>
-                            </div>
-                            <div className="p-3 bg-white rounded-xl border">
-                              <span className="text-[9px] font-black uppercase text-muted-foreground">Churn Risk</span>
-                              <p className="text-lg font-black text-amber-700 mt-0.5">{aiResult.scores?.churnRisk || 15}%</p>
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                              <span className="text-xs font-medium text-slate-500">Churn risk</span>
+                              <p className="text-xl font-bold font-mono tabular-nums text-amber-700 mt-1">{aiResult.scores?.churnRisk || 15}%</p>
                             </div>
                           </div>
 
                           {aiResult.insight && (
-                            <div className="p-3 bg-white rounded-xl border text-xs">
-                              <span className="text-[9px] font-black uppercase text-primary">Behavioral Insight</span>
-                              <p className="font-semibold text-slate-800 mt-0.5">{aiResult.insight}</p>
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                              <span className="text-xs font-semibold text-slate-600">Behavioral insight</span>
+                              <p className="font-medium text-slate-800 mt-1 leading-relaxed">{aiResult.insight}</p>
                             </div>
                           )}
 
                           {aiResult.recommendation?.action && (
-                            <div className="p-3 bg-white rounded-xl border text-xs">
-                              <span className="text-[9px] font-black uppercase text-primary">Recommended Action</span>
-                              <p className="font-semibold text-slate-800 mt-0.5">{aiResult.recommendation.action}</p>
+                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                              <span className="text-xs font-semibold text-slate-600">Recommended action</span>
+                              <p className="font-medium text-slate-800 mt-1 leading-relaxed">{aiResult.recommendation.action}</p>
                             </div>
                           )}
-                        </Card>
-                      </div>
+                        </div>
+                      </SectionCard>
                     ) : (
-                      <div className="p-8 text-center bg-white rounded-2xl border">
-                        <Bot className="h-8 w-8 text-primary mx-auto mb-2 opacity-50" />
-                        <p className="text-xs font-bold text-slate-800">Generate AI Retention Profile</p>
-                        <p className="text-[10px] text-muted-foreground mt-1 mb-4">
-                          Analyzes purchase frequency, average basket size, and recommended touchpoints.
-                        </p>
-                        <Button 
-                          onClick={handleAiAnalysis} 
-                          className="h-9 px-4 bg-primary text-white text-[10px] font-black uppercase rounded-xl shadow-md"
+                      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
+                        <div className="h-10 w-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center mx-auto">
+                          <Bot className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-slate-900">Generate AI retention profile</p>
+                          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                            Analyzes purchase frequency, average basket size, and recommended touchpoints.
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handleAiAnalysis}
+                          className="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl"
                         >
-                          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Run AI Assessment
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Run AI assessment
                         </Button>
                       </div>
                     )}
@@ -1395,32 +1384,32 @@ export default function CustomersPage() {
 
       {/* DELETE / ARCHIVE ALERT */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-8 text-left">
+        <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white p-6 text-left">
           <AlertDialogHeader>
-            <div className="h-12 w-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive mb-2">
-              <ShieldAlert className="h-6 w-6" />
+            <div className="h-11 w-11 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-2">
+              <ShieldAlert className="h-5 w-5" />
             </div>
-            <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-slate-900">
-              Remove Customer: {customerToDelete?.name}?
+            <AlertDialogTitle className="text-lg font-bold tracking-tight text-slate-900">
+              Remove customer: {customerToDelete?.name}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed">
               If this customer has historical orders, their profile will be safely archived to protect all invoice and accounting records. If no historical orders exist, the record will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <AlertDialogFooter className="mt-4 flex gap-3">
             <AlertDialogCancel asChild>
-              <Button variant="outline" className="flex-1 h-11 rounded-xl font-bold uppercase text-[10px]">
+              <Button variant="outline" className="flex-1 h-10 rounded-xl font-medium text-xs border-slate-200">
                 Cancel
               </Button>
             </AlertDialogCancel>
             <AlertDialogAction asChild>
-              <Button 
-                onClick={confirmDelete} 
+              <Button
+                onClick={confirmDelete}
                 disabled={isSubmittingForm}
-                className="flex-1 h-11 rounded-xl font-black uppercase bg-destructive hover:bg-destructive/90 text-white border-none shadow-lg text-[10px]"
+                className="flex-1 h-10 rounded-xl font-semibold bg-rose-600 hover:bg-rose-700 text-white border-none text-xs"
               >
-                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                {isSubmittingForm ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
                 Confirm
               </Button>
             </AlertDialogAction>

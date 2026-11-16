@@ -94,7 +94,7 @@ export function SuccessDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[490px] max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 shadow-2xl p-0 overflow-hidden text-left bg-white">
+      <DialogContent className="sm:max-w-[490px] max-h-[90vh] flex flex-col rounded-2xl border border-slate-200 p-0 overflow-hidden text-left bg-white">
         <DialogHeader className="px-6 py-5 bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">

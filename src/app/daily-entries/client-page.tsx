@@ -94,6 +94,7 @@ import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, d
 import { collection, query, orderBy, serverTimestamp, doc, where, limit, runTransaction, increment, getDocs, DocumentReference } from "firebase/firestore";
 import { Separator } from "@/components/ui/separator";
 import { calculateGst } from "@/lib/gst-logic";
+import { getStockImpact } from "@/lib/inventory-logic";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { subDays, startOfMonth, endOfMonth, isWithinInterval, parseISO, startOfDay, endOfDay, subMonths } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -113,6 +114,7 @@ const entrySchema = z.object({
   category: z.string().min(1, "Category is required"),
   unit: z.string().optional(),
   vendorName: z.string().optional(),
+  gstRate: z.coerce.number().min(0).optional(),
 });
 
 const FALLBACK_CATEGORIES = ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
@@ -457,7 +459,7 @@ export default function DailyEntriesPage() {
         variant: "destructive",
         title: entriesQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Cashbook Quota Reached",
         description: entriesQuota.isLockedByMode
-          ? `Activate ${entriesQuota.menu.addonName} in Marketplace to record daily entries.`
+          ? `Activate ${entriesQuota.menu.addonLabel} in Marketplace to record daily entries.`
           : `Recording ${validEntries.length} entries exceeds your ${entriesQuota.limit} entries/month quota.`,
       });
       return;
@@ -625,231 +627,221 @@ export default function DailyEntriesPage() {
   if (isProfileLoading || isUserLoading) return <div className="flex items-center justify-center h-screen"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-10">
+    <div className="space-y-6 pb-16 text-left">
       <CoreQuotaBanner quota={entriesQuota} />
       {/* Page Header */}
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-            <BookOpenText className="h-7 w-7 md:h-8 md:w-8 text-primary" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-none">Daily Cash Book</h2>
-              <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border shadow-sm shrink-0">
-                <Layout className="h-3 w-3 text-muted-foreground" />
-                <Switch checked={isPinned} onCheckedChange={toggleDashboardPin} className="scale-[0.6] data-[state=checked]:bg-primary" />
+      <div className="flex flex-col gap-4 border-b border-slate-200 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="h-11 w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+              <BookOpenText className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500">Command Center / Daily Entries</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">Daily Cash Book</h1>
+                <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0">
+                  <Layout className="h-3.5 w-3.5 text-slate-500" />
+                  <span className="text-[11px] font-medium text-slate-600">Pin</span>
+                  <Switch checked={isPinned} onCheckedChange={toggleDashboardPin} className="scale-75 data-[state=checked]:bg-primary" />
+                </div>
               </div>
             </div>
-            <p className="text-[10px] md:text-xs text-muted-foreground uppercase font-black tracking-widest mt-1">Multi-Line Inflow & Outflow</p>
           </div>
+
+          <Link href="/batch-entry" passHref>
+            <Button className="h-10 px-5 font-semibold text-xs rounded-xl">
+              <Plus className="mr-1.5 h-4 w-4" /> Batch Entry
+            </Button>
+          </Link>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-                  <span className="flex items-center truncate"><Calendar className="mr-2 h-3.5 w-3.5 shrink-0" /> <span className="truncate">{getDateLabel()}</span></span>
-                  <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-60" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56 rounded-2xl border-none shadow-2xl p-1">
-                <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest p-2 opacity-40">Select Window</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'today'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Today</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'yesterday'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Yesterday</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'last7'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last 7 Days</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'last30'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last 30 Days</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'thisMonth'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">This Month</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'lastMonth'}))} className="text-xs font-bold uppercase p-3 cursor-pointer rounded-xl">Last Month</DropdownMenuItem>
-                <Separator className="my-1" />
-                <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'all'}))} className="text-xs font-bold uppercase p-3 cursor-pointer text-primary rounded-xl">Full History</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 px-3.5 text-xs font-semibold rounded-xl">
+                <Calendar className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                <span>{getDateLabel()}</span>
+                <ChevronDown className="ml-1.5 h-3.5 w-3.5 text-slate-400" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52 rounded-2xl border border-slate-200 bg-white shadow-lg p-1.5">
+              <DropdownMenuLabel className="text-xs font-semibold text-slate-500 px-2.5 py-1.5">Select Period</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'today'}))} className="text-xs font-medium px-2.5 py-2 cursor-pointer rounded-lg">Today</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'yesterday'}))} className="text-xs font-medium px-2.5 py-2 cursor-pointer rounded-lg">Yesterday</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'last7'}))} className="text-xs font-medium px-2.5 py-2 cursor-pointer rounded-lg">Last 7 Days</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'last30'}))} className="text-xs font-medium px-2.5 py-2 cursor-pointer rounded-lg">Last 30 Days</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'thisMonth'}))} className="text-xs font-medium px-2.5 py-2 cursor-pointer rounded-lg">This Month</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'lastMonth'}))} className="text-xs font-medium px-2.5 py-2 cursor-pointer rounded-lg">Last Month</DropdownMenuItem>
+              <Separator className="my-1" />
+              <DropdownMenuItem onClick={() => setFilters(p => ({...p, dateRange: 'all'}))} className="text-xs font-semibold px-2.5 py-2 cursor-pointer text-primary rounded-lg">Full History</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-                  <span className="flex items-center"><CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" /> Range</span>
-                  <ChevronDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-60" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <CustomDateRangePicker
-                  value={{
-                    startDate: filters.customDateRange?.from || new Date(),
-                    endDate: filters.customDateRange?.to || new Date(),
-                    key: 'selection'
-                  }}
-                  onChange={(range) => {
-                    setFilters(p => ({...p, customDateRange: { from: range.startDate, to: range.endDate }, dateRange: 'custom'}));
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 px-3.5 text-xs font-semibold rounded-xl">
+                <CalendarIcon className="mr-1.5 h-3.5 w-3.5 text-slate-500" />
+                <span>Custom Range</span>
+                <ChevronDown className="ml-1.5 h-3.5 w-3.5 text-slate-400" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 rounded-2xl border border-slate-200 shadow-lg" align="start">
+              <CustomDateRangePicker
+                value={{
+                  startDate: filters.customDateRange?.from || new Date(),
+                  endDate: filters.customDateRange?.to || new Date(),
+                  key: 'selection'
+                }}
+                onChange={(range) => {
+                  setFilters(p => ({...p, customDateRange: { from: range.startDate, to: range.endDate }, dateRange: 'custom'}));
+                }}
+              />
+            </PopoverContent>
+          </Popover>
 
-            <Button variant="outline" onClick={handleExport} className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-              <FileText className="mr-2 h-3.5 w-3.5 shrink-0" /> Export
-            </Button>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="h-11 px-4 font-black text-[10px] uppercase tracking-wider bg-white shadow-sm border-primary/10 text-primary rounded-xl">
-                  <Filter className="mr-2 h-3.5 w-3.5" /> Filters
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 rounded-2xl border-none shadow-2xl p-5 space-y-4" align="start">
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Particulars Search</Label>
-                  <Input placeholder="Search..." value={filters.particulars} onChange={(e) => setFilters(p => ({...p, particulars: e.target.value}))} className="h-9 rounded-xl text-xs font-bold" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Type</Label>
-                    <Select value={filters.type} onValueChange={(v) => setFilters(p => ({...p, type: v}))}>
-                      <SelectTrigger className="h-9 text-xs font-bold rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem><SelectItem value="credit">Credit</SelectItem><SelectItem value="debit">Debit</SelectItem><SelectItem value="nc">NC</SelectItem><SelectItem value="due">Due</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Vendor</Label>
-                    <Select value={filters.vendor} onValueChange={(v) => setFilters(p => ({...p, vendor: v}))}>
-                      <SelectTrigger className="h-9 text-xs font-bold rounded-xl"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem>{(vendorsData || []).map(v => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-black uppercase text-muted-foreground">Category</Label>
-                  <Select value={filters.category} onValueChange={(v) => setFilters(p => ({...p, category: v}))}>
-                    <SelectTrigger className="h-9 text-xs font-bold rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem>{dynamicCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 px-3.5 text-xs font-semibold rounded-xl">
+                <Filter className="mr-1.5 h-3.5 w-3.5 text-slate-500" /> Filters
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 rounded-2xl border border-slate-200 bg-white shadow-lg p-5 space-y-4" align="start">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Particulars Search</Label>
+                <Input placeholder="Search..." value={filters.particulars} onChange={(e) => setFilters(p => ({...p, particulars: e.target.value}))} className="h-9 rounded-xl text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">Type</Label>
+                  <Select value={filters.type} onValueChange={(v) => setFilters(p => ({...p, type: v}))}>
+                    <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem><SelectItem value="credit">Credit</SelectItem><SelectItem value="debit">Debit</SelectItem><SelectItem value="nc">NC</SelectItem><SelectItem value="due">Due</SelectItem></SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Min Rate</Label>
-                    <Input type="number" placeholder="0" value={filters.minRate} onChange={(e) => setFilters(p => ({...p, minRate: e.target.value}))} className="h-9 rounded-xl text-xs font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground">Max Rate</Label>
-                    <Input type="number" placeholder="0" value={filters.maxRate} onChange={(e) => setFilters(p => ({...p, maxRate: e.target.value}))} className="h-9 rounded-xl text-xs font-bold" />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">Vendor</Label>
+                  <Select value={filters.vendor} onValueChange={(v) => setFilters(p => ({...p, vendor: v}))}>
+                    <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem>{(vendorsData || []).map(v => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
-              </PopoverContent>
-            </Popover>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-600">Category</Label>
+                <Select value={filters.category} onValueChange={(v) => setFilters(p => ({...p, category: v}))}>
+                  <SelectTrigger className="h-9 text-xs rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl"><SelectItem value="all">All</SelectItem>{dynamicCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">Min Rate</Label>
+                  <Input type="number" placeholder="0" value={filters.minRate} onChange={(e) => setFilters(p => ({...p, minRate: e.target.value}))} className="h-9 rounded-xl text-xs font-mono tabular-nums" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-600">Max Rate</Label>
+                  <Input type="number" placeholder="0" value={filters.maxRate} onChange={(e) => setFilters(p => ({...p, maxRate: e.target.value}))} className="h-9 rounded-xl text-xs font-mono tabular-nums" />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
 
-            <Link href="/batch-entry" passHref>
-              <Button className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-6 font-black uppercase text-[10px] tracking-[0.1em] rounded-xl text-white">
-                <Plus className="mr-2 h-4 w-4" /> Batch Entry
-              </Button>
-            </Link>
-            </div>
-            
-
-          </div>
-
-
-      <div className="grid gap-2.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-slate-500 relative overflow-hidden group">
-          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Opening Balance</p>
-          <div className="text-lg sm:text-2xl md:text-3xl font-black text-slate-600 truncate">{currencySymbol}{stats.openingBalance.toLocaleString()}</div>
-        </Card>
-        
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-purple-500 relative overflow-hidden group">
-          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Current Balance</p>
-          <div className="text-lg sm:text-2xl md:text-3xl font-black text-purple-600 truncate">{currencySymbol}{stats.currentBalance.toLocaleString()}</div>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-green-500 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" /></div>
-          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period Cash In</p>
-          <div className="text-lg sm:text-2xl md:text-3xl font-black text-green-600 truncate">{currencySymbol}{stats.periodCredit.toLocaleString()}</div>
-        </Card>
-        
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-destructive relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><TrendingDown className="h-6 w-6 sm:h-8 sm:w-8 text-destructive" /></div>
-          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period Cash Out</p>
-          <div className="text-lg sm:text-2xl md:text-3xl font-black text-destructive truncate">{currencySymbol}{stats.periodDebit.toLocaleString()}</div>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-amber-500 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600" /></div>
-          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period NC</p>
-          <div className="text-lg sm:text-2xl md:text-3xl font-black text-amber-600 truncate">{currencySymbol}{stats.periodNC.toLocaleString()}</div>
-        </Card>
-
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-3.5 sm:p-5 border-l-4 border-l-blue-500 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><Clock className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" /></div>
-          <p className="text-[9px] sm:text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1 truncate">Period Due</p>
-          <div className="text-lg sm:text-2xl md:text-3xl font-black text-blue-600 truncate">{currencySymbol}{stats.periodDue.toLocaleString()}</div>
-        </Card>
-        
-        <Card className={cn(
-          "col-span-2 p-3.5 sm:p-5 rounded-2xl border-l-4 shadow-sm relative overflow-hidden group",
-          stats.netBalance >= 0 ? "border-l-primary bg-primary/5" : "border-l-destructive bg-destructive/5"
-        )}>
-          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:scale-110 transition-transform"><Wallet className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /></div>
-          <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-primary mb-1 truncate">Net Balance</p>
-          <div className={cn("text-lg sm:text-2xl md:text-3xl font-black truncate", stats.netBalance >= 0 ? "text-primary" : "text-destructive")}>
-            {currencySymbol}{stats.netBalance.toLocaleString()}
-          </div>
-        </Card>
+          <Button variant="outline" size="sm" onClick={handleExport} className="h-9 px-3.5 text-xs font-semibold rounded-xl">
+            <FileText className="mr-1.5 h-3.5 w-3.5 text-slate-500" /> Export CSV
+          </Button>
+        </div>
       </div>
 
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border">
+      {/* Consolidated Metrics Strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 rounded-2xl border border-slate-200 bg-white divide-y md:divide-y-0 md:divide-x divide-slate-200 overflow-hidden">
+        <div className="p-4 space-y-1">
+          <p className="text-xs text-slate-500 truncate">Opening Balance</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 truncate">{currencySymbol}{stats.openingBalance.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="p-4 space-y-1">
+          <p className="text-xs text-slate-500 truncate">Current Balance</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-slate-900 truncate">{currencySymbol}{stats.currentBalance.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="p-4 space-y-1">
+          <p className="text-xs text-slate-500 truncate">Period Cash In</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-emerald-700 truncate">{currencySymbol}{stats.periodCredit.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="p-4 space-y-1">
+          <p className="text-xs text-slate-500 truncate">Period Cash Out</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-rose-700 truncate">{currencySymbol}{stats.periodDebit.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="p-4 space-y-1">
+          <p className="text-xs text-slate-500 truncate">Period NC</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-amber-700 truncate">{currencySymbol}{stats.periodNC.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="p-4 space-y-1">
+          <p className="text-xs text-slate-500 truncate">Period Due</p>
+          <p className="text-lg font-bold font-mono tabular-nums text-sky-700 truncate">{currencySymbol}{stats.periodDue.toLocaleString("en-IN")}</p>
+        </div>
+        <div className="col-span-2 md:col-span-4 lg:col-span-1 p-4 space-y-1 bg-slate-900 text-white">
+          <p className="text-xs text-slate-300 truncate">Net Balance</p>
+          <p className={cn("text-lg font-bold font-mono tabular-nums truncate", stats.netBalance >= 0 ? "text-emerald-400" : "text-rose-400")}>
+            {currencySymbol}{stats.netBalance.toLocaleString("en-IN")}
+          </p>
+        </div>
+      </div>
+
+      <Card className="overflow-hidden bg-white rounded-2xl border border-slate-200">
         <div className="hidden md:block overflow-x-auto w-full">
           <Table className="min-w-[1100px]">
             <TableHeader>
-              <TableRow className="bg-muted/10">
-                <TableHead className="text-[10px] font-black uppercase pl-8 h-12">Type</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Date</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Particulars</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Vendor</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12 text-right">Rate</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12 text-right">Qty</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Unit</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12 text-right">GST %</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12 text-right">Total</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Category</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Payment</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Added By</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Remark</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase h-12">Actions</TableHead>
+              <TableRow>
+                <TableHead className="pl-6">Type</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Particulars</TableHead>
+                <TableHead>Vendor</TableHead>
+                <TableHead className="text-right">Rate</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead className="text-right">GST %</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Added By</TableHead>
+                <TableHead>Remark</TableHead>
+                <TableHead className="text-center pr-4">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isEntriesLoading ? (
-                <TableRow><TableCell colSpan={14} className="h-40 text-center opacity-40"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={14} className="h-40 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-primary opacity-40" /></TableCell></TableRow>
               ) : filteredEntries.length === 0 ? (
-                <TableRow><TableCell colSpan={14} className="h-40 text-center opacity-40 uppercase text-[10px] font-black italic tracking-widest">No entries found for this window.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={14} className="h-40 text-center text-sm text-slate-500">No entries found for this window.</TableCell></TableRow>
               ) : (
                 filteredEntries.map((entry) => (
                   <React.Fragment key={entry.id}>
                     <TableRow 
-                      className="group hover:bg-muted/5 transition-colors cursor-pointer"
+                      className="cursor-pointer"
                       onClick={() => toggleReportNote(entry.id)}
                     >
-                      <TableCell className="pl-8 py-5">
-                        <Badge className={cn("text-[8px] font-black uppercase", entry.type === 'credit' ? "bg-green-100 text-green-700" : entry.type === 'debit' ? "bg-red-100 text-red-700" : entry.type === 'nc' ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700")}>{entry.type}</Badge>
+                      <TableCell className="pl-6">
+                        <span className={cn("inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-semibold capitalize", entry.type === 'credit' ? "bg-emerald-50 text-emerald-700" : entry.type === 'debit' ? "bg-rose-50 text-rose-700" : entry.type === 'nc' ? "bg-amber-50 text-amber-700" : "bg-sky-50 text-sky-700")}>{entry.type}</span>
                       </TableCell>
-                      <TableCell className="text-[10px] font-black text-slate-400 uppercase">{new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</TableCell>
-                      <TableCell className="text-sm font-bold text-slate-900">{entry.particulars}</TableCell>
-                      <TableCell className="text-xs font-bold text-slate-600">{entry.vendorName || '-'}</TableCell>
-                      <TableCell className="text-right text-xs font-medium text-slate-500">{entry.rate}</TableCell>
-                      <TableCell className="text-right text-xs font-medium text-slate-500">{entry.qty}</TableCell>
-                      <TableCell className="text-xs font-bold text-slate-600">{entry.unit || '-'}</TableCell>
-                      <TableCell className="text-right text-xs font-medium text-slate-500">{entry.gstRate || 0}%</TableCell>
-                      <TableCell className="text-right font-black text-sm">{currencySymbol}{entry.amount.toLocaleString()}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1.5 border-primary/10 text-primary bg-primary/5">{entry.category}</Badge></TableCell>
-                      <TableCell className="text-xs font-bold text-slate-600">{entry.paymentMethod || '-'}</TableCell>
-                      <TableCell className="text-xs font-bold text-slate-600">{entry.addedBy || entry.entryBy || 'Owner'}</TableCell>
-                      <TableCell className="text-xs font-bold text-slate-600 truncate max-w-[100px]">{entry.remark || entry.notes || '-'}</TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center gap-2">
+                      <TableCell className="text-xs font-mono tabular-nums text-slate-500">{new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</TableCell>
+                      <TableCell className="text-sm font-semibold text-slate-900">{entry.particulars}</TableCell>
+                      <TableCell className="text-xs font-medium text-slate-600">{entry.vendorName || '—'}</TableCell>
+                      <TableCell className="text-right text-xs font-mono tabular-nums text-slate-600">{entry.rate}</TableCell>
+                      <TableCell className="text-right text-xs font-mono tabular-nums text-slate-600">{entry.qty}</TableCell>
+                      <TableCell className="text-xs text-slate-600">{entry.unit || '—'}</TableCell>
+                      <TableCell className="text-right text-xs font-mono tabular-nums text-slate-500">{entry.gstRate || 0}%</TableCell>
+                      <TableCell className="text-right font-mono tabular-nums font-bold text-sm text-slate-900">{currencySymbol}{entry.amount.toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-xs font-medium text-slate-600">{entry.category}</TableCell>
+                      <TableCell className="text-xs text-slate-600">{entry.paymentMethod || '—'}</TableCell>
+                      <TableCell className="text-xs text-slate-600">{entry.addedBy || entry.entryBy || 'Owner'}</TableCell>
+                      <TableCell className="text-xs text-slate-500 truncate max-w-[110px]">{entry.remark || entry.notes || '—'}</TableCell>
+                      <TableCell className="text-center pr-4">
+                        <div className="flex justify-center gap-1">
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-full" 
+                            aria-label="Edit entry"
+                            className="h-8 w-8 text-slate-500 hover:text-primary rounded-lg" 
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditTarget({...entry, rate: (entry.rate ?? 0).toString(), qty: (entry.qty ?? 0).toString()});
@@ -860,7 +852,8 @@ export default function DailyEntriesPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-destructive/50 hover:text-destructive hover:bg-destructive/10 rounded-full" 
+                            aria-label="Delete entry"
+                            className="h-8 w-8 text-slate-400 hover:text-destructive rounded-lg" 
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteTarget(entry.id);
@@ -872,13 +865,13 @@ export default function DailyEntriesPage() {
                       </TableCell>
                     </TableRow>
                     {expandedReportRows[entry.id] && entry.notes && (
-                      <TableRow className="bg-muted/5 animate-in slide-in-from-top-1">
-                        <TableCell colSpan={13} className="pl-12 py-4">
-                          <div className="flex items-start gap-3">
-                            <CornerDownRight className="h-4 w-4 text-primary/40 mt-0.5" />
-                            <div className="p-4 bg-white rounded-2xl border shadow-sm max-w-2xl">
-                              <p className="text-[9px] font-black uppercase text-muted-foreground mb-1 tracking-widest">Entry Remark</p>
-                              <p className="text-xs font-bold text-slate-600 leading-relaxed italic">"{entry.notes}"</p>
+                      <TableRow className="bg-slate-50/70">
+                        <TableCell colSpan={14} className="pl-10 py-3">
+                          <div className="flex items-start gap-2.5">
+                            <CornerDownRight className="h-4 w-4 text-slate-400 mt-0.5" />
+                            <div className="p-3 bg-white rounded-xl border border-slate-200 max-w-2xl">
+                              <p className="text-[11px] font-semibold text-slate-500 mb-0.5">Entry Remark</p>
+                              <p className="text-xs text-slate-700 leading-relaxed">{entry.notes}</p>
                             </div>
                           </div>
                         </TableCell>
@@ -889,19 +882,19 @@ export default function DailyEntriesPage() {
               )}
             </TableBody>
           </Table>
-          <div className="p-4 flex justify-center border-t">
-            <Button variant="outline" onClick={() => setPageLimit(prev => prev + 20)} className="rounded-xl font-black uppercase tracking-widest text-xs">Load More</Button>
+          <div className="p-4 flex justify-center border-t border-slate-100">
+            <Button variant="outline" size="sm" onClick={() => setPageLimit(prev => prev + 20)} className="rounded-xl text-xs">Load More</Button>
           </div>
         </div>
 
-        <div className="md:hidden divide-y divide-border">
+        <div className="md:hidden divide-y divide-slate-200">
           {isEntriesLoading ? (
-            <div className="p-16 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="h-7 w-7 animate-spin text-primary" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading Cash Book...</p>
+            <div className="p-12 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs font-medium text-slate-500">Loading Cash Book...</p>
             </div>
           ) : filteredEntries.length === 0 ? (
-            <div className="p-16 text-center opacity-40 text-xs font-black uppercase italic tracking-widest">
+            <div className="p-12 text-center text-sm text-slate-500">
               No matching records found
             </div>
           ) : (
@@ -914,17 +907,17 @@ export default function DailyEntriesPage() {
               return (
                 <div 
                   key={entry.id} 
-                  className="p-4 space-y-3 hover:bg-muted/5 transition-colors cursor-pointer bg-white active:bg-muted/10"
+                  className="p-4 space-y-3 hover:bg-slate-50 transition-colors cursor-pointer bg-white"
                   onClick={() => toggleReportNote(entry.id)}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={cn(
                         "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border",
-                        isCredit && "bg-emerald-50 text-emerald-600 border-emerald-200/50",
-                        isDebit && "bg-rose-50 text-rose-600 border-rose-200/50",
-                        isNC && "bg-amber-50 text-amber-600 border-amber-200/50",
-                        isDue && "bg-blue-50 text-blue-600 border-blue-200/50"
+                        isCredit && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                        isDebit && "bg-rose-50 text-rose-700 border-rose-200",
+                        isNC && "bg-amber-50 text-amber-700 border-amber-200",
+                        isDue && "bg-sky-50 text-sky-700 border-sky-200"
                       )}>
                         {isCredit && <ArrowUpRight className="h-4 w-4" />}
                         {isDebit && <ArrowDownLeft className="h-4 w-4" />}
@@ -933,18 +926,18 @@ export default function DailyEntriesPage() {
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-bold text-slate-900 truncate block">
+                          <span className="text-sm font-semibold text-slate-900 truncate block">
                             {entry.particulars}
                           </span>
                           {(entry.notes || entry.remark) && (
-                            <Badge variant="secondary" className="h-4 text-[7px] font-black px-1 uppercase bg-primary/10 text-primary">
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                               Note
-                            </Badge>
+                            </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-[9px] font-black text-muted-foreground uppercase">
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 tabular-nums">
                           <span>{new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                          <span className="opacity-40">•</span>
+                          <span>·</span>
                           <span>{entry.category}</span>
                         </div>
                       </div>
@@ -952,75 +945,54 @@ export default function DailyEntriesPage() {
 
                     <div className="text-right shrink-0">
                       <p className={cn(
-                        "text-base font-black tracking-tight",
-                        isCredit && "text-emerald-600",
-                        isDebit && "text-rose-600",
-                        isNC && "text-amber-600",
-                        isDue && "text-blue-600"
+                        "text-base font-bold font-mono tabular-nums",
+                        isCredit && "text-emerald-700",
+                        isDebit && "text-rose-700",
+                        isNC && "text-amber-700",
+                        isDue && "text-sky-700"
                       )}>
-                        {isCredit ? '+' : isDebit ? '-' : ''} {currencySymbol}{entry.amount.toLocaleString()}
+                        {isCredit ? '+' : isDebit ? '-' : ''} {currencySymbol}{entry.amount.toLocaleString("en-IN")}
                       </p>
-                      <Badge className={cn(
-                        "text-[7px] font-black uppercase mt-0.5 h-4 px-1.5 border-none",
-                        isCredit && "bg-emerald-100 text-emerald-700",
-                        isDebit && "bg-rose-100 text-rose-700",
-                        isNC && "bg-amber-100 text-amber-700",
-                        isDue && "bg-blue-100 text-blue-700"
-                      )}>
+                      <span className="text-[11px] font-medium text-slate-500 capitalize">
                         {entry.type}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Vendor & Payment Badges if available */}
-                  {(entry.vendorName || entry.paymentMethod) && (
-                    <div className="flex items-center gap-2 flex-wrap pt-0.5">
-                      {entry.vendorName && (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[9px] font-bold">
-                          <span className="text-slate-400 font-medium">Vendor:</span> {entry.vendorName}
-                        </div>
-                      )}
-                      {entry.paymentMethod && (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 text-[9px] font-bold">
-                          <span className="text-slate-400 font-medium">Pay:</span> {entry.paymentMethod}
-                        </div>
-                      )}
-                      {(entry.gstRate || 0) > 0 && (
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[9px] font-bold">
-                          <span className="text-primary/70 font-medium">GST:</span> {entry.gstRate}%
-                        </div>
-                      )}
+                  {(entry.vendorName || entry.paymentMethod || (entry.gstRate || 0) > 0) && (
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-600">
+                      {entry.vendorName && <span>Vendor: {entry.vendorName}</span>}
+                      {entry.paymentMethod && <span>· {entry.paymentMethod}</span>}
+                      {(entry.gstRate || 0) > 0 && <span>· GST {entry.gstRate}%</span>}
                     </div>
                   )}
 
-                  {/* Expanded Note preview if toggled */}
                   {expandedReportRows[entry.id] && (entry.notes || entry.remark) && (
-                    <div className="p-3 bg-primary/5 rounded-xl border border-primary/10 animate-in zoom-in-95">
-                      <p className="text-[8px] font-black uppercase text-primary mb-1 tracking-widest flex items-center gap-1">
-                        <MessageSquare className="h-2.5 w-2.5" /> Remark / Note
+                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-[11px] font-semibold text-slate-500 mb-1 flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" /> Remark / Note
                       </p>
-                      <p className="text-xs font-semibold text-slate-700 leading-relaxed italic">
-                        "{entry.notes || entry.remark}"
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {entry.notes || entry.remark}
                       </p>
                     </div>
                   )}
 
-                  {/* Bottom Strip: Rate x Qty + Creator + Actions */}
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-[10px]">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight">
-                        Rate: {currencySymbol}{entry.rate} × {entry.qty} {entry.unit || 'units'}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <div className="flex flex-col min-w-0 tabular-nums">
+                      <span className="font-medium text-slate-600 font-mono">
+                        {currencySymbol}{entry.rate} × {entry.qty} {entry.unit || 'units'}
                       </span>
-                      <span className="text-[8px] font-bold text-slate-400 uppercase">
-                        By: {entry.addedBy || entry.entryBy || 'Owner'}
+                      <span className="text-[11px] text-slate-400">
+                        By {entry.addedBy || entry.entryBy || 'Owner'}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 px-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-bold"
+                        className="h-8 px-2.5 text-slate-600 hover:text-primary rounded-lg text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditTarget({...entry, rate: (entry.rate ?? 0).toString(), qty: (entry.qty ?? 0).toString()});
@@ -1031,6 +1003,7 @@ export default function DailyEntriesPage() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
+                        aria-label="Delete entry"
                         className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1045,60 +1018,60 @@ export default function DailyEntriesPage() {
               );
             })
           )}
-          <div className="p-4 bg-slate-50/50">
-            <Button variant="outline" onClick={() => setPageLimit(prev => prev + 20)} className="w-full h-11 rounded-xl font-black uppercase tracking-widest text-xs bg-white shadow-sm">
+          <div className="p-4 bg-slate-50/70">
+            <Button variant="outline" onClick={() => setPageLimit(prev => prev + 20)} className="w-full h-10 rounded-xl text-xs bg-white">
               Load More Entries
             </Button>
           </div>
         </div>
       </Card>
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-2xl border border-slate-200 bg-white shadow-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black uppercase tracking-widest text-lg">Confirm Deletion</AlertDialogTitle>
-            <AlertDialogDescription className="font-bold text-muted-foreground">This action cannot be undone. Are you sure you want to permanently remove this entry?</AlertDialogDescription>
+            <AlertDialogTitle className="text-lg font-bold text-slate-900">Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-600">This action cannot be undone. Are you sure you want to permanently remove this entry?</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-black uppercase tracking-widest">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 rounded-xl font-black uppercase tracking-widest">Delete</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl text-xs font-semibold">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 rounded-xl text-xs font-semibold">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
-        <DialogContent className="rounded-2xl border-none shadow-2xl max-w-lg w-[95vw] sm:w-full p-5 sm:p-6">
+        <DialogContent className="rounded-2xl border border-slate-200 bg-white shadow-lg max-w-lg w-[95vw] sm:w-full p-6">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-widest text-base sm:text-lg">Edit Entry</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Edit Entry</DialogTitle>
           </DialogHeader>
           {editTarget && (
-            <div className="space-y-4 pt-2 sm:pt-4">
+            <div className="space-y-4 pt-2">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase text-slate-500">Particulars</Label>
-                <Input value={editTarget.particulars || ""} onChange={(e) => setEditTarget({...editTarget, particulars: e.target.value})} className="rounded-xl h-11"/>
+                <Label className="text-xs font-semibold text-slate-600">Particulars</Label>
+                <Input value={editTarget.particulars || ""} onChange={(e) => setEditTarget({...editTarget, particulars: e.target.value})} className="rounded-xl h-10"/>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Rate ({currencySymbol})</Label>
+                  <Label className="text-xs font-semibold text-slate-600">Rate ({currencySymbol})</Label>
                   <Input type="number" value={editTarget.rate || ""} onChange={(e) => {
                     const rate = parseFloat(e.target.value) || 0;
                     const qty = parseFloat(editTarget.qty) || 0;
                     setEditTarget({...editTarget, rate: e.target.value, amount: rate * qty});
-                  }} className="rounded-xl h-11"/>
+                  }} className="rounded-xl h-10 font-mono tabular-nums"/>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Quantity</Label>
+                  <Label className="text-xs font-semibold text-slate-600">Quantity</Label>
                   <Input type="number" value={editTarget.qty || ""} onChange={(e) => {
                     const rate = parseFloat(editTarget.rate) || 0;
                     const qty = parseFloat(e.target.value) || 0;
                     setEditTarget({...editTarget, qty: e.target.value, amount: rate * qty});
-                  }} className="rounded-xl h-11"/>
+                  }} className="rounded-xl h-10 font-mono tabular-nums"/>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Type</Label>
+                  <Label className="text-xs font-semibold text-slate-600">Type</Label>
                   <Select value={editTarget.type} onValueChange={(v) => setEditTarget({...editTarget, type: v as any})}>
-                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="credit">Credit (+)</SelectItem>
                       <SelectItem value="debit">Debit (-)</SelectItem>
@@ -1108,9 +1081,9 @@ export default function DailyEntriesPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Category</Label>
+                  <Label className="text-xs font-semibold text-slate-600">Category</Label>
                   <Select value={editTarget.category} onValueChange={(v) => setEditTarget({...editTarget, category: v})}>
-                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {dynamicCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
@@ -1119,18 +1092,18 @@ export default function DailyEntriesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Unit</Label>
+                  <Label className="text-xs font-semibold text-slate-600">Unit</Label>
                   <Select value={editTarget.unit} onValueChange={(v) => setEditTarget({...editTarget, unit: v})}>
-                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {dynamicUnits.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold uppercase text-slate-500">Vendor</Label>
+                  <Label className="text-xs font-semibold text-slate-600">Vendor</Label>
                   <Select value={editTarget.vendorName || "none"} onValueChange={(v) => setEditTarget({...editTarget, vendorName: v === "none" ? "" : v})}>
-                    <SelectTrigger className="rounded-xl h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
                       {vendorsData.map((v: any) => <SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>)}
@@ -1139,30 +1112,30 @@ export default function DailyEntriesPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase text-slate-500">Notes / Remarks</Label>
+                <Label className="text-xs font-semibold text-slate-600">Notes / Remarks</Label>
                 <Textarea value={editTarget.notes || ""} onChange={(e) => setEditTarget({...editTarget, notes: e.target.value})} className="rounded-xl min-h-[80px]"/>
               </div>
             </div>
           )}
-          <DialogFooter className="pt-3 sm:pt-4 flex flex-col-reverse sm:flex-row gap-2">
-            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-xl font-black uppercase tracking-widest w-full sm:w-auto h-11">Cancel</Button>
-            <Button onClick={handleUpdate} className="bg-primary hover:bg-primary/90 rounded-xl font-black uppercase tracking-widest w-full sm:w-auto h-11">Save Changes</Button>
+          <DialogFooter className="pt-4 flex flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-xl w-full sm:w-auto h-10 text-xs">Cancel</Button>
+            <Button onClick={handleUpdate} className="rounded-xl w-full sm:w-auto h-10 text-xs">Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isAddVendorOpen} onOpenChange={setIsAddVendorOpen}>
-        <DialogContent className="rounded-2xl border-none shadow-2xl max-w-lg w-[95vw] sm:w-full p-5 sm:p-6">
+        <DialogContent className="rounded-2xl border border-slate-200 bg-white shadow-lg max-w-lg w-[95vw] sm:w-full p-6">
           <DialogHeader>
-            <DialogTitle className="font-black uppercase tracking-widest text-base sm:text-lg">Register Supplier Node</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-slate-900">Register Supplier</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 sm:pt-4">
-            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Full Name *</Label><Input value={newVendorName || ""} onChange={(e) => setNewVendorName(e.target.value)} className="rounded-xl h-11"/></div>
-            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">WhatsApp *</Label><Input value={newVendorPhone || ""} onChange={(e) => setNewVendorPhone(e.target.value)} className="rounded-xl h-11"/></div>
-            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Business Identity</Label><Input placeholder="Business Name" className="rounded-xl h-11"/></div>
-            <div className="space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">GSTIN</Label><Input placeholder="GSTIN" className="rounded-xl h-11"/></div>
-            <div className="col-span-1 sm:col-span-2 space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Billing Address</Label><Textarea placeholder="Address" className="rounded-xl"/></div>
-            <div className="col-span-1 sm:col-span-2 space-y-1.5"><Label className="text-xs font-bold uppercase text-slate-500">Opening Dues (₹)</Label><Input type="number" defaultValue="0" className="rounded-xl h-11"/></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-600">Full Name *</Label><Input value={newVendorName || ""} onChange={(e) => setNewVendorName(e.target.value)} className="rounded-xl h-10"/></div>
+            <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-600">WhatsApp *</Label><Input value={newVendorPhone || ""} onChange={(e) => setNewVendorPhone(e.target.value)} className="rounded-xl h-10 font-mono tabular-nums"/></div>
+            <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-600">Business Name</Label><Input placeholder="Business Name" className="rounded-xl h-10"/></div>
+            <div className="space-y-1.5"><Label className="text-xs font-semibold text-slate-600">GSTIN</Label><Input placeholder="GSTIN" className="rounded-xl h-10 font-mono uppercase"/></div>
+            <div className="col-span-1 sm:col-span-2 space-y-1.5"><Label className="text-xs font-semibold text-slate-600">Billing Address</Label><Textarea placeholder="Address" className="rounded-xl"/></div>
+            <div className="col-span-1 sm:col-span-2 space-y-1.5"><Label className="text-xs font-semibold text-slate-600">Opening Dues (₹)</Label><Input type="number" defaultValue="0" className="rounded-xl h-10 font-mono tabular-nums"/></div>
           </div>
           <DialogFooter className="pt-3">
             <Button onClick={() => {
@@ -1176,7 +1149,7 @@ export default function DailyEntriesPage() {
                 setNewVendorName("");
                 setNewVendorPhone("");
                 toast({ title: "Vendor Added", description: `${newVendorName} added successfully.` });
-            }} className="w-full bg-primary hover:bg-primary/90 rounded-xl font-black uppercase tracking-widest h-12">ESTABLISH SUPPLY NODE</Button>
+            }} className="w-full rounded-xl h-11 text-xs font-semibold">Save Supplier</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

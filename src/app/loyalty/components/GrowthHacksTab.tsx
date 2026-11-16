@@ -1,9 +1,7 @@
-
 "use client";
 
 import React from "react";
-import { Zap, Lock, Coins, Calculator, ShieldCheck, Heart, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Zap, Lock, Coins, Calculator, ShieldCheck, Sparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -11,126 +9,164 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SectionCard } from "@/components/ui/editorial";
 import { cn } from "@/lib/utils";
 
 export function GrowthHacksTab({ portalConfig, onUpdate, isWhatsappActive }: any) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
-      <div className="lg:col-span-8 space-y-8 text-left">
-         <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border text-left">
-            <CardHeader className="bg-orange-50 border-b py-6 px-8 text-left">
-              <div className="flex justify-between items-center text-left">
-                <div className="text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-orange-700 flex items-center gap-2">
-                    <Zap className="h-4 w-4" /> Progressive Profiling & Incentives
-                  </CardTitle>
-                  <p className="text-[10px] font-bold text-orange-600/70 uppercase mt-1 tracking-widest">Reward members for sharing personal details</p>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left items-start">
+      <div className="lg:col-span-8 space-y-6">
+        <SectionCard
+          title="Progressive Profiling & Incentives"
+          description="Reward members for completing their birthday and anniversary details."
+          headerRight={
+            <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+              {!isWhatsappActive && <Lock className="h-3.5 w-3.5 text-amber-600" />}
+              <Label htmlFor="wa-nudge-toggle" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                WhatsApp Nudge
+              </Label>
+              <Switch
+                id="wa-nudge-toggle"
+                checked={portalConfig?.nudgeEnabled || false}
+                onCheckedChange={(v) => onUpdate({ nudgeEnabled: v })}
+                className={cn(isWhatsappActive ? "data-[state=checked]:bg-emerald-600" : "data-[state=checked]:bg-slate-400")}
+              />
+            </div>
+          }
+        >
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-amber-50/70 rounded-xl border border-amber-200 gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="h-10 w-10 rounded-xl bg-amber-500 flex items-center justify-center text-white shrink-0">
+                  <Coins className="h-5 w-5" />
                 </div>
-                <div className="flex items-center gap-3 bg-white p-2 px-3 rounded-xl border border-orange-200">
-                  {!isWhatsappActive && <Lock className="h-3 w-3 text-orange-400" />}
-                  <span className="text-[9px] font-black uppercase text-orange-800">WhatsApp Nudge</span>
-                  <Switch 
-                    checked={portalConfig?.nudgeEnabled || false} 
-                    onCheckedChange={(v) => onUpdate({ nudgeEnabled: v })}
-                    className={cn("scale-75", isWhatsappActive ? "data-[state=checked]:bg-orange-600" : "data-[state=checked]:bg-slate-400")}
-                  />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Profile Completion Bonus</p>
+                  <p className="text-xs text-slate-600">Points credited for adding Birthday & Anniversary dates.</p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-8 space-y-10 text-left">
-               <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-orange-100/30 rounded-3xl border border-orange-100 gap-6 text-left">
-                  <div className="flex items-center gap-4 text-left">
-                     <div className="h-12 w-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg"><Coins className="h-6 w-6" /></div>
-                     <div className="text-left">
-                        <p className="text-xs font-black text-orange-900 uppercase tracking-tight">Profile Completion Bonus</p>
-                        <p className="text-[10px] font-medium text-orange-700">Reward points for adding Birthday & Anniversary</p>
-                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-left">
-                     <Input 
-                        type="number" 
-                        value={portalConfig?.profileBonusPoints || 0} 
-                        onChange={(e) => onUpdate({ profileBonusPoints: parseInt(e.target.value) })}
-                        className="h-11 w-24 text-center font-black text-lg rounded-xl border-orange-200 bg-white" 
-                     />
-                     <span className="text-[10px] font-black uppercase text-orange-800 tracking-widest">Points</span>
-                  </div>
-               </div>
-
-               <div className="space-y-6 text-left">
-                  <div className="space-y-1 text-left">
-                     <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Personalization Nudge (WhatsApp)</h4>
-                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Template for new member welcome message</p>
-                  </div>
-                  <Textarea 
-                     defaultValue={portalConfig?.personalizationMessage || "Welcome to the Club! 🎁 Apne rewards ko personalize karne ke liye yahan click karein aur apna Birthday set karein taaki hum aapka din khaas bana sakte hain: {{track_url}}"}
-                     onBlur={(e) => onUpdate({ personalizationMessage: e.target.value })}
-                     className="min-h-[120px] rounded-2xl bg-muted/20 border-none p-4 text-xs font-medium leading-relaxed" 
-                  />
-               </div>
-            </CardContent>
-         </Card>
-
-         <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border text-left">
-            <CardHeader className="bg-primary/5 border-b py-6 px-8 flex justify-between items-center text-left">
-              <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2"><Calculator className="h-4 w-4" /> Global Reward Logic</CardTitle>
-              <Badge variant="outline" className="bg-white border-primary/20 text-primary font-black text-[8px] h-5 px-2 uppercase">Platform Engine</Badge>
-            </CardHeader>
-            <CardContent className="p-8 space-y-10 text-left">
-              <div className="space-y-6 text-left">
-                 <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-muted/20 rounded-3xl border border-transparent gap-6 text-left">
-                    <div className="flex items-center gap-4 text-left">
-                       <div className="h-12 w-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white shadow-lg"><Zap className="h-6 w-6" /></div>
-                       <div className="text-left">
-                          <p className="text-xs font-black text-slate-900 uppercase tracking-tight">Discount Priority Node</p>
-                          <p className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">Decide calculation sequence for stacked cards</p>
-                       </div>
-                    </div>
-                    <div className="w-full sm:w-48 text-left">
-                       <Select value={portalConfig?.discountPriority || "percentage_first"} onValueChange={(v) => onUpdate({ discountPriority: v })}>
-                          <SelectTrigger className="h-11 rounded-xl bg-white font-black text-[10px] uppercase shadow-sm border-muted-foreground/20 text-left"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-none shadow-2xl">
-                             <SelectItem value="percentage_first" className="text-[10px] font-bold uppercase">Percentage (%) First</SelectItem>
-                             <SelectItem value="flat_first" className="text-[10px] font-bold uppercase">Flat (₹) First</SelectItem>
-                          </SelectContent>
-                       </Select>
-                    </div>
-                 </div>
-                 
-                 <Separator />
-
-                 <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-primary/5 rounded-3xl border border-primary/10 gap-6 text-left">
-                    <div className="flex items-center gap-4 text-left">
-                       <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-lg"><ShieldCheck className="h-6 w-6" /></div>
-                       <div className="text-left">
-                          <p className="text-xs font-black text-slate-900 uppercase tracking-tight">Daily Node Protection</p>
-                          <p className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">Max 1 Exclusive coupon per customer daily (1:30 AM reset)</p>
-                       </div>
-                    </div>
-                    <Switch 
-                      checked={!!portalConfig?.dailyNodeProtectionEnabled} 
-                      onCheckedChange={(v) => onUpdate({ dailyNodeProtectionEnabled: v })}
-                      className="data-[state=checked]:bg-primary scale-110"
-                    />
-                 </div>
-              </div>
-            </CardContent>
-         </Card>
-      </div>
-      <div className="lg:col-span-4 space-y-8 text-left">
-         <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2.5rem] p-8 space-y-6 overflow-hidden text-left">
-            <div className="absolute top-0 right-0 p-4 opacity-5 rotate-12"><Heart className="h-40 w-40" /></div>
-            <div className="relative z-10 space-y-6 text-left">
-              <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20"><Sparkles className="h-6 w-6 text-accent" /></div>
-              <h3 className="text-xl font-bold uppercase">Birthday Alerts Node</h3>
-              <p className="text-xs text-slate-400 font-medium leading-relaxed font-medium">"Members who register their birthday have a 2.5x higher LTV (Lifetime Value) compared to anonymous members."</p>
-              <Separator className="bg-white/10" />
-              <div className="space-y-4 text-left">
-                 <div className="flex items-center justify-between text-left"><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Alerts</span><Badge className={cn("border-none text-[8px] h-4 uppercase", isWhatsappActive ? "bg-green-500 text-white" : "bg-slate-700 text-slate-400")}>{isWhatsappActive ? 'System ON' : 'LOCKED'}</Badge></div>
-                 <div className="flex items-center justify-between text-left"><span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Data Enrichment</span><Badge variant="outline" className="text-accent border-accent text-[8px] h-4 uppercase">Incentivized</Badge></div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <Input
+                  type="number"
+                  aria-label="Profile completion bonus points"
+                  value={portalConfig?.profileBonusPoints || 0}
+                  onChange={(e) => onUpdate({ profileBonusPoints: parseInt(e.target.value) || 0 })}
+                  className="h-10 w-24 text-center font-mono font-bold tabular-nums rounded-xl border-amber-200 bg-white"
+                />
+                <span className="text-xs font-semibold text-slate-700">Points</span>
               </div>
             </div>
-         </Card>
+
+            <div className="space-y-2">
+              <Label htmlFor="nudge-msg" className="text-xs font-semibold text-slate-700">
+                Welcome Personalization Message (WhatsApp)
+              </Label>
+              <Textarea
+                id="nudge-msg"
+                defaultValue={
+                  portalConfig?.personalizationMessage ||
+                  "Welcome to the Club! 🎁 Apne rewards ko personalize karne ke liye yahan click karein aur apna Birthday set karein taaki hum aapka din khaas bana sakte hain: {{track_url}}"
+                }
+                onBlur={(e) => onUpdate({ personalizationMessage: e.target.value })}
+                className="min-h-[110px] rounded-xl text-xs leading-relaxed"
+              />
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Global Reward Rules"
+          description="Control stacked discount priority and daily exclusive redemption limits."
+          headerRight={
+            <Badge variant="outline" className="border-slate-200 text-slate-700 text-xs font-medium">
+              Platform Engine
+            </Badge>
+          }
+        >
+          <div className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shrink-0">
+                  <Calculator className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Discount Priority Order</p>
+                  <p className="text-xs text-slate-500">Order used when calculating percentage vs flat card savings.</p>
+                </div>
+              </div>
+              <div className="w-full sm:w-52 shrink-0">
+                <Select
+                  value={portalConfig?.discountPriority || "percentage_first"}
+                  onValueChange={(v) => onUpdate({ discountPriority: v })}
+                >
+                  <SelectTrigger className="h-10 rounded-xl bg-white text-xs font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="percentage_first" className="text-xs">Percentage (%) First</SelectItem>
+                    <SelectItem value="flat_first" className="text-xs">Flat (₹) First</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="h-10 w-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-900 shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <Label htmlFor="daily-limit-toggle" className="text-sm font-bold text-slate-900 cursor-pointer">
+                    Daily Exclusive Protection
+                  </Label>
+                  <p className="text-xs text-slate-500">
+                    Limit 1 exclusive coupon per customer daily (resets 1:30 AM).
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="daily-limit-toggle"
+                checked={!!portalConfig?.dailyNodeProtectionEnabled}
+                onCheckedChange={(v) => onUpdate({ dailyNodeProtectionEnabled: v })}
+                className="data-[state=checked]:bg-slate-900 shrink-0"
+              />
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
+      <div className="lg:col-span-4">
+        <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-5 text-left">
+          <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <h3 className="text-lg font-bold text-white">Birthday Automation</h3>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Members who save their birthday and anniversary dates deliver up to 2.5x higher repeat visits when paired with automated WhatsApp wishes.
+          </p>
+          <Separator className="bg-white/10" />
+          <div className="space-y-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300">WhatsApp Delivery</span>
+              <Badge
+                className={cn(
+                  "text-[11px] font-semibold border-none",
+                  isWhatsappActive ? "bg-emerald-500/20 text-emerald-300" : "bg-white/10 text-slate-300"
+                )}
+              >
+                {isWhatsappActive ? "Enabled" : "Locked"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300">Profile Enrichment</span>
+              <Badge variant="outline" className="text-slate-200 border-white/20 text-[11px]">
+                Incentivized
+              </Badge>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

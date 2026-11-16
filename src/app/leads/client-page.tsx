@@ -220,39 +220,42 @@ export default function LeadsPage() {
 
       {!isTrialExpired && <CoreQuotaBanner quota={leadsQuota} />}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1">
-        <div className="flex items-center gap-4 text-left">
-          <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-            <BrainCircuit className="h-7 w-7 text-primary" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
+        <div className="flex items-center gap-3.5 text-left">
+          <div className="h-11 w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+            <BrainCircuit className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-none">Sales CRM</h2>
-            <p className="text-xs md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">Handshake Hub</p>
+            <p className="text-xs font-medium text-slate-500">Command Center / CRM & Leads</p>
+            <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">Sales CRM</h1>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
             <DialogTrigger asChild>
-              <Button disabled={isLimitReached || isTrialExpired} className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
-                <Plus className="mr-2 h-4 w-4" /> New Lead Node
+              <Button disabled={isLimitReached || isTrialExpired} className="h-10 px-5 text-xs font-semibold rounded-xl">
+                <Plus className="mr-1.5 h-4 w-4" /> New Lead
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[450px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden text-left">
+            <DialogContent className="sm:max-w-[450px] rounded-2xl border border-slate-200 bg-white shadow-lg p-0 overflow-hidden text-left">
               <form onSubmit={handleAddLead}>
-                <DialogHeader className="p-8 bg-primary text-white text-left">
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20"><UserPlus className="h-5 w-5 text-white" /></div>
-                    <DialogTitle className="text-xl">Register New Inquiry</DialogTitle>
+                <DialogHeader className="p-6 bg-slate-900 text-white text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center"><UserPlus className="h-5 w-5 text-white" /></div>
+                    <div>
+                      <DialogTitle className="text-lg font-bold text-white">Register New Inquiry</DialogTitle>
+                      <DialogDescription className="text-xs text-slate-300">Add a prospect to your sales pipeline.</DialogDescription>
+                    </div>
                   </div>
                 </DialogHeader>
-                <div className="p-8 space-y-6">
-                  <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Client Name *</Label><Input name="name" required className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" /></div>
-                  <div className="space-y-1.5 text-left"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Contact Number *</Label><Input name="phone" required className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" /></div>
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1.5 text-left"><Label className="text-xs font-semibold text-slate-700">Client Name *</Label><Input name="name" required className="h-10 rounded-xl" /></div>
+                  <div className="space-y-1.5 text-left"><Label className="text-xs font-semibold text-slate-700">Contact Number *</Label><Input name="phone" required className="h-10 rounded-xl font-mono tabular-nums" /></div>
                   <div className="space-y-1.5 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Acquisition Source</Label>
+                    <Label className="text-xs font-semibold text-slate-700">Acquisition Source</Label>
                     <Select name="source" defaultValue="Walk-in">
-                      <SelectTrigger className="h-12 rounded-xl font-bold"><SelectValue placeholder="Walk-in" /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-none shadow-2xl">
+                      <SelectTrigger className="h-10 rounded-xl"><SelectValue placeholder="Walk-in" /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-200">
                         <SelectItem value="Walk-in">Walk-in</SelectItem>
                         <SelectItem value="WhatsApp">WhatsApp</SelectItem>
                         <SelectItem value="Facebook">Facebook Ads</SelectItem>
@@ -261,7 +264,7 @@ export default function LeadsPage() {
                     </Select>
                   </div>
                 </div>
-                <DialogFooter className="p-8 bg-muted/30 border-t"><Button type="submit" className="w-full h-14 bg-primary font-black uppercase text-xs rounded-2xl shadow-xl">Establish Lead Node</Button></DialogFooter>
+                <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200"><Button type="submit" className="w-full h-11 text-xs font-semibold rounded-xl">Save Lead</Button></DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
@@ -269,41 +272,43 @@ export default function LeadsPage() {
       </div>
 
       <div className="relative w-full md:w-80">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search name or phone..." className="pl-9 h-11 text-xs rounded-xl bg-white shadow-inner font-bold" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Input placeholder="Search name or phone..." className="pl-10 h-10 text-xs rounded-xl bg-white border-slate-200" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
-      <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide min-h-[600px] px-1">
+      <div className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide min-h-[560px]">
         {STAGES.map((stage) => {
           const stageLeads = filteredLeads.filter(l => (l.status || 'new') === stage.id);
           return (
-            <div key={stage.id} className="w-[320px] shrink-0 space-y-4">
-              <div className="flex items-center gap-3 px-3">
-                <div className={cn("h-2.5 w-2.5 rounded-full shadow-sm", stage.color)} />
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500">{stage.label}</h3>
-                <Badge variant="secondary" className="text-[9px] h-4 font-black border-none bg-white shadow-sm text-slate-400">{stageLeads.length}</Badge>
+            <div key={stage.id} className="w-[310px] shrink-0 space-y-3">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <span className={cn("h-2 w-2 rounded-full", stage.color)} />
+                  <h3 className="text-xs font-semibold text-slate-800">{stage.label}</h3>
+                </div>
+                <span className="text-xs font-mono tabular-nums font-semibold text-slate-500">{stageLeads.length}</span>
               </div>
-              <div className="space-y-4 bg-muted/20 p-2.5 rounded-[2.5rem] min-h-[550px] border-2 border-dashed border-muted/50">
+              <div className="space-y-3 bg-slate-100/80 p-2.5 rounded-2xl min-h-[520px] border border-slate-200/80">
                 {stageLeads.length === 0 ? (
-                  <div className="h-20 flex items-center justify-center opacity-10 italic text-[10px] font-black uppercase tracking-widest">No Traffic</div>
+                  <div className="h-24 flex items-center justify-center text-xs text-slate-400">No leads in stage</div>
                 ) : (
                   stageLeads.map((lead) => (
                     <Card 
                       key={lead.id} 
-                      className="border-none shadow-sm hover:shadow-xl cursor-pointer bg-white group transition-all rounded-3xl overflow-hidden" 
+                      className="cursor-pointer bg-white hover:border-slate-300 transition-colors rounded-xl border border-slate-200 overflow-hidden" 
                       onClick={() => { setSelectedLead(lead); setIsDrawerOpen(true); }}
                     >
-                      <CardContent className="p-5 space-y-4 text-left">
-                        <div className="flex justify-between items-start">
+                      <CardContent className="p-4 space-y-3 text-left">
+                        <div className="flex justify-between items-start gap-2">
                           <div className="min-w-0">
-                            <h4 className="text-sm font-black text-slate-900 truncate group-hover:underline uppercase tracking-tight">{lead.name}</h4>
-                            <p className="text-[10px] text-muted-foreground font-bold mt-1">{lead.phone}</p>
+                            <h4 className="text-sm font-bold text-slate-900 truncate">{lead.name}</h4>
+                            <p className="text-xs text-slate-500 font-mono tabular-nums mt-0.5">{lead.phone}</p>
                           </div>
-                          <Badge variant="outline" className="text-[7px] h-4 px-1.5 uppercase font-black border-primary/10 bg-primary/5 text-primary">{lead.source}</Badge>
+                          <span className="text-[11px] font-medium text-primary shrink-0">{lead.source}</span>
                         </div>
-                        <div className="flex items-center justify-between text-[8px] font-black uppercase text-muted-foreground opacity-60">
-                           <div className="flex items-center gap-1.5"><Clock className="h-2.5 w-2.5" /> {lead.createdAt}</div>
-                           {lead.intentScore && <div className="flex items-center gap-1.5"><Zap className="h-2.5 w-2.5 text-orange-500 fill-orange-500" /> {lead.intentScore}% Intent</div>}
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 tabular-nums pt-1 border-t border-slate-100">
+                           <div className="flex items-center gap-1"><Clock className="h-3 w-3" /> {lead.createdAt}</div>
+                           {lead.intentScore && <div className="flex items-center gap-1 font-medium text-amber-700"><Zap className="h-3 w-3 text-amber-500" /> {lead.intentScore}% Intent</div>}
                         </div>
                       </CardContent>
                     </Card>
@@ -316,63 +321,66 @@ export default function LeadsPage() {
       </div>
 
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-none shadow-2xl overflow-hidden bg-background">
+        <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-l border-slate-200 overflow-hidden bg-white">
           {selectedLead && (
             <>
-              <div className="p-8 bg-primary text-white shrink-0 relative">
-                <div className="absolute top-0 right-0 p-8 opacity-10"><BrainCircuit className="h-40 w-40" /></div>
-                <div className="text-left space-y-6 relative z-10">
-                  <Badge variant="outline" className="bg-white/10 text-white border-white/20 uppercase text-[9px] font-black px-3 py-1 tracking-widest">INQUIRY: {selectedLead.id.slice(-8).toUpperCase()}</Badge>
-                  <div className="flex items-center gap-6">
-                    <div className="h-20 w-20 rounded-[1.5rem] bg-white flex items-center justify-center text-primary font-black text-3xl shrink-0 shadow-2xl">{selectedLead.name?.charAt(0)}</div>
-                    <div className="space-y-1">
-                      <SheetTitle className="text-2xl font-black text-white">{selectedLead.name}</SheetTitle>
-                      <p className="text-accent text-[10px] font-bold uppercase tracking-widest">{selectedLead.phone}</p>
+              <div className="p-6 sm:p-8 bg-slate-900 text-white shrink-0">
+                <div className="text-left space-y-4">
+                  <p className="text-xs font-mono text-slate-400">Inquiry · {selectedLead.id.slice(-8).toUpperCase()}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center text-white font-bold text-xl shrink-0">{selectedLead.name?.charAt(0)}</div>
+                    <div className="space-y-0.5 min-w-0">
+                      <SheetTitle className="text-xl font-bold text-white truncate">{selectedLead.name}</SheetTitle>
+                      <p className="text-slate-300 text-xs font-mono tabular-nums">{selectedLead.phone}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-8 scrollbar-hide text-left">
-                <div className="space-y-10">
-                  <section className="space-y-6">
+              <ScrollArea className="flex-1 p-6 sm:p-8 scrollbar-hide text-left">
+                <div className="space-y-8">
+                  <section className="space-y-4">
                      <div className="flex items-center justify-between">
-                       <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Layout className="h-4 w-4" /> Pipeline Context</h4>
-                       <Badge className="bg-primary/5 text-primary border-primary/20 font-black text-[8px] h-5 px-2 uppercase">{selectedLead.status} NODE</Badge>
+                       <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2"><Layout className="h-4 w-4 text-primary" /> Pipeline Context</h4>
+                       <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 capitalize">{selectedLead.status}</span>
                      </div>
                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-5 bg-muted/20 rounded-2xl space-y-1">
-                           <p className="text-[8px] font-black text-muted-foreground uppercase">Engagement Hub</p>
-                           <p className="text-sm font-black text-slate-700">{selectedLead.source} Entry</p>
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                           <p className="text-xs text-slate-500">Source</p>
+                           <p className="text-sm font-semibold text-slate-900">{selectedLead.source}</p>
                         </div>
-                        <div className="p-5 bg-muted/20 rounded-2xl space-y-1">
-                           <p className="text-[8px] font-black text-muted-foreground uppercase">Intent Logic</p>
-                           <p className="text-sm font-black text-orange-600">{selectedLead.intentScore || 50}% Score</p>
+                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                           <p className="text-xs text-slate-500">Intent Score</p>
+                           <p className="text-sm font-bold font-mono tabular-nums text-amber-700">{selectedLead.intentScore || 50}%</p>
                         </div>
                      </div>
                   </section>
 
                   {selectedLead.status !== 'converted' && (
-                    <section className="p-8 bg-green-50 rounded-[2.5rem] border border-green-100 space-y-6 animate-in zoom-in-95">
-                       <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center text-green-600 shadow-lg border border-green-100"><UserPlus className="h-6 w-6" /></div>
+                    <section className="p-5 bg-emerald-50/80 rounded-2xl border border-emerald-200 space-y-4">
+                       <div className="flex items-center gap-3.5">
+                          <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-emerald-700 border border-emerald-200 shrink-0"><UserPlus className="h-5 w-5" /></div>
                           <div className="text-left">
-                             <h4 className="text-sm font-black text-green-800 uppercase tracking-tight">Convert to Customer</h4>
-                             <p className="text-[9px] font-bold text-green-600 uppercase mt-0.5 opacity-70">Establish permanent identity node</p>
+                             <h4 className="text-sm font-bold text-emerald-950">Convert to Customer</h4>
+                             <p className="text-xs text-emerald-700">Create a permanent customer profile for billing.</p>
                           </div>
                        </div>
-                       <p className="text-xs text-green-700 leading-relaxed font-medium italic">"Deal finalize hote hi is lead ko registered customer list mein move karein taaki billing node active ho jaye."</p>
-                       <Button onClick={handleConvertToCustomer} disabled={isConverting} className="w-full h-14 bg-green-600 hover:bg-green-700 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl shadow-xl">
-                          {isConverting ? <Loader2 className="h-5 w-5 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Execute Conversion</>}
+                       <p className="text-xs text-emerald-800 leading-relaxed">Deal finalize hote hi is lead ko registered customer list mein move karein taaki billing aur ledger active ho jaye.</p>
+                       <Button onClick={handleConvertToCustomer} disabled={isConverting} className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl">
+                          {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="mr-2 h-4 w-4" /> Convert Lead</>}
                        </Button>
                     </section>
                   )}
 
-                  <section className="space-y-4">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><SmartphoneNfc className="h-4 w-4" /> Smart Nurture</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                       <Button variant="outline" className="h-12 rounded-xl bg-white font-black uppercase text-[9px] gap-2 border-primary/20 text-primary" onClick={() => window.open(`tel:${selectedLead.phone}`, '_self')}><Phone className="h-3.5 w-3.5" /> Call Node</Button>
-                       <Button variant="outline" className="h-12 rounded-xl bg-white font-black uppercase text-[9px] gap-2 border-green-200 text-green-600" onClick={() => window.open(`https://wa.me/${selectedLead.phone.replace(/\D/g, '')}`, '_blank')}><SmartphoneNfc className="h-3.5 w-3.5" /> WhatsApp</Button>
+                  <section className="space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2"><SmartphoneNfc className="h-4 w-4 text-primary" /> Quick Follow-up</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                       <Button asChild variant="outline" className="h-10 rounded-xl text-xs gap-2">
+                         <a href={`tel:${selectedLead.phone}`}><Phone className="h-3.5 w-3.5" /> Call</a>
+                       </Button>
+                       <Button asChild variant="outline" className="h-10 rounded-xl text-xs gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                         <a href={`https://wa.me/${(selectedLead.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer"><SmartphoneNfc className="h-3.5 w-3.5" /> WhatsApp</a>
+                       </Button>
                     </div>
                   </section>
                 </div>

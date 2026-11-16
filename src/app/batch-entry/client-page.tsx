@@ -35,8 +35,11 @@ import { toast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking, useCollection } from "@/firebase";
-import { collection, query, serverTimestamp, doc, runTransaction, increment, where, limit, getDocs } from "firebase/firestore";
+import { collection, query, serverTimestamp, doc, runTransaction, increment, where, limit, getDocs, orderBy } from "firebase/firestore";
 import { calculateGst } from "@/lib/gst-logic";
+import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
+import { evaluateCoreQuota, isCreatedInCurrentMonth } from "@/lib/marketplace-catalog";
+import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const FALLBACK_CATEGORIES = ["Sales", "Expense", "Rent", "Salary", "Purchase", "Utility", "Other"];
 const DEFAULT_UNITS = ["pcs", "kg", "box", "packet", "unit", "litre", "meter"];
@@ -73,15 +76,42 @@ export default function BatchEntryPage() {
 
   const businessRef = useMemoFirebase(() => businessId ? doc(firestore, 'businesses', businessId) : null, [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
+  const { limits } = useMarketplaceCatalog();
   
   const vendorsQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'vendors') : null, [firestore, businessId]);
   const { data: vendorsData = [] } = useCollection<any>(vendorsQuery);
+
+  const recentCashbookQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "cashbook"),
+            orderBy("createdAt", "desc"),
+            limit(300)
+          )
+        : null,
+    [firestore, businessId]
+  );
+  const { data: recentCashbookData } = useCollection<any>(recentCashbookQuery);
+
+  const monthlyEntriesCount = useMemo(
+    () =>
+      (recentCashbookData || []).filter((e: any) =>
+        isCreatedInCurrentMonth(e.date || e.createdAt)
+      ).length,
+    [recentCashbookData]
+  );
+
+  const entriesQuota = useMemo(
+    () => evaluateCoreQuota("daily_entries", monthlyEntriesCount, { limits, business }),
+    [monthlyEntriesCount, limits, business]
+  );
 
   const dynamicParticulars = business?.commonParticulars || FALLBACK_PARTICULARS;
   
   const dynamicUnits = business?.baseUnits || DEFAULT_UNITS;
   const dynamicCategories = business?.cashbookCategories || FALLBACK_CATEGORIES;
-  const cashbookTypes = business?.cashbookTypes || ["Credit", "Debit"];
+  const cashbookTypes: Array<string | { name: string; impact?: string }> = business?.cashbookTypes || ["Credit", "Debit"];
   const paymentMethods = business?.paymentModes || ["Cash", "UPI", "Card", "Bank Transfer"];
   const currencySymbol = business?.currencySymbol || business?.currency || '₹';
 
@@ -201,6 +231,22 @@ export default function BatchEntryPage() {
     const validEntries = draftEntries.filter(e => e.particulars.trim().length > 0);
     if (validEntries.length === 0) {
       toast({ variant: "destructive", title: "Missing Particulars", description: "Please enter particulars for at least one entry." });
+      return;
+    }
+
+    if (
+      entriesQuota.isReached ||
+      (!entriesQuota.isUnlocked &&
+        entriesQuota.limit < 999999 &&
+        entriesQuota.current + validEntries.length > entriesQuota.limit)
+    ) {
+      toast({
+        variant: "destructive",
+        title: entriesQuota.isLockedByMode ? "Module Upgrade Required" : "Monthly Cashbook Quota Reached",
+        description: entriesQuota.isLockedByMode
+          ? `Activate ${entriesQuota.menu.addonLabel} in Marketplace to record daily entries.`
+          : `Recording ${validEntries.length} entries exceeds your ${entriesQuota.limit} entries/month quota.`,
+      });
       return;
     }
 
@@ -348,90 +394,88 @@ export default function BatchEntryPage() {
 
   return (
     <div className="h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] flex flex-col bg-slate-50/70 text-slate-900">
-      {/* Responsive Header */}
-      <header className="bg-primary text-white shadow-md shrink-0">
+      {(!entriesQuota.isUnlocked || entriesQuota.isReached) && (
+        <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 pt-3 shrink-0">
+          <CoreQuotaBanner quota={entriesQuota} />
+        </div>
+      )}
+      {/* Clean Editorial Header */}
+      <header className="bg-white border-b border-slate-200 shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Left: Back button + Title */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="icon" 
                 onClick={() => router.push('/daily-entries')}
-                className="text-white hover:bg-white/15 h-9 w-9 sm:h-10 sm:w-10 rounded-xl shrink-0"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl shrink-0 border-slate-200"
                 title="Back to Daily Entries"
+                aria-label="Back to Daily Entries"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 text-slate-700" />
               </Button>
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-white/15 flex items-center justify-center border border-white/20 shrink-0 shadow-inner">
-                  <Layers className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Layers className="h-5 w-5" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-base sm:text-xl font-bold tracking-tight">Record Cash Entries</h1>
-                    <Badge variant="secondary" className="bg-white/20 text-white border-none text-[9px] font-black uppercase px-2 py-0.5 hidden sm:inline-flex">
-                      Batch Entry
-                    </Badge>
-                  </div>
-                  <p className="text-[10px] sm:text-xs text-white/80 font-medium">
-                    Multi-row rate × quantity cash booking
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 truncate">
+                    Record Cash Entries
+                  </h1>
+                  <p className="text-xs text-slate-500 truncate">
+                    Multi-row rate and quantity cash booking
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Right: Date Picker + View Mode Switcher */}
-            <div className="flex items-center gap-2 sm:gap-3 justify-between sm:justify-end">
-              {/* Date Input */}
-              <div className="flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 rounded-xl px-2.5 sm:px-3 py-1.5 transition-colors">
-                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80 shrink-0" />
-                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white/70 hidden md:inline">Date:</span>
+            <div className="flex items-center gap-2.5 justify-between sm:justify-end">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+                <Calendar className="h-4 w-4 text-slate-500 shrink-0" />
+                <span className="text-xs font-medium text-slate-500 hidden md:inline">Date:</span>
                 <input 
                   type="date" 
                   value={commonDate} 
                   onChange={(e) => setCommonDate(e.target.value)} 
-                  className="bg-transparent text-white text-xs sm:text-sm font-semibold outline-none cursor-pointer"
+                  className="bg-transparent text-slate-900 text-xs sm:text-sm font-mono tabular-nums font-medium outline-none cursor-pointer"
                 />
               </div>
 
-              {/* View Mode Toggle (Cards vs Table) */}
-              <div className="flex items-center bg-white/10 rounded-xl p-0.5 border border-white/15">
+              <div className="flex items-center bg-slate-100 rounded-xl p-1 border border-slate-200">
                 <button
                   type="button"
                   onClick={() => setViewMode('cards')}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                    "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0",
                     viewMode === 'cards' 
-                      ? "bg-white text-primary shadow-sm" 
-                      : "text-white/80 hover:text-white"
+                      ? "bg-white text-slate-900 shadow-sm" 
+                      : "text-slate-600 hover:text-slate-900"
                   )}
-                  title="Card View (Optimized for Mobile/Tablet)"
+                  title="Card View"
                 >
                   <LayoutGrid className="h-3.5 w-3.5" />
-                  <span className="text-[10px] font-bold uppercase hidden sm:inline">Cards</span>
+                  <span className="hidden sm:inline">Cards</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('table')}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                    "px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0",
                     viewMode === 'table' 
-                      ? "bg-white text-primary shadow-sm" 
-                      : "text-white/80 hover:text-white"
+                      ? "bg-white text-slate-900 shadow-sm" 
+                      : "text-slate-600 hover:text-slate-900"
                   )}
-                  title="Table View (Optimized for Wide Screens)"
+                  title="Table View"
                 >
                   <TableIcon className="h-3.5 w-3.5" />
-                  <span className="text-[10px] font-bold uppercase hidden sm:inline">Table</span>
+                  <span className="hidden sm:inline">Table</span>
                 </button>
               </div>
 
-              {/* Mobile quick add button */}
               <Button 
                 onClick={addRow}
                 size="sm"
-                className="bg-white text-primary hover:bg-white/90 font-bold text-xs h-8 sm:h-9 px-3 rounded-xl shadow-sm sm:hidden"
+                className="font-semibold text-xs h-9 px-3 rounded-xl sm:hidden"
               >
                 <Plus className="h-4 w-4 mr-1" /> Add
               </Button>
@@ -442,27 +486,22 @@ export default function BatchEntryPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto max-w-7xl w-full mx-auto p-3 sm:p-5 lg:p-6 space-y-4">
-        {/* Helper Banner for quick instructions */}
-        <div className="bg-blue-50/80 border border-blue-100 rounded-2xl p-3 sm:p-4 flex items-start sm:items-center justify-between gap-3 text-blue-950">
+        <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex items-start sm:items-center justify-between gap-3 text-slate-700">
           <div className="flex items-start sm:items-center gap-2.5">
-            <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
-            <div className="text-xs">
-              <span className="font-bold">Tip: </span> 
-              Type any item name or description; rate × quantity automatically computes the row total. Stock updates automatically if item exists in inventory.
-            </div>
+            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5 sm:mt-0" />
+            <p className="text-xs text-slate-600">
+              <span className="font-semibold text-slate-900">Tip:</span> Type any item name or description; rate × quantity computes the row total and syncs matching inventory stock automatically.
+            </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link href="/daily-entries" className="text-[11px] font-bold text-primary hover:underline hidden sm:inline">
-              Daily Cash Book →
-            </Link>
-          </div>
+          <Link href="/daily-entries" className="text-xs font-semibold text-primary hover:underline whitespace-nowrap shrink-0 hidden sm:inline">
+            Daily Cash Book →
+          </Link>
         </div>
 
-        {/* View Mode 1: Responsive Cards View (Mobile & Tablet Friendly) */}
+        {/* View Mode 1: Responsive Cards View */}
         {viewMode === 'cards' && (
           <div className="space-y-4">
             {draftEntries.map((entry, idx) => {
-              const typeMeta = getTypeStyle(entry.type);
               const searchVal = rowSearchTerms[entry.id] || '';
               const filteredParticulars = allParticulars.filter((p: string) => 
                 p.toLowerCase().includes(searchVal.toLowerCase())
@@ -472,20 +511,16 @@ export default function BatchEntryPage() {
               return (
                 <div 
                   key={entry.id}
-                  className={cn(
-                    "bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-visible transition-all hover:shadow-md border-l-4",
-                    typeMeta.accentBorder
-                  )}
+                  className="bg-white rounded-2xl border border-slate-200 overflow-visible"
                 >
                   {/* Card Header */}
-                  <div className="p-3 sm:p-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="font-mono text-xs font-bold text-slate-700 bg-white">
+                  <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 bg-slate-50/70 rounded-t-2xl">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg px-2 py-1">
                         #{idx + 1}
-                      </Badge>
+                      </span>
 
-                      {/* Type Selector (Pills) */}
-                      <div className="flex items-center bg-slate-200/60 p-0.5 rounded-xl">
+                      <div className="flex items-center bg-slate-200/70 p-0.5 rounded-xl">
                         {cashbookTypes.map((t) => {
                           const name = typeof t === 'string' ? t : t.name;
                           const lcType = name.toLowerCase();
@@ -498,7 +533,7 @@ export default function BatchEntryPage() {
                               type="button"
                               onClick={() => updateRow(entry.id, 'type', lcType)}
                               className={cn(
-                                "px-2 py-1 text-[10px] sm:text-xs font-bold uppercase rounded-lg transition-all",
+                                "px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap",
                                 isActive ? `${typeStyle.badge} shadow-sm` : "text-slate-600 hover:text-slate-900"
                               )}
                             >
@@ -509,25 +544,25 @@ export default function BatchEntryPage() {
                       </div>
                     </div>
 
-                    {/* Amount preview & row actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <div className="text-right">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase block leading-none">Row Total</span>
+                        <span className="text-xs text-slate-500 block leading-none">Row Total</span>
                         <span className={cn(
-                          "text-base sm:text-lg font-black tracking-tight",
-                          entry.type === 'credit' ? "text-emerald-600" : entry.type === 'debit' ? "text-rose-600" : entry.type === 'nc' ? "text-amber-600" : "text-blue-600"
+                          "text-base sm:text-lg font-bold font-mono tabular-nums tracking-tight",
+                          entry.type === 'credit' ? "text-emerald-700" : entry.type === 'debit' ? "text-rose-600" : entry.type === 'nc' ? "text-amber-700" : "text-blue-700"
                         )}>
                           {currencySymbol}{entry.amount.toLocaleString()}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
+                      <div className="flex items-center gap-1 pl-2.5 border-l border-slate-200">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => duplicateRow(entry)}
-                          className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                          className="h-8 w-8 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg"
                           title="Duplicate row"
+                          aria-label={`Duplicate entry row ${idx + 1}`}
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
@@ -536,32 +571,33 @@ export default function BatchEntryPage() {
                           size="icon"
                           onClick={() => removeRow(entry.id)}
                           disabled={draftEntries.length <= 1}
-                          className="h-8 w-8 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg disabled:opacity-30"
+                          className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg disabled:opacity-30"
                           title="Delete row"
+                          aria-label={`Delete entry row ${idx + 1}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
                   </div>
-                  {/* Card Body: Responsive form fields */}
-                  <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+
+                  {/* Card Body */}
+                  <div className="p-4 sm:p-5 space-y-4">
                     {/* Row 1: Particulars & Vendor */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                      {/* Particulars input with autocomplete */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1.5 relative">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
+                          <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
                             <span>Particulars / Member</span>
                             <span className="text-rose-500">*</span>
                           </Label>
-                          <Link href="/settings?tab=master" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
-                            <Settings className="h-2.5 w-2.5" /> Master List
+                          <Link href="/settings?tab=master" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                            <Settings className="h-3 w-3" /> Master List
                           </Link>
                         </div>
                         <div className="relative">
                           <Input 
-                            placeholder="Particulars (e.g., Tea & Snacks) or Member Name (e.g., Khoman Sahu)..." 
+                            placeholder="Particulars (e.g., Tea & Snacks) or Member Name..." 
                             value={entry.particulars} 
                             onChange={(e) => {
                               updateRow(entry.id, 'particulars', e.target.value);
@@ -572,7 +608,7 @@ export default function BatchEntryPage() {
                               setActiveSearchRowId(entry.id);
                               setRowSearchTerms(prev => ({ ...prev, [entry.id]: entry.particulars || '' }));
                             }}
-                            className="pr-10 text-xs sm:text-sm font-medium h-10 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white"
+                            className="pr-10 text-xs sm:text-sm h-10 rounded-xl bg-white border-slate-200"
                           />
                           {entry.particulars && !dynamicParticulars.includes(entry.particulars) && !entry.particulars.endsWith(" [Staff]") && (
                             <button
@@ -587,8 +623,8 @@ export default function BatchEntryPage() {
                         </div>
 
                         {isSearchOpen && (
-                          <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                            <div className="p-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 border-b">
+                          <div className="absolute left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                            <div className="px-3 py-1.5 text-xs font-semibold text-slate-500 bg-slate-50 border-b border-slate-100">
                               Suggested Particulars
                             </div>
                             {filteredParticulars.length > 0 ? (
@@ -609,25 +645,25 @@ export default function BatchEntryPage() {
                                     }
                                     setActiveSearchRowId(null);
                                   }}
-                                  className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-primary/5 hover:text-primary transition-colors flex items-center justify-between"
+                                  className="w-full text-left px-3 py-2 text-xs font-medium hover:bg-slate-50 hover:text-primary transition-colors flex items-center justify-between"
                                 >
                                   <span>{item}</span>
-                                  <span className="text-[9px] text-slate-400">Select</span>
+                                  <span className="text-xs text-slate-400">Select</span>
                                 </button>
                               ))
                             ) : (
                               <div className="p-3 text-xs text-slate-500 text-center">
-                                No exact matches. Click <span className="font-bold text-emerald-600">+</span> to save as master particular.
+                                No exact matches. Click <span className="font-semibold text-emerald-600">+</span> to save as master particular.
                               </div>
                             )}
-                            <div className="p-2 border-t bg-slate-50 flex items-center justify-between">
-                              <Link href="/settings?tab=master" className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1">
+                            <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                              <Link href="/settings?tab=master" className="text-xs font-semibold text-primary hover:underline flex items-center gap-1">
                                 <Settings className="h-3 w-3" /> Manage Master Particulars
                               </Link>
                               <button
                                 type="button"
                                 onClick={() => setActiveSearchRowId(null)}
-                                className="text-[10px] font-bold text-slate-500 hover:text-slate-800"
+                                className="text-xs font-medium text-slate-500 hover:text-slate-800"
                               >
                                 Close
                               </button>
@@ -636,13 +672,12 @@ export default function BatchEntryPage() {
                         )}
                       </div>
 
-                      {/* Vendor Selector */}
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1">
-                            <Building2 className="h-3 w-3 text-slate-400" /> Vendor / Supplier
+                          <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                            <Building2 className="h-3.5 w-3.5 text-slate-400" /> Vendor / Supplier
                           </Label>
-                          <Link href="/vendors" className="text-[10px] font-bold text-primary hover:underline">
+                          <Link href="/vendors" className="text-xs font-medium text-primary hover:underline">
                             + Vendors
                           </Link>
                         </div>
@@ -650,17 +685,17 @@ export default function BatchEntryPage() {
                           value={entry.vendorName || "none"} 
                           onValueChange={(v) => updateRow(entry.id, 'vendorName', v === "none" ? "" : v)}
                         >
-                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
                             <SelectValue placeholder="Select Vendor (Optional)" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-64 rounded-xl shadow-xl">
-                            <SelectItem value="none" className="text-xs text-slate-400 italic">None / General</SelectItem>
+                          <SelectContent className="max-h-64 rounded-xl">
+                            <SelectItem value="none" className="text-xs text-slate-500">None / General</SelectItem>
                             {(vendorsData || []).map((v: any) => (
-                              <SelectItem key={v.id} value={v.name} className="text-xs font-semibold">{v.name}</SelectItem>
+                              <SelectItem key={v.id} value={v.name} className="text-xs font-medium">{v.name}</SelectItem>
                             ))}
                             <SelectSeparator />
                             <div 
-                              className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                              className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                               onClick={() => router.push('/vendors')}
                             >
                               <Settings className="h-3 w-3" /> Manage Vendors Directory
@@ -670,10 +705,10 @@ export default function BatchEntryPage() {
                       </div>
                     </div>
 
-                    {/* Row 2: Rate, Quantity, Unit, GST, and Calculated Total */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                    {/* Row 2: Rate, Quantity, Unit, GST, Total */}
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Rate ({currencySymbol})
                         </Label>
                         <Input 
@@ -682,12 +717,12 @@ export default function BatchEntryPage() {
                           placeholder="0.00" 
                           value={entry.rate} 
                           onChange={(e) => updateRow(entry.id, 'rate', e.target.value)} 
-                          className="h-10 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white text-right"
+                          className="h-10 text-xs sm:text-sm font-mono tabular-nums font-medium rounded-xl bg-white border-slate-200 text-right"
                         />
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Qty
                         </Label>
                         <Input 
@@ -696,25 +731,25 @@ export default function BatchEntryPage() {
                           placeholder="0" 
                           value={entry.qty} 
                           onChange={(e) => updateRow(entry.id, 'qty', e.target.value)} 
-                          className="h-10 text-xs sm:text-sm font-semibold rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white text-right"
+                          className="h-10 text-xs sm:text-sm font-mono tabular-nums font-medium rounded-xl bg-white border-slate-200 text-right"
                         />
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Unit
                         </Label>
                         <Select value={entry.unit} onValueChange={(v) => updateRow(entry.id, 'unit', v)}>
-                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl shadow-xl">
+                          <SelectContent className="rounded-xl">
                             {dynamicUnits.map((u: string) => (
-                              <SelectItem key={u} value={u} className="text-xs font-semibold">{u}</SelectItem>
+                              <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>
                             ))}
                             <SelectSeparator />
                             <div 
-                              className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                              className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                               onClick={() => router.push('/settings?tab=master')}
                             >
                               <Settings className="h-3 w-3" /> Manage Units
@@ -723,49 +758,49 @@ export default function BatchEntryPage() {
                         </Select>
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600">
                           GST %
                         </Label>
                         <Select value={(entry.gstRate || 0).toString()} onValueChange={(v) => updateRow(entry.id, 'gstRate', parseFloat(v))}>
-                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
                             <SelectValue placeholder="0%" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl shadow-xl">
+                          <SelectContent className="rounded-xl">
                             {(business?.gstSlabs || [0, 5, 12, 18, 28]).map((slab: number) => (
-                              <SelectItem key={slab} value={slab.toString()} className="text-xs font-semibold">{slab}%</SelectItem>
+                              <SelectItem key={slab} value={slab.toString()} className="text-xs">{slab}%</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Total Amount
                         </Label>
-                        <div className="h-10 px-3 flex items-center justify-end rounded-xl bg-slate-100 text-slate-800 font-black text-sm border border-slate-200">
+                        <div className="h-10 px-3 flex items-center justify-end rounded-xl bg-slate-50 text-slate-900 font-mono tabular-nums font-bold text-sm border border-slate-200">
                           {currencySymbol}{entry.amount.toLocaleString()}
                         </div>
                       </div>
                     </div>
 
-                    {/* Row 3: Category, Payment Mode, Staff, and Remark */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                          <Tag className="h-2.5 w-2.5 text-slate-400" /> Category
+                    {/* Row 3: Category, Payment Mode, Staff, Remark */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                          <Tag className="h-3 w-3 text-slate-400" /> Category
                         </Label>
                         <Select value={entry.category} onValueChange={(v) => updateRow(entry.id, 'category', v)}>
-                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl shadow-xl">
+                          <SelectContent className="rounded-xl">
                             {dynamicCategories.map((c: string) => (
-                              <SelectItem key={c} value={c} className="text-xs font-semibold">{c}</SelectItem>
+                              <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
                             ))}
                             <SelectSeparator />
                             <div 
-                              className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                              className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                               onClick={() => router.push('/settings?tab=master')}
                             >
                               <Settings className="h-3 w-3" /> Manage Categories
@@ -775,38 +810,38 @@ export default function BatchEntryPage() {
                       </div>
 
                       {entry.category === 'Salary' && (
-                        <div className="space-y-1">
-                            <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                                <User className="h-2.5 w-2.5 text-slate-400" /> Staff Member
-                            </Label>
-                            <Select value={entry.staffId || ""} onValueChange={(v) => updateRow(entry.id, 'staffId', v)}>
-                                <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
-                                    <SelectValue placeholder="Select Staff..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl shadow-xl">
-                                    {staffList.map((s: any) => (
-                                        <SelectItem key={s.id} value={s.id} className="text-xs font-semibold">{s.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                            <User className="h-3 w-3 text-slate-400" /> Staff Member
+                          </Label>
+                          <Select value={entry.staffId || ""} onValueChange={(v) => updateRow(entry.id, 'staffId', v)}>
+                            <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
+                              <SelectValue placeholder="Select Staff..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              {staffList.map((s: any) => (
+                                <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       )}
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                          <CreditCard className="h-2.5 w-2.5 text-slate-400" /> Payment Mode
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                          <CreditCard className="h-3 w-3 text-slate-400" /> Payment Mode
                         </Label>
                         <Select value={entry.paymentMethod} onValueChange={(v) => updateRow(entry.id, 'paymentMethod', v)}>
-                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
                             <SelectValue placeholder="Payment Mode" />
                           </SelectTrigger>
-                          <SelectContent className="max-h-64 rounded-xl shadow-xl">
+                          <SelectContent className="max-h-64 rounded-xl">
                             {(paymentMethods || []).map((p: string) => (
-                              <SelectItem key={p} value={p} className="text-xs font-semibold">{p}</SelectItem>
+                              <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
                             ))}
                             <SelectSeparator />
                             <div 
-                              className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                              className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                               onClick={() => router.push('/settings?tab=payments')}
                             >
                               <Settings className="h-3 w-3" /> Manage Payment Modes
@@ -815,24 +850,24 @@ export default function BatchEntryPage() {
                         </Select>
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                          <User className="h-2.5 w-2.5 text-slate-400" /> Added By / Staff
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                          <User className="h-3 w-3 text-slate-400" /> Added By / Staff
                         </Label>
                         <Select value={entry.addedBy || "Owner"} onValueChange={(v) => updateRow(entry.id, 'addedBy', v)}>
-                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200">
+                          <SelectTrigger className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200">
                             <SelectValue placeholder="Staff..." />
                           </SelectTrigger>
-                          <SelectContent className="max-h-64 rounded-xl shadow-xl">
-                            <SelectItem value="Owner" className="text-xs font-semibold">Owner / Admin</SelectItem>
+                          <SelectContent className="max-h-64 rounded-xl">
+                            <SelectItem value="Owner" className="text-xs">Owner / Admin</SelectItem>
                             {(staffList || []).map((s: any) => (
-                              <SelectItem key={s.id} value={s.name || s.email} className="text-xs font-semibold">
+                              <SelectItem key={s.id} value={s.name || s.email} className="text-xs">
                                 {s.name || s.email}
                               </SelectItem>
                             ))}
                             <SelectSeparator />
                             <div 
-                              className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                              className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                               onClick={() => router.push('/settings?tab=team')}
                             >
                               <Settings className="h-3 w-3" /> Manage Staff Members
@@ -841,15 +876,15 @@ export default function BatchEntryPage() {
                         </Select>
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
-                          <FileText className="h-2.5 w-2.5 text-slate-400" /> Remark / Note
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                          <FileText className="h-3 w-3 text-slate-400" /> Remark / Note
                         </Label>
                         <Input 
                           placeholder="Optional note..." 
                           value={entry.remark} 
                           onChange={(e) => updateRow(entry.id, 'remark', e.target.value)} 
-                          className="h-10 text-xs sm:text-sm rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white"
+                          className="h-10 text-xs sm:text-sm rounded-xl bg-white border-slate-200"
                         />
                       </div>
                     </div>
@@ -860,13 +895,13 @@ export default function BatchEntryPage() {
           </div>
         )}
 
-        {/* View Mode 2: Spreadsheet Table View (Horizontal scroll container for wide screens) */}
+        {/* View Mode 2: Spreadsheet Table View */}
         {viewMode === 'table' && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
-            <div className="overflow-visible">
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-visible">
+            <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse min-w-[1300px]">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200 text-[10px] font-black uppercase tracking-wider text-slate-600">
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-xs font-semibold text-slate-600">
                     <th className="p-3 w-12 text-center">#</th>
                     <th className="p-3 w-28">Type</th>
                     <th className="p-3 min-w-[220px]">Particulars</th>
@@ -893,21 +928,24 @@ export default function BatchEntryPage() {
 
                     return (
                       <tr key={entry.id} className="bg-white hover:bg-slate-50/70 transition-colors">
-                        <td className="p-2.5 text-center font-mono font-bold text-slate-400">
+                        <td className="p-2.5 text-center font-mono font-semibold text-slate-500">
                           {idx + 1}
                         </td>
                         <td className="p-2.5">
                           <Select value={entry.type} onValueChange={(v) => updateRow(entry.id, 'type', v)}>
                             <SelectTrigger className={cn(
-                              "h-9 text-xs font-bold rounded-lg border-none shadow-none",
+                              "h-9 text-xs font-semibold rounded-lg border",
                               getTypeStyle(entry.type).badge
                             )}>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-xl">
-                              {cashbookTypes.map((t) => (
-                                <SelectItem key={t} value={t.toLowerCase()} className="font-bold">{t}</SelectItem>
-                              ))}
+                            <SelectContent className="rounded-xl">
+                              {cashbookTypes.map((t) => {
+                                const name = typeof t === 'string' ? t : t.name;
+                                return (
+                                  <SelectItem key={name} value={name.toLowerCase()} className="font-medium">{name}</SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </td>
@@ -939,7 +977,7 @@ export default function BatchEntryPage() {
                             )}
                           </div>
                           {isSearchOpen && (
-                            <div className="absolute left-0 right-0 z-[100] mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-48 overflow-y-auto w-full">
+                            <div className="absolute left-0 right-0 z-[100] mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto w-full">
                               {filteredParticulars.length > 0 ? (
                                 filteredParticulars.map((item: string) => (
                                   <div 
@@ -957,34 +995,33 @@ export default function BatchEntryPage() {
                                       }
                                       setActiveSearchRowId(null);
                                     }}
-                                    className="px-3 py-2 text-xs hover:bg-primary/5 cursor-pointer border-b"
+                                    className="px-3 py-2 text-xs hover:bg-slate-50 cursor-pointer border-b border-slate-100"
                                   >
                                     {item}
                                   </div>
                                 ))
                               ) : (
-                                <div className="p-2 text-[10px] text-slate-400 italic text-center">No matches</div>
+                                <div className="p-2 text-xs text-slate-400 text-center">No matches</div>
                               )}
-                              <Link href="/settings?tab=master" className="flex items-center gap-2 p-2.5 text-[10px] font-black uppercase text-primary hover:bg-primary/5 cursor-pointer border-t">
+                              <Link href="/settings?tab=master" className="flex items-center gap-2 p-2.5 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer border-t border-slate-100">
                                 <Settings className="h-3 w-3" /> Manage Particulars
                               </Link>
                             </div>
                           )}
-
                         </td>
                         <td className="p-2.5">
                           <Select value={entry.vendorName || "none"} onValueChange={(v) => updateRow(entry.id, 'vendorName', v === "none" ? "" : v)}>
                             <SelectTrigger className="h-9 text-xs rounded-lg">
                               <SelectValue placeholder="Vendor..." />
                             </SelectTrigger>
-                            <SelectContent className="max-h-60 rounded-xl shadow-xl">
-                              <SelectItem value="none" className="text-xs text-slate-400 italic">None</SelectItem>
+                            <SelectContent className="max-h-60 rounded-xl">
+                              <SelectItem value="none" className="text-xs text-slate-400">None</SelectItem>
                               {(vendorsData || []).map((v: any) => (
                                 <SelectItem key={v.id} value={v.name} className="text-xs">{v.name}</SelectItem>
                               ))}
                               <SelectSeparator />
                               <div 
-                                className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                                className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                                 onClick={() => router.push('/vendors')}
                               >
                                 <Settings className="h-3 w-3" /> Manage Vendors
@@ -999,7 +1036,7 @@ export default function BatchEntryPage() {
                             placeholder="0" 
                             value={entry.rate} 
                             onChange={(e) => updateRow(entry.id, 'rate', e.target.value)} 
-                            className="h-9 w-24 text-xs font-semibold text-right rounded-lg"
+                            className="h-9 w-24 text-xs font-mono tabular-nums font-medium text-right rounded-lg"
                           />
                         </td>
                         <td className="p-2.5">
@@ -1009,7 +1046,7 @@ export default function BatchEntryPage() {
                             placeholder="1" 
                             value={entry.qty} 
                             onChange={(e) => updateRow(entry.id, 'qty', e.target.value)} 
-                            className="h-9 w-20 text-xs font-semibold text-right rounded-lg"
+                            className="h-9 w-20 text-xs font-mono tabular-nums font-medium text-right rounded-lg"
                           />
                         </td>
                         <td className="p-2.5">
@@ -1017,13 +1054,13 @@ export default function BatchEntryPage() {
                             <SelectTrigger className="h-9 text-xs rounded-lg">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-xl">
+                            <SelectContent className="rounded-xl">
                               {dynamicUnits.map((u: string) => (
                                 <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>
                               ))}
                               <SelectSeparator />
                               <div 
-                                className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                                className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                                 onClick={() => router.push('/settings?tab=master')}
                               >
                                 <Settings className="h-3 w-3" /> Manage Units
@@ -1033,17 +1070,17 @@ export default function BatchEntryPage() {
                         </td>
                         <td className="p-2.5">
                           <Select value={(entry.gstRate || 0).toString()} onValueChange={(v) => updateRow(entry.id, 'gstRate', parseFloat(v))}>
-                             <SelectTrigger className="h-9 w-20 text-xs font-semibold rounded-lg">
-                               <SelectValue placeholder="0%" />
-                             </SelectTrigger>
-                             <SelectContent className="max-h-60 rounded-xl shadow-xl">
-                                {(business?.gstSlabs || [0, 5, 12, 18, 28]).map((slab: number) => (
-                                  <SelectItem key={slab} value={slab.toString()} className="text-xs font-semibold">{slab}%</SelectItem>
-                                ))}
-                             </SelectContent>
+                            <SelectTrigger className="h-9 w-20 text-xs font-mono rounded-lg">
+                              <SelectValue placeholder="0%" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60 rounded-xl">
+                              {(business?.gstSlabs || [0, 5, 12, 18, 28]).map((slab: number) => (
+                                <SelectItem key={slab} value={slab.toString()} className="text-xs font-mono">{slab}%</SelectItem>
+                              ))}
+                            </SelectContent>
                           </Select>
                         </td>
-                        <td className="p-2.5 text-right font-black text-slate-800">
+                        <td className="p-2.5 text-right font-mono tabular-nums font-semibold text-slate-900">
                           {currencySymbol}{entry.amount.toLocaleString()}
                         </td>
                         <td className="p-2.5">
@@ -1051,13 +1088,13 @@ export default function BatchEntryPage() {
                             <SelectTrigger className="h-9 text-xs rounded-lg">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-xl">
+                            <SelectContent className="rounded-xl">
                               {dynamicCategories.map((c: string) => (
                                 <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
                               ))}
                               <SelectSeparator />
                               <div 
-                                className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                                className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                                 onClick={() => router.push('/settings?tab=master')}
                               >
                                 <Settings className="h-3 w-3" /> Manage Categories
@@ -1065,16 +1102,16 @@ export default function BatchEntryPage() {
                             </SelectContent>
                           </Select>
                           {entry.category === 'Salary' && (
-                              <Select value={entry.staffId || ""} onValueChange={(v) => updateRow(entry.id, 'staffId', v)}>
-                                  <SelectTrigger className="h-9 mt-1 text-xs rounded-lg w-full">
-                                      <SelectValue placeholder="Staff..." />
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl shadow-xl">
-                                      {staffList.map((s: any) => (
-                                          <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
-                                      ))}
-                                  </SelectContent>
-                              </Select>
+                            <Select value={entry.staffId || ""} onValueChange={(v) => updateRow(entry.id, 'staffId', v)}>
+                              <SelectTrigger className="h-9 mt-1 text-xs rounded-lg w-full">
+                                <SelectValue placeholder="Staff..." />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                {staffList.map((s: any) => (
+                                  <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           )}
                         </td>
                         <td className="p-2.5">
@@ -1082,13 +1119,13 @@ export default function BatchEntryPage() {
                             <SelectTrigger className="h-9 text-xs rounded-lg">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-xl">
+                            <SelectContent className="rounded-xl">
                               {(paymentMethods || []).map((p: string) => (
                                 <SelectItem key={p} value={p} className="text-xs">{p}</SelectItem>
                               ))}
                               <SelectSeparator />
                               <div 
-                                className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                                className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                                 onClick={() => router.push('/settings?tab=payments')}
                               >
                                 <Settings className="h-3 w-3" /> Manage Payments
@@ -1101,14 +1138,14 @@ export default function BatchEntryPage() {
                             <SelectTrigger className="h-9 text-xs rounded-lg">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl shadow-xl">
-                              <SelectItem value="Owner" className="text-xs font-semibold">Owner</SelectItem>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="Owner" className="text-xs">Owner</SelectItem>
                               {(staffList || []).map((s: any) => (
                                 <SelectItem key={s.id} value={s.name || s.email} className="text-xs">{s.name || s.email}</SelectItem>
                               ))}
                               <SelectSeparator />
                               <div 
-                                className="px-2 py-2 text-xs font-bold text-primary hover:bg-muted cursor-pointer flex items-center gap-2" 
+                                className="px-2 py-2 text-xs font-semibold text-primary hover:bg-slate-50 cursor-pointer flex items-center gap-2" 
                                 onClick={() => router.push('/settings?tab=team')}
                               >
                                 <Settings className="h-3 w-3" /> Manage Team
@@ -1130,8 +1167,9 @@ export default function BatchEntryPage() {
                               variant="ghost" 
                               size="icon" 
                               onClick={() => duplicateRow(entry)} 
-                              className="h-7 w-7 text-slate-400 hover:text-slate-700 rounded-md"
+                              className="h-7 w-7 text-slate-500 hover:text-slate-800 rounded-md"
                               title="Duplicate"
+                              aria-label={`Duplicate row ${idx + 1}`}
                             >
                               <Copy className="h-3.5 w-3.5" />
                             </Button>
@@ -1140,8 +1178,9 @@ export default function BatchEntryPage() {
                               size="icon" 
                               onClick={() => removeRow(entry.id)} 
                               disabled={draftEntries.length <= 1}
-                              className="h-7 w-7 text-rose-400 hover:text-rose-600 rounded-md disabled:opacity-30"
+                              className="h-7 w-7 text-rose-500 hover:text-rose-600 rounded-md disabled:opacity-30"
                               title="Delete"
+                              aria-label={`Delete row ${idx + 1}`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -1161,7 +1200,7 @@ export default function BatchEntryPage() {
           <Button 
             onClick={addRow} 
             variant="outline" 
-            className="w-full h-11 border-dashed border-2 border-primary/30 text-primary hover:bg-primary/5 hover:border-primary font-bold text-xs uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-2"
+            className="w-full h-11 border-dashed border-slate-300 text-slate-700 hover:bg-white hover:border-slate-400 font-semibold text-xs rounded-2xl transition-colors flex items-center justify-center gap-2"
           >
             <Plus className="h-4 w-4" /> Add Another Entry (Row #{draftEntries.length + 1})
           </Button>
@@ -1169,41 +1208,39 @@ export default function BatchEntryPage() {
       </main>
 
       {/* Persistent Footer */}
-      <footer className="shrink-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-2xl p-3 sm:p-4 z-30">
+      <footer className="shrink-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:p-4 z-30">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
-          {/* Summary Statistics Cards (Responsive Grid on Mobile) */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4 w-full md:w-auto">
-            <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2 sm:p-2.5 text-center">
-              <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 block">Batch Credit</span>
-              <span className="text-sm sm:text-base font-black text-emerald-700">{currencySymbol}{batchStats.credit.toLocaleString()}</span>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 w-full md:w-auto">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-center">
+              <span className="text-xs font-medium text-slate-500 block">Credit</span>
+              <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-emerald-700">{currencySymbol}{batchStats.credit.toLocaleString()}</span>
             </div>
-            <div className="bg-rose-50/70 border border-rose-100 rounded-xl p-2 sm:p-2.5 text-center">
-              <span className="text-[9px] font-black uppercase tracking-wider text-rose-700 block">Batch Debit</span>
-              <span className="text-sm sm:text-base font-black text-rose-700">{currencySymbol}{batchStats.debit.toLocaleString()}</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-center">
+              <span className="text-xs font-medium text-slate-500 block">Debit</span>
+              <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-rose-600">{currencySymbol}{batchStats.debit.toLocaleString()}</span>
             </div>
-            <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-2 sm:p-2.5 text-center hidden sm:block">
-              <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 block">NC Total</span>
-              <span className="text-sm sm:text-base font-black text-amber-700">{currencySymbol}{batchStats.nc.toLocaleString()}</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-center hidden sm:block">
+              <span className="text-xs font-medium text-slate-500 block">NC Total</span>
+              <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-amber-700">{currencySymbol}{batchStats.nc.toLocaleString()}</span>
             </div>
-            <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-2 sm:p-2.5 text-center hidden sm:block">
-              <span className="text-[9px] font-black uppercase tracking-wider text-blue-700 block">Due Total</span>
-              <span className="text-sm sm:text-base font-black text-blue-700">{currencySymbol}{batchStats.due.toLocaleString()}</span>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-center hidden sm:block">
+              <span className="text-xs font-medium text-slate-500 block">Due Total</span>
+              <span className="text-sm sm:text-base font-bold font-mono tabular-nums text-blue-700">{currencySymbol}{batchStats.due.toLocaleString()}</span>
             </div>
             <div className={cn(
               "col-span-2 sm:col-span-1 rounded-xl p-2 sm:p-2.5 text-center border",
-              batchStats.net >= 0 ? "bg-primary/10 border-primary/20 text-primary" : "bg-rose-100/60 border-rose-300 text-rose-700"
+              batchStats.net >= 0 ? "bg-slate-900 border-slate-900 text-white" : "bg-rose-50 border-rose-200 text-rose-700"
             )}>
-              <span className="text-[9px] font-black uppercase tracking-wider block opacity-80">Net Total</span>
-              <span className="text-sm sm:text-base font-black">{currencySymbol}{batchStats.net.toLocaleString()}</span>
+              <span className={cn("text-xs font-medium block", batchStats.net >= 0 ? "text-slate-300" : "text-rose-600")}>Net Total</span>
+              <span className="text-sm sm:text-base font-bold font-mono tabular-nums">{currencySymbol}{batchStats.net.toLocaleString()}</span>
             </div>
           </div>
 
-          {/* Action Button: Post Batch Entries */}
           <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto">
             <Button
               onClick={handleSaveBatch}
               disabled={isSubmitting}
-              className="w-full md:w-auto min-w-[200px] h-11 sm:h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              className="w-full md:w-auto min-w-[220px] h-11 bg-primary hover:bg-primary/90 text-white rounded-xl font-semibold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { UserPlus, Gift, Loader2 } from "lucide-react";
@@ -14,59 +13,105 @@ interface IdentityFormProps {
   isOtpSending: boolean;
 }
 
-export function IdentityForm({ formData, setFormData, onSubmit, isOtpSending }: IdentityFormProps) {
+export function IdentityForm({
+  formData,
+  setFormData,
+  onSubmit,
+  isOtpSending,
+}: IdentityFormProps) {
   return (
-    <Card className="border-none shadow-xl bg-white rounded-[2rem] sm:rounded-[3rem] overflow-hidden border animate-in slide-in-from-bottom-10 duration-700 mx-2 text-left">
-      <CardHeader className="p-8 sm:p-12 pb-0">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20 shadow-inner">
-            <UserPlus className="h-6 w-6 sm:h-7 sm:w-7" />
+    <Card className="border border-slate-200 bg-white rounded-2xl overflow-hidden text-left shadow-none">
+      <CardHeader className="p-6 sm:p-8 pb-4 border-b border-slate-100">
+        <div className="flex items-center gap-4">
+          <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-primary shrink-0">
+            <UserPlus className="h-5 w-5" />
           </div>
-          <div className="text-left">
-            <h3 className="text-base sm:text-xl font-black uppercase tracking-widest text-slate-900 leading-none">Join Now Section</h3>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase mt-2 tracking-widest opacity-60">Identity Establishment</p>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 leading-tight">
+              Member Enrollment Details
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Verify your phone number to activate your membership card.
+            </p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-8 sm:p-12 space-y-8">
-        <form onSubmit={onSubmit} className="space-y-6 text-left">
-          <div className="space-y-2 text-left">
-            <Label className="text-[11px] font-black uppercase text-slate-500 ml-1">Legal Full Name *</Label>
-            <Input 
-              required 
-              value={formData.name} 
-              onChange={(e) => setFormData({...formData, name: e.target.value})} 
-              className="h-14 sm:h-16 rounded-2xl font-black bg-muted/20 border-none shadow-inner text-lg sm:text-xl" 
+      <CardContent className="p-6 sm:p-8">
+        <form onSubmit={onSubmit} className="space-y-5 text-left">
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="join-name"
+              className="text-xs font-semibold text-slate-700"
+            >
+              Full Name *
+            </Label>
+            <Input
+              id="join-name"
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              placeholder="Enter your full name"
+              className="h-12 rounded-xl bg-slate-50 border-slate-200 text-base font-medium"
             />
           </div>
-          <div className="space-y-2 text-left">
-            <Label className="text-[11px] font-black uppercase text-slate-500 ml-1">WhatsApp Identity *</Label>
-            <Input 
-              required 
-              value={formData.phone} 
-              onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} 
-              placeholder="91XXXXXXXX" 
-              className="h-14 sm:h-16 rounded-2xl font-black bg-muted/20 border-none shadow-inner text-lg sm:text-xl tracking-[0.2em]" 
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="join-phone"
+              className="text-xs font-semibold text-slate-700"
+            >
+              WhatsApp Mobile Number *
+            </Label>
+            <Input
+              id="join-phone"
+              required
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  phone: e.target.value.replace(/\D/g, ""),
+                })
+              }
+              placeholder="98XXXXXXXX"
+              className="h-12 rounded-xl bg-slate-50 border-slate-200 text-base font-mono tabular-nums tracking-wider"
             />
           </div>
-          <div className="space-y-2 text-left">
-             <Label className="text-[11px] font-black uppercase text-slate-500 ml-1">Referral Code (Optional)</Label>
-             <div className="relative">
-                <Gift className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40" />
-                <Input 
-                  value={formData.referralId} 
-                  onChange={(e) => setFormData({...formData, referralId: e.target.value.toUpperCase()})} 
-                  placeholder="BIZ-XXXX" 
-                  className="h-14 sm:h-16 pl-12 rounded-2xl font-black bg-primary/5 border-none shadow-inner text-lg tracking-widest" 
-                />
-             </div>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="join-referral"
+              className="text-xs font-semibold text-slate-700"
+            >
+              Referral Code (Optional)
+            </Label>
+            <div className="relative">
+              <Gift className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                id="join-referral"
+                value={formData.referralId}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    referralId: e.target.value.toUpperCase(),
+                  })
+                }
+                placeholder="BIZ-XXXX"
+                className="h-12 pl-10 rounded-xl bg-slate-50 border-slate-200 text-sm font-mono font-semibold tracking-wider"
+              />
+            </div>
           </div>
-          <Button 
-            type="submit" 
-            disabled={isOtpSending} 
-            className="w-full h-16 sm:h-20 bg-primary font-black uppercase text-xs sm:text-sm tracking-[0.2em] rounded-2xl sm:rounded-[2rem] shadow-2xl active:scale-95 transition-all text-white"
+          <Button
+            type="submit"
+            disabled={isOtpSending}
+            className="w-full h-12 bg-primary font-semibold text-sm rounded-xl text-white"
           >
-            {isOtpSending ? <Loader2 className="h-8 w-8 animate-spin" /> : "Transmit Secure OTP"}
+            {isOtpSending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Sending OTP...
+              </>
+            ) : (
+              "Send Verification OTP"
+            )}
           </Button>
         </form>
       </CardContent>

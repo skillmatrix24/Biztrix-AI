@@ -1,37 +1,94 @@
-
 "use client";
 
 import React from "react";
-import { Target, Zap, ArrowRight, Bot, ShieldCheck, BadgeCheck, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Target, Zap, ArrowRight, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { SectionCard } from "@/components/ui/editorial";
 import Link from "next/link";
 
 export function IntelligenceTab({ aiStats }: { aiStats: any }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
-      <div className="lg:col-span-8 space-y-8 text-left">
-        <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border text-left">
-          <CardHeader className="bg-primary/5 border-b py-6 px-8 text-left"><CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2"><Target className="h-4 w-4" /> Global Churn Radar</CardTitle></CardHeader>
-          <CardContent className="p-8 text-left">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10 text-left">
-               <div className="p-5 bg-red-50 rounded-2xl border border-red-100 space-y-2 text-left"><p className="text-[9px] font-black text-red-600 uppercase">At-Risk Cluster</p><p className="text-3xl font-black text-red-700">{aiStats['at-risk']}</p><p className="text-[8px] font-bold text-red-500 uppercase">No visit for 30+ days</p></div>
-               <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100 space-y-2 text-left"><p className="text-[9px] font-black text-orange-600 uppercase">Inactive Nodes</p><p className="text-3xl font-black text-orange-700">{aiStats['inactive']}</p><p className="text-[8px] font-bold text-orange-500 uppercase">Gone for 90+ days</p></div>
-               <div className="p-5 bg-green-50 rounded-2xl border border-green-100 space-y-2 text-left"><p className="text-[9px] font-black text-green-600 uppercase">Loyal Force</p><p className="text-3xl font-black text-green-700">{aiStats['loyal']}</p><p className="text-[8px] font-bold text-green-500 uppercase">Active interaction</p></div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left items-stretch">
+      <div className="lg:col-span-8">
+        <SectionCard title="Customer Churn Radar" description="Live member health segmented by last store interaction window.">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-rose-50 rounded-xl border border-rose-200 space-y-1">
+                <p className="text-xs font-semibold text-rose-700">At-Risk Members</p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-rose-900">{aiStats["at-risk"]}</p>
+                <p className="text-[11px] text-rose-600">No visit for 30+ days</p>
+              </div>
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 space-y-1">
+                <p className="text-xs font-semibold text-amber-700">Inactive Contacts</p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-amber-900">{aiStats["inactive"]}</p>
+                <p className="text-[11px] text-amber-600">No visit for 90+ days</p>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 space-y-1">
+                <p className="text-xs font-semibold text-emerald-700">Active & Loyal</p>
+                <p className="text-2xl font-bold font-mono tabular-nums text-emerald-900">{aiStats["loyal"]}</p>
+                <p className="text-[11px] text-emerald-600">Recent interaction</p>
+              </div>
             </div>
-            <Separator className="mb-10 opacity-40" />
-            <div className="space-y-6 text-left">
-               <div className="flex items-center justify-between text-left"><h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Intelligence Suggestions</h4><Button variant="ghost" size="sm" className="h-7 text-[8px] font-black uppercase text-primary gap-1">Scan Full Registry <ArrowRight className="h-3 w-3" /></Button></div>
-               <div className="space-y-4 text-left">{aiStats['at-risk'] > 0 && <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between gap-6 group hover:bg-primary/10 transition-all text-left"><div className="flex items-center gap-4 text-left"><div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm"><Zap className="h-5 w-5" /></div><div><p className="text-xs font-bold text-slate-900 leading-tight">Re-engage {aiStats['at-risk']} At-Risk customers with AI-personalized offers.</p></div></div><Button asChild size="sm" className="h-8 rounded-lg text-[9px] font-black uppercase bg-primary"><Link href="/loyalty/campaigns">Launch Sequence</Link></Button></div>}</div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900">Recommended Actions</h4>
+                <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-semibold text-slate-700 gap-1">
+                  <Link href="/customers">
+                    View Directory <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+
+              {aiStats["at-risk"] > 0 ? (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-900 shrink-0">
+                      <Zap className="h-4 w-4" />
+                    </div>
+                    <p className="text-xs font-medium text-slate-800 leading-snug">
+                      Re-engage <span className="font-mono font-bold tabular-nums">{aiStats["at-risk"]}</span> at-risk customers with a targeted comeback offer.
+                    </p>
+                  </div>
+                  <Button asChild size="sm" className="h-9 px-4 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white shrink-0">
+                    <Link href="/loyalty/campaigns">Launch Campaign</Link>
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">All customer segments are currently healthy.</p>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
-      <div className="lg:col-span-4 space-y-8 text-left">
-        <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden text-left"><CardHeader className="p-8 pb-4 text-left"><CardTitle className="text-sm font-black uppercase tracking-widest text-accent flex items-center gap-2"><Bot className="h-5 w-5" /> Cognitive Insight</CardTitle></CardHeader><CardContent className="p-8 pt-0 space-y-6 text-left"><p className="text-xs text-slate-400 leading-relaxed italic text-left">"I have analyzed the registry. Your <strong>Retention Score is 82%</strong>. I suggest a Friday evening WhatsApp sequence for at-risk clusters."</p><Separator className="bg-white/10" /><div className="space-y-4"><div className="flex items-center justify-between"><span className="text-[8px] font-bold text-slate-500 uppercase">Analysis Confidence</span><Badge className="bg-green-500 text-white border-none text-[7px] font-black uppercase h-4 px-1.5">OPTIMAL</Badge></div><Progress value={92} className="h-1 bg-white/10" /></div></CardContent></Card>
+
+      <div className="lg:col-span-4">
+        <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-5 text-left h-full flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2.5 text-sm font-bold text-white">
+              <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-white" />
+              </div>
+              Retention Insight
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Send a Friday evening WhatsApp reminder to at-risk customers before their 60-day dormancy window closes.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <Separator className="bg-white/10" />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-300">Signal Confidence</span>
+              <Badge className="bg-emerald-500/20 text-emerald-300 border-none text-[11px]">Optimal</Badge>
+            </div>
+            <Progress value={92} className="h-1.5 bg-white/10" />
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -2,10 +2,18 @@
 
 import React from "react";
 import { Star, Zap, Gift, Flame, Ticket, Gem, Grid, Layout } from "lucide-react";
+import { EmptyStatePanel } from "@/components/ui/editorial";
 import { CouponPublicCard } from "./CouponPublicCard";
 
 const GROUP_ICONS: Record<string, any> = {
-  Star, Zap, Gift, Flame, Ticket, Gem, Grid, Layout
+  Star,
+  Zap,
+  Gift,
+  Flame,
+  Ticket,
+  Gem,
+  Grid,
+  Layout,
 };
 
 interface RewardsTabProps {
@@ -19,58 +27,77 @@ interface RewardsTabProps {
   onInspect: (coupon: any) => void;
 }
 
-export function RewardsTab({ 
-  bundledCoupons, 
-  groupedCoupons, 
-  offerGroups, 
-  business, 
-  currencySymbol, 
-  member, 
-  activities, 
-  onInspect 
+export function RewardsTab({
+  bundledCoupons,
+  groupedCoupons,
+  offerGroups,
+  business,
+  currencySymbol,
+  member,
+  activities,
+  onInspect,
 }: RewardsTabProps) {
   if (!bundledCoupons || bundledCoupons.length === 0) {
     return (
-      <div className="p-20 text-center border-2 border-dashed rounded-[3rem] opacity-30 italic text-sm font-black uppercase">
-        No exclusive rewards currently linked to your tier.
-      </div>
+      <EmptyStatePanel
+        icon={Ticket}
+        title="No Exclusive Rewards Available"
+        description="No coupon offers are currently linked to your membership tier."
+      />
     );
   }
 
   return (
-    <div className="space-y-10 animate-in fade-in text-left">
-      {Object.keys(groupedCoupons).length > 0 ? (
+    <div className="space-y-10 text-left">
+      {Object.keys(groupedCoupons).length > 0 && offerGroups.length > 0 ? (
         offerGroups.map((group: any) => {
           const groupCoupons = groupedCoupons[group.id];
           if (!groupCoupons || groupCoupons.length === 0) return null;
           const IconComp = GROUP_ICONS[group.icon] || Star;
           return (
-            <div key={group.id} className="col-span-full space-y-8 text-left">
-              <div className="flex items-center gap-4 text-left px-2">
-                <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0 border border-primary/10 shadow-inner">
+            <div key={group.id} className="space-y-5 text-left">
+              <div className="flex items-center gap-3.5 text-left">
+                <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary shrink-0 border border-slate-200">
                   <IconComp className="h-5 w-5" />
                 </div>
-                <div className="text-left">
-                  <h3 className="text-lg font-black uppercase tracking-tight text-slate-900 leading-none">{group.name}</h3>
-                  <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1.5">{groupCoupons.length} Curated Offers</p>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-none">
+                    {group.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 font-mono tabular-nums">
+                    {groupCoupons.length} curated offer
+                    {groupCoupons.length === 1 ? "" : "s"}
+                  </p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {groupCoupons.map((c: any) => (
-                  <div key={c.id} onClick={() => onInspect(c)} className="cursor-pointer">
-                    <CouponPublicCard data={c} business={business} currencySymbol={currencySymbol} member={member} activities={activities} />
-                  </div>
+                  <CouponPublicCard
+                    key={c.id}
+                    data={c}
+                    business={business}
+                    currencySymbol={currencySymbol}
+                    member={member}
+                    activities={activities}
+                    onClick={() => onInspect(c)}
+                  />
                 ))}
               </div>
             </div>
           );
         })
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {bundledCoupons.map((c: any) => (
-            <div key={c.id} onClick={() => onInspect(c)} className="cursor-pointer h-full">
-              <CouponPublicCard data={c} business={business} currencySymbol={currencySymbol} member={member} activities={activities} />
-            </div>
+            <CouponPublicCard
+              key={c.id}
+              data={c}
+              business={business}
+              currencySymbol={currencySymbol}
+              member={member}
+              activities={activities}
+              onClick={() => onInspect(c)}
+            />
           ))}
         </div>
       )}

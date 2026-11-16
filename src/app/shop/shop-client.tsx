@@ -185,7 +185,7 @@ export function ShopClient({
   const firestore = useFirestore();
   const { user } = useUser();
 
-  // 1. Fetch Store Configuration Node
+  // 1. Fetch Store Configuration Document
   const websiteRef = useMemoFirebase(
     () =>
       businessId ? doc(firestore, "businesses", businessId, "websites", "main") : null,
@@ -193,7 +193,7 @@ export function ShopClient({
   );
   const { data: websiteData } = useDoc<any>(websiteRef);
 
-  // 2. Fetch Real-time Public Catalog Node (strictly filtered by showOnWebsite == true per Firestore security rules)
+  // 2. Fetch Real-time Public Catalog (strictly filtered by showOnWebsite == true per Firestore security rules)
   const productsQuery = useMemoFirebase(
     () =>
       businessId
@@ -1493,25 +1493,21 @@ export function ShopClient({
     }
   };
 
-  // UI Style Tokens (Phase 2 Theme Surface + Radius + Button + Grid)
+  // UI Style Tokens (Flat Single-Elevation Editorial Surface Tokens)
   const cardRadiusClass =
     themeConfig.cardRadius === "sharp"
       ? "rounded-lg"
-      : themeConfig.cardRadius === "soft"
-        ? "rounded-[2rem]"
-        : "rounded-2xl";
+      : "rounded-2xl";
 
   const cardSurfaceClass = isDarkSurface
-    ? "bg-slate-900 border border-slate-800 text-slate-100 shadow-lg hover:border-slate-700"
+    ? "bg-slate-900 border border-slate-800 text-slate-100 hover:border-slate-700"
     : isWarmSurface
       ? uiStyle === "minimal"
-        ? "bg-white border border-stone-200 shadow-none hover:border-stone-900"
-        : "bg-white border border-stone-200/80 shadow-sm hover:shadow-xl"
+        ? "bg-white border border-stone-200 hover:border-stone-900"
+        : "bg-white border border-stone-200/80 hover:border-stone-300"
       : uiStyle === "minimal"
-        ? "bg-white border border-slate-200 shadow-none hover:border-slate-900"
-        : uiStyle === "classic"
-          ? "bg-white border border-slate-200 shadow-md hover:shadow-xl"
-          : "bg-white border-none shadow-sm hover:shadow-2xl ring-1 ring-slate-100";
+        ? "bg-white border border-slate-200 hover:border-slate-900"
+        : "bg-white border border-slate-200 hover:border-slate-300";
 
   const buttonRadiusClass =
     themeConfig.buttonStyle === "pill"
@@ -1544,7 +1540,7 @@ export function ShopClient({
       <Card
         key={p.id}
         className={cn(
-          "group transition-all duration-300 overflow-hidden flex flex-col text-left",
+          "group transition-colors duration-200 overflow-hidden flex flex-col text-left shadow-none",
           cardRadiusClass,
           cardSurfaceClass
         )}
@@ -1574,14 +1570,14 @@ export function ShopClient({
               }}
             >
               <div
-                className="h-14 w-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-md"
+                className="h-14 w-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl"
                 style={{ backgroundColor: primaryColor }}
               >
                 {p.name?.charAt(0) || "P"}
               </div>
               <span
                 className={cn(
-                  "text-[9px] font-black uppercase tracking-widest",
+                  "text-xs font-medium",
                   isDarkSurface ? "text-slate-400" : "text-slate-500"
                 )}
               >
@@ -1592,26 +1588,26 @@ export function ShopClient({
 
           <div className="absolute top-3 left-3">
             {isOutOfStock ? (
-              <Badge className="bg-slate-900 text-white border-none text-[9px] font-black uppercase px-2.5 py-0.5 shadow-md rounded-md">
+              <Badge className="bg-slate-900 text-white border-none text-xs font-semibold px-2.5 py-0.5 rounded-md">
                 Waitlist Only
               </Badge>
             ) : isLowStock ? (
-              <Badge className="bg-amber-500 text-white border-none text-[9px] font-black uppercase px-2.5 py-0.5 shadow-md rounded-md flex items-center gap-1">
-                <AlertTriangle className="h-2.5 w-2.5" /> Only {p.stock} Left
+              <Badge className="bg-amber-600 text-white border-none text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" /> Only {p.stock} Left
               </Badge>
             ) : p.isBestSeller ? (
-              <Badge className="bg-orange-600 text-white border-none text-[9px] font-black uppercase px-2.5 py-0.5 shadow-md rounded-md flex items-center gap-1">
-                <Flame className="h-2.5 w-2.5 fill-current" /> Best Seller
+              <Badge className="bg-orange-600 text-white border-none text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                <Flame className="h-3 w-3 fill-current" /> Best Seller
               </Badge>
             ) : p.isFeatured ? (
               <Badge
-                className="text-white border-none text-[9px] font-black uppercase px-2.5 py-0.5 shadow-md rounded-md flex items-center gap-1"
+                className="text-white border-none text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1"
                 style={{ backgroundColor: primaryColor }}
               >
-                <Star className="h-2.5 w-2.5 fill-current" /> Featured
+                <Star className="h-3 w-3 fill-current" /> Featured
               </Badge>
             ) : (
-              <Badge className="bg-emerald-600 text-white border-none text-[9px] font-black uppercase px-2.5 py-0.5 shadow-md rounded-md">
+              <Badge className="bg-emerald-600 text-white border-none text-xs font-semibold px-2.5 py-0.5 rounded-md">
                 In Stock
               </Badge>
             )}
@@ -1628,10 +1624,10 @@ export function ShopClient({
             }
             onClick={(e) => handleToggleWishlist(p, e)}
             className={cn(
-              "absolute top-3 right-3 h-8 w-8 rounded-full shadow-md transition-colors",
+              "absolute top-3 right-3 h-8 w-8 rounded-full border transition-colors",
               wishlistIds.includes(p.id)
-                ? "bg-rose-500 text-white hover:bg-rose-600"
-                : "bg-white/90 text-slate-700 hover:bg-white"
+                ? "bg-rose-500 border-rose-500 text-white hover:bg-rose-600"
+                : "bg-white/95 border-slate-200 text-slate-700 hover:bg-white"
             )}
           >
             <Heart
@@ -1646,7 +1642,7 @@ export function ShopClient({
             variant="ghost"
             size="icon"
             aria-label={`Share ${p.name}`}
-            className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-white/90 backdrop-blur-sm text-slate-700 hover:bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute bottom-3 right-3 h-8 w-8 rounded-full bg-white/95 border border-slate-200 text-slate-700 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
             title="Share Product"
             onClick={(e) => handleShareProduct(p, e)}
           >
@@ -1661,7 +1657,7 @@ export function ShopClient({
           >
             <p
               className={cn(
-                "text-[9px] font-bold uppercase tracking-widest",
+                "text-xs font-medium truncate",
                 isDarkSurface ? "text-slate-400" : "text-slate-500"
               )}
             >
@@ -1670,7 +1666,7 @@ export function ShopClient({
             </p>
             <h3
               className={cn(
-                "text-sm font-black transition-colors line-clamp-2 uppercase tracking-tight leading-tight min-h-[2.5rem]",
+                "text-base font-semibold transition-colors line-clamp-2 leading-snug min-h-[2.75rem]",
                 isDarkSurface
                   ? "text-white group-hover:text-sky-300"
                   : "text-slate-900 group-hover:text-primary"
@@ -1683,7 +1679,7 @@ export function ShopClient({
             {showPricing && (
               <div className="flex items-baseline gap-2 pt-1 flex-wrap">
                 <span
-                  className="text-lg font-black"
+                  className="text-lg font-bold font-mono tabular-nums"
                   style={{ color: isDarkSurface ? "#FFFFFF" : primaryColor }}
                 >
                   {currencySymbol}
@@ -1692,7 +1688,7 @@ export function ShopClient({
                 {hasDiscount && showDiscount && (
                   <span
                     className={cn(
-                      "text-xs line-through font-bold",
+                      "text-xs line-through font-medium font-mono tabular-nums",
                       isDarkSurface ? "text-slate-400" : "text-muted-foreground"
                     )}
                   >
@@ -1701,9 +1697,9 @@ export function ShopClient({
                   </span>
                 )}
                 {hasDiscount && showDiscount && discountPercent > 0 && (
-                  <Badge className="bg-red-50 text-red-600 border border-red-200 text-[8px] font-black px-1.5 py-0">
-                    {discountPercent}% OFF
-                  </Badge>
+                  <span className="text-xs font-semibold text-rose-600 font-mono tabular-nums">
+                    {discountPercent}% off
+                  </span>
                 )}
               </div>
             )}
@@ -1714,7 +1710,7 @@ export function ShopClient({
               <Button
                 variant={themeConfig.buttonStyle === "outline" ? "outline" : "default"}
                 className={cn(
-                  "w-full font-black h-10 uppercase text-[9px] tracking-wider gap-1.5 shadow-sm active:scale-95 transition-all",
+                  "w-full font-semibold h-10 text-xs gap-1.5 transition-colors",
                   buttonRadiusClass,
                   themeConfig.buttonStyle === "outline" ? "bg-transparent border-2" : "text-white"
                 )}
@@ -1730,7 +1726,7 @@ export function ShopClient({
               </Button>
               <Button
                 className={cn(
-                  "w-full font-black h-10 uppercase text-[9px] tracking-wider gap-1.5 shadow-sm active:scale-95 transition-all",
+                  "w-full font-semibold h-10 text-xs gap-1.5 transition-colors",
                   buttonRadiusClass,
                   isDarkSurface
                     ? "bg-white text-slate-900 hover:bg-slate-200"
@@ -1747,7 +1743,7 @@ export function ShopClient({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full h-8 text-[8px] font-black uppercase tracking-wider gap-1.5",
+                  "w-full h-9 text-xs font-semibold gap-1.5",
                   buttonRadiusClass,
                   isDarkSurface
                     ? "text-emerald-300 bg-emerald-950/50 hover:bg-emerald-900/60 border-emerald-800"
@@ -1755,7 +1751,7 @@ export function ShopClient({
                 )}
                 onClick={(e) => handleOrderOnWhatsAppDirect(p, e)}
               >
-                <MessageCircle className="h-3 w-3" /> WhatsApp Order
+                <MessageCircle className="h-3.5 w-3.5" /> WhatsApp Order
               </Button>
             )}
           </div>
@@ -1767,14 +1763,22 @@ export function ShopClient({
   if (!initialBusiness) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-slate-50">
-        <ShieldAlert className="h-12 w-12 text-red-600 mb-6" />
-        <h1 className="text-2xl font-black text-slate-900 uppercase">Invalid Store Node</h1>
-        <p className="text-muted-foreground mt-2 max-w-xs mx-auto">
-          The requested business node could not be located in the registry or is currently in draft mode.
-        </p>
-        <Button asChild variant="outline" className="mt-8 rounded-xl font-bold uppercase text-xs">
-          <Link href="/">Back to Platform</Link>
-        </Button>
+        <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white p-8 space-y-4">
+          <div className="h-12 w-12 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto">
+            <ShieldAlert className="h-6 w-6 text-rose-600" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Storefront Not Found
+            </h1>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              The requested storefront could not be located or is currently unpublished.
+            </p>
+          </div>
+          <Button asChild variant="outline" className="mt-2 rounded-xl font-semibold text-xs">
+            <Link href="/">Back to Platform</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1812,18 +1816,16 @@ export function ShopClient({
             >
               <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center text-left">
                 <div className="lg:col-span-7 space-y-5">
-                  <Badge
-                    variant="outline"
+                  <p
                     className={cn(
-                      "py-1 px-3.5 text-[10px] font-black uppercase tracking-widest",
-                      buttonRadiusClass,
-                      isDarkSurface ? "border-slate-700 text-slate-200" : "border-slate-300 text-slate-700"
+                      "text-xs font-semibold",
+                      isDarkSurface ? "text-slate-300" : "text-slate-600"
                     )}
                   >
                     {badgeText}
-                  </Badge>
+                  </p>
                   <h1
-                    className="text-3xl md:text-5xl font-black tracking-tight uppercase leading-[1.08]"
+                    className="text-3xl md:text-5xl font-bold tracking-tight leading-[1.08]"
                     style={{ fontFamily: storeFonts.headingFont }}
                   >
                     {heroHeading}
@@ -1840,7 +1842,7 @@ export function ShopClient({
                     <Button
                       onClick={scrollToCatalog}
                       className={cn(
-                        "h-11 px-6 text-white text-xs font-black uppercase tracking-wider shadow-md",
+                        "h-11 px-6 text-white text-xs font-semibold",
                         buttonRadiusClass
                       )}
                       style={{ backgroundColor: primaryColor }}
@@ -1850,7 +1852,7 @@ export function ShopClient({
                     <Button
                       variant="outline"
                       className={cn(
-                        "h-11 px-5 text-xs font-black uppercase",
+                        "h-11 px-5 text-xs font-semibold",
                         buttonRadiusClass,
                         isDarkSurface ? "border-slate-700 text-white hover:bg-slate-800" : "border-slate-300"
                       )}
@@ -1863,7 +1865,7 @@ export function ShopClient({
                 <div className="lg:col-span-5">
                   <div
                     className={cn(
-                      "aspect-[4/3] overflow-hidden border shadow-xl flex items-center justify-center relative",
+                      "aspect-[4/3] overflow-hidden border flex items-center justify-center relative",
                       cardRadiusClass,
                       isDarkSurface ? "border-slate-800 bg-slate-800" : "border-slate-200 bg-slate-100"
                     )}
@@ -1883,7 +1885,7 @@ export function ShopClient({
                       >
                         <ShoppingBag className="h-14 w-14 opacity-90" />
                         <span
-                          className="text-lg font-black uppercase tracking-tight"
+                          className="text-lg font-bold tracking-tight"
                           style={{ fontFamily: storeFonts.headingFont }}
                         >
                           {storeDisplayName}
@@ -1922,11 +1924,11 @@ export function ShopClient({
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/15" />
               <div className="max-w-7xl mx-auto w-full relative z-10 text-left space-y-4">
-                <Badge className="bg-white/20 text-white border-none py-1 px-4 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-sm">
+                <p className="text-xs font-semibold text-white/85">
                   {badgeText}
-                </Badge>
+                </p>
                 <h1
-                  className="text-3xl md:text-5xl font-black text-white tracking-tight uppercase max-w-3xl"
+                  className="text-3xl md:text-5xl font-bold text-white tracking-tight max-w-3xl"
                   style={{ fontFamily: storeFonts.headingFont }}
                 >
                   {heroHeading}
@@ -1938,7 +1940,7 @@ export function ShopClient({
                   <Button
                     onClick={scrollToCatalog}
                     className={cn(
-                      "bg-white text-slate-900 hover:bg-slate-100 text-xs font-black uppercase h-11 px-6 gap-2 shadow-lg",
+                      "bg-white text-slate-900 hover:bg-slate-100 text-xs font-semibold h-11 px-6 gap-2",
                       buttonRadiusClass
                     )}
                   >
@@ -1947,7 +1949,7 @@ export function ShopClient({
                   <Button
                     variant="outline"
                     className={cn(
-                      "bg-white/10 hover:bg-white/20 border-white/30 text-white text-xs font-black uppercase h-11 px-5 gap-2",
+                      "bg-white/10 hover:bg-white/20 border-white/30 text-white text-xs font-semibold h-11 px-5 gap-2",
                       buttonRadiusClass
                     )}
                     onClick={handleShareStore}
@@ -1974,17 +1976,16 @@ export function ShopClient({
               )}
             >
               <div className="max-w-7xl mx-auto text-center space-y-5">
-                <Badge
-                  variant="outline"
+                <p
                   className={cn(
-                    "py-1 px-4 rounded-md text-[10px] font-black uppercase tracking-widest",
-                    isDarkSurface ? "border-slate-700 text-slate-200" : "border-slate-300 text-slate-700"
+                    "text-xs font-semibold",
+                    isDarkSurface ? "text-slate-300" : "text-slate-600"
                   )}
                 >
                   {badgeText}
-                </Badge>
+                </p>
                 <h1
-                  className="text-3xl md:text-5xl font-black tracking-tight uppercase"
+                  className="text-3xl md:text-5xl font-bold tracking-tight"
                   style={{ fontFamily: storeFonts.headingFont }}
                 >
                   {heroHeading}
@@ -2001,7 +2002,7 @@ export function ShopClient({
                   <Button
                     onClick={scrollToCatalog}
                     className={cn(
-                      "h-11 px-6 text-white text-xs font-black uppercase tracking-wider",
+                      "h-11 px-6 text-white text-xs font-semibold",
                       buttonRadiusClass
                     )}
                     style={{ backgroundColor: primaryColor }}
@@ -2011,7 +2012,7 @@ export function ShopClient({
                   <Button
                     variant="outline"
                     className={cn(
-                      "h-11 px-5 text-xs font-black uppercase",
+                      "h-11 px-5 text-xs font-semibold",
                       buttonRadiusClass,
                       isDarkSurface ? "border-slate-700 text-white hover:bg-slate-800" : "border-slate-300"
                     )}
@@ -2048,11 +2049,11 @@ export function ShopClient({
               </div>
             )}
             <div className="max-w-7xl mx-auto relative z-10 text-center space-y-4">
-              <Badge className="bg-white/20 text-white border-none py-1 px-4 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-sm">
+              <p className="text-xs font-semibold text-white/85">
                 {badgeText}
-              </Badge>
+              </p>
               <h1
-                className="text-3xl md:text-5xl font-black text-white tracking-tight uppercase"
+                className="text-3xl md:text-5xl font-bold text-white tracking-tight"
                 style={{ fontFamily: storeFonts.headingFont }}
               >
                 {heroHeading}
@@ -2065,7 +2066,7 @@ export function ShopClient({
                   size="sm"
                   onClick={scrollToCatalog}
                   className={cn(
-                    "bg-white text-slate-900 hover:bg-slate-100 text-[10px] font-black uppercase h-10 px-6 gap-2 shadow-lg",
+                    "bg-white text-slate-900 hover:bg-slate-100 text-xs font-semibold h-10 px-6 gap-2",
                     buttonRadiusClass
                   )}
                 >
@@ -2075,7 +2076,7 @@ export function ShopClient({
                   size="sm"
                   variant="outline"
                   className={cn(
-                    "bg-white/10 hover:bg-white/20 border-white/25 text-white text-[10px] font-black uppercase h-10 px-4 gap-2",
+                    "bg-white/10 hover:bg-white/20 border-white/25 text-white text-xs font-semibold h-10 px-4 gap-2",
                     buttonRadiusClass
                   )}
                   onClick={handleShareStore}
@@ -2093,19 +2094,19 @@ export function ShopClient({
           <section key={section.id} className="max-w-7xl mx-auto px-4 pt-8">
             <div
               className={cn(
-                "bg-slate-900 text-white p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl border border-slate-800",
+                "bg-slate-900 text-white p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-slate-800",
                 cardRadiusClass
               )}
             >
               <div className="space-y-1.5 text-center md:text-left">
                 <Badge
-                  className="border-none text-[9px] font-black uppercase px-3 py-1 text-white"
+                  className="border-none text-xs font-semibold px-3 py-1 text-white"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  {section.content.discountLabel || "FLASH SALE LIVE"}
+                  {section.content.discountLabel || "Flash Sale Live"}
                 </Badge>
                 <h2
-                  className="text-xl md:text-2xl font-black uppercase tracking-tight"
+                  className="text-xl md:text-2xl font-bold tracking-tight"
                   style={{ fontFamily: storeFonts.headingFont }}
                 >
                   {section.content.title || "Limited-Time Storefront Offer"}
@@ -2116,14 +2117,14 @@ export function ShopClient({
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="px-5 py-3 rounded-2xl bg-white/10 border border-white/15 font-mono text-lg md:text-xl font-black tracking-wider flex items-center gap-2">
+                <div className="px-5 py-3 rounded-2xl bg-white/10 border border-white/15 font-mono tabular-nums text-lg md:text-xl font-bold flex items-center gap-2">
                   <Clock className="h-5 w-5 text-amber-400" />
                   <span>{countdownText}</span>
                 </div>
                 <Button
                   onClick={scrollToCatalog}
                   className={cn(
-                    "h-12 px-6 text-white font-black uppercase text-xs tracking-wider",
+                    "h-12 px-6 text-white font-semibold text-xs",
                     buttonRadiusClass
                   )}
                   style={{ backgroundColor: primaryColor }}
@@ -2153,14 +2154,14 @@ export function ShopClient({
             <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 px-1 gap-2 text-left">
               <div>
                 <p
-                  className="text-[10px] font-black uppercase tracking-[0.2em] mb-1.5"
+                  className="text-xs font-semibold mb-1"
                   style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
                 >
                   Curated Spotlight
                 </p>
                 <h2
                   className={cn(
-                    "text-xl md:text-2xl font-black uppercase tracking-tight",
+                    "text-xl md:text-2xl font-bold tracking-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -2200,7 +2201,7 @@ export function ShopClient({
                 return (
                   <Card
                     className={cn(
-                      "overflow-hidden grid grid-cols-1 md:grid-cols-12 text-left",
+                      "overflow-hidden grid grid-cols-1 md:grid-cols-12 text-left shadow-none",
                       cardRadiusClass,
                       cardSurfaceClass
                     )}
@@ -2234,19 +2235,19 @@ export function ShopClient({
                           }}
                         >
                           <div
-                            className="h-16 w-16 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-md"
+                            className="h-16 w-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl"
                             style={{ backgroundColor: primaryColor }}
                           >
                             {p.name?.charAt(0) || "P"}
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                          <span className="text-xs font-medium opacity-70">
                             {p.category || "Spotlight Pick"}
                           </span>
                         </div>
                       )}
                       <div className="absolute top-3 left-3">
                         <Badge
-                          className="text-white border-none text-[9px] font-black uppercase px-2.5 py-0.5 shadow-md rounded-md"
+                          className="text-white border-none text-xs font-semibold px-2.5 py-0.5 rounded-md"
                           style={{ backgroundColor: primaryColor }}
                         >
                           {isOutOfStock
@@ -2269,10 +2270,10 @@ export function ShopClient({
                         }
                         onClick={(e) => handleToggleWishlist(p, e)}
                         className={cn(
-                          "absolute top-3 right-3 h-8 w-8 rounded-full shadow-md transition-colors",
+                          "absolute top-3 right-3 h-8 w-8 rounded-full border transition-colors",
                           wishlistIds.includes(p.id)
-                            ? "bg-rose-500 text-white hover:bg-rose-600"
-                            : "bg-white/90 text-slate-700 hover:bg-white"
+                            ? "bg-rose-500 border-rose-500 text-white hover:bg-rose-600"
+                            : "bg-white/95 border-slate-200 text-slate-700 hover:bg-white"
                         )}
                       >
                         <Heart
@@ -2289,13 +2290,13 @@ export function ShopClient({
                         className="space-y-2.5 cursor-pointer"
                         onClick={() => setSelectedProductId(p.id)}
                       >
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-65">
+                        <p className="text-xs font-medium opacity-70">
                           {p.category || "General"}
                           {p.sku ? ` · ${p.sku}` : ""}
                         </p>
                         <h3
                           className={cn(
-                            "text-xl md:text-2xl font-black uppercase tracking-tight",
+                            "text-xl md:text-2xl font-bold tracking-tight",
                             isDarkSurface ? "text-white" : "text-slate-900"
                           )}
                           style={{ fontFamily: storeFonts.headingFont }}
@@ -2317,14 +2318,14 @@ export function ShopClient({
                         {section.content.showPricing !== false && (
                           <div className="flex items-baseline gap-2.5">
                             <span
-                              className="text-2xl font-black"
+                              className="text-2xl font-bold font-mono tabular-nums"
                               style={{ color: isDarkSurface ? "#FFFFFF" : primaryColor }}
                             >
                               {currencySymbol}
                               {onlinePrice.toLocaleString()}
                             </span>
                             {hasDiscount && showDiscount && (
-                              <span className="text-sm line-through opacity-55 font-bold">
+                              <span className="text-sm line-through opacity-55 font-medium font-mono tabular-nums">
                                 {currencySymbol}
                                 {basePrice.toLocaleString()}
                               </span>
@@ -2337,7 +2338,7 @@ export function ShopClient({
                               themeConfig.buttonStyle === "outline" ? "outline" : "default"
                             }
                             className={cn(
-                              "h-11 px-6 font-black uppercase text-xs tracking-wider gap-1.5",
+                              "h-11 px-6 font-semibold text-xs gap-1.5",
                               buttonRadiusClass,
                               themeConfig.buttonStyle === "outline"
                                 ? "bg-transparent border-2"
@@ -2358,7 +2359,7 @@ export function ShopClient({
                           </Button>
                           <Button
                             className={cn(
-                              "h-11 px-6 font-black uppercase text-xs tracking-wider gap-1.5",
+                              "h-11 px-6 font-semibold text-xs gap-1.5",
                               buttonRadiusClass,
                               isDarkSurface
                                 ? "bg-white text-slate-900 hover:bg-slate-200"
@@ -2373,7 +2374,7 @@ export function ShopClient({
                             <Button
                               variant="outline"
                               className={cn(
-                                "h-11 px-4 text-xs font-black uppercase tracking-wider gap-1.5",
+                                "h-11 px-4 text-xs font-semibold gap-1.5",
                                 buttonRadiusClass,
                                 isDarkSurface
                                   ? "text-emerald-300 bg-emerald-950/50 border-emerald-800"
@@ -2410,13 +2411,11 @@ export function ShopClient({
             <section className="max-w-7xl mx-auto px-4 pt-10">
               <Card
                 className={cn(
-                  "overflow-hidden",
+                  "overflow-hidden shadow-none",
                   cardRadiusClass,
                   isDarkSurface
-                    ? "bg-slate-900 border border-slate-800 text-white shadow-xl"
-                    : uiStyle === "minimal"
-                      ? "bg-white border border-slate-200 shadow-sm"
-                      : "bg-white border shadow-xl"
+                    ? "bg-slate-900 border border-slate-800 text-white"
+                    : "bg-white border border-slate-200"
                 )}
               >
                 <CardContent className="p-6 md:p-8 space-y-5">
@@ -2432,10 +2431,10 @@ export function ShopClient({
                         aria-label="Search store catalog"
                         placeholder="Search products by name, SKU, or category..."
                         className={cn(
-                          "h-12 md:h-14 pl-12 pr-4 border-none rounded-2xl text-sm shadow-inner font-bold",
+                          "h-12 md:h-14 pl-12 pr-4 rounded-xl text-sm font-medium border",
                           isDarkSurface
-                            ? "bg-slate-800 text-white placeholder:text-slate-400"
-                            : "bg-muted/20 text-slate-900"
+                            ? "bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
+                            : "bg-slate-50 border-slate-200 text-slate-900"
                         )}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -2449,10 +2448,10 @@ export function ShopClient({
                         <SelectTrigger
                           aria-label="Sort products"
                           className={cn(
-                            "h-12 md:h-14 w-full sm:w-[190px] rounded-2xl border-none font-bold text-xs shadow-inner whitespace-nowrap",
+                            "h-12 md:h-14 w-full sm:w-[190px] rounded-xl border font-semibold text-xs whitespace-nowrap",
                             isDarkSurface
-                              ? "bg-slate-800 text-white"
-                              : "bg-muted/20 text-slate-900"
+                              ? "bg-slate-800 border-slate-700 text-white"
+                              : "bg-slate-50 border-slate-200 text-slate-900"
                           )}
                         >
                           <div className="flex items-center gap-2 truncate">
@@ -2475,9 +2474,9 @@ export function ShopClient({
                         onClick={() => setInStockOnly((prev) => !prev)}
                         style={inStockOnly ? { backgroundColor: primaryColor } : {}}
                         className={cn(
-                          "h-12 md:h-14 w-full sm:w-auto px-4 rounded-2xl text-xs font-black uppercase tracking-wider gap-2 shrink-0 whitespace-nowrap",
+                          "h-12 md:h-14 w-full sm:w-auto px-4 rounded-xl text-xs font-semibold gap-2 shrink-0 whitespace-nowrap",
                           inStockOnly
-                            ? "text-white shadow-md"
+                            ? "text-white"
                             : isDarkSurface
                               ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
                               : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -2499,9 +2498,9 @@ export function ShopClient({
                           selectedCategory === cat ? { backgroundColor: primaryColor } : {}
                         }
                         className={cn(
-                          "rounded-full h-9 px-5 text-[10px] font-black uppercase tracking-wider transition-all shrink-0",
+                          "rounded-lg h-9 px-4 text-xs font-semibold transition-colors shrink-0",
                           selectedCategory === cat
-                            ? "shadow-md text-white"
+                            ? "text-white border-transparent"
                             : isDarkSurface
                               ? "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
                               : "bg-white border-slate-200 text-slate-700"
@@ -2519,7 +2518,7 @@ export function ShopClient({
               <div className="flex items-center justify-between mb-8 px-2 text-left">
                 <h2
                   className={cn(
-                    "text-xl font-black flex items-center gap-2 uppercase tracking-tight",
+                    "text-xl font-bold flex items-center gap-2 tracking-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -2527,8 +2526,8 @@ export function ShopClient({
                   {section.content.title || "Our Catalog"}{" "}
                   <span
                     className={cn(
-                      "font-bold text-xs",
-                      isDarkSurface ? "text-slate-400" : "text-muted-foreground opacity-70"
+                      "font-medium text-xs font-mono tabular-nums",
+                      isDarkSurface ? "text-slate-400" : "text-muted-foreground"
                     )}
                   >
                     ({filteredProducts.length} Products)
@@ -2539,14 +2538,14 @@ export function ShopClient({
               {visibleCatalog.length === 0 ? (
                 <div
                   className={cn(
-                    "text-center py-20 space-y-4 rounded-3xl border border-dashed",
+                    "text-center py-20 space-y-4 rounded-2xl border border-dashed",
                     isDarkSurface
                       ? "bg-slate-900 border-slate-700 text-slate-300"
-                      : "bg-white border-slate-200 opacity-80"
+                      : "bg-white border-slate-200"
                   )}
                 >
-                  <ShoppingBag className="h-14 w-14 mx-auto text-slate-400" />
-                  <p className="text-base font-black uppercase tracking-widest">
+                  <ShoppingBag className="h-12 w-12 mx-auto text-slate-400" />
+                  <p className="text-base font-semibold">
                     {catalogProducts.length === 0
                       ? "Catalog Coming Soon"
                       : "No products match your filters"}
@@ -2560,7 +2559,7 @@ export function ShopClient({
                         setSelectedCategory("All");
                         setInStockOnly(false);
                       }}
-                      className="rounded-xl text-xs font-bold uppercase"
+                      className="rounded-xl text-xs font-semibold"
                     >
                       Clear Filters
                     </Button>
@@ -2611,14 +2610,14 @@ export function ShopClient({
           <section key={section.id} className="max-w-7xl mx-auto px-4 py-12 text-left">
             <div className="text-center max-w-xl mx-auto mb-10 space-y-2">
               <p
-                className="text-[10px] font-black uppercase tracking-[0.2em]"
+                className="text-xs font-semibold"
                 style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
               >
                 Customer Reviews
               </p>
               <h2
                 className={cn(
-                  "text-2xl md:text-3xl font-black uppercase tracking-tight",
+                  "text-2xl md:text-3xl font-bold tracking-tight",
                   isDarkSurface ? "text-white" : "text-slate-900"
                 )}
                 style={{ fontFamily: storeFonts.headingFont }}
@@ -2640,7 +2639,7 @@ export function ShopClient({
               {items.map((item, idx) => (
                 <Card
                   key={idx}
-                  className={cn("p-6 space-y-4 text-left", cardRadiusClass, cardSurfaceClass)}
+                  className={cn("p-6 space-y-4 text-left shadow-none", cardRadiusClass, cardSurfaceClass)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 text-amber-500">
@@ -2667,7 +2666,7 @@ export function ShopClient({
                     <div>
                       <p
                         className={cn(
-                          "text-xs font-black uppercase",
+                          "text-xs font-semibold",
                           isDarkSurface ? "text-white" : "text-slate-900"
                         )}
                       >
@@ -2676,7 +2675,7 @@ export function ShopClient({
                       {item.role && (
                         <p
                           className={cn(
-                            "text-[10px] font-bold uppercase",
+                            "text-xs font-medium",
                             isDarkSurface ? "text-slate-400" : "text-muted-foreground"
                           )}
                         >
@@ -2699,9 +2698,9 @@ export function ShopClient({
         const waHref = buildWhatsAppUrl(merchantWaDigits, quickMsg);
         return (
           <section key={section.id} className="max-w-7xl mx-auto px-4 py-8">
-            <div className="rounded-3xl bg-emerald-50 border border-emerald-200 p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-left">
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-6 md:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 text-left">
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-emerald-950 uppercase">
+                <h3 className="text-lg font-bold text-emerald-950">
                   {section.content.title || "Prefer Ordering on WhatsApp?"}
                 </h3>
                 <p className="text-xs text-emerald-800 font-medium">
@@ -2711,7 +2710,7 @@ export function ShopClient({
               </div>
               <Button
                 asChild
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-xs h-12 px-6 rounded-xl shrink-0"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-11 px-6 rounded-xl shrink-0"
               >
                 <a href={waHref} target="_blank" rel="noopener noreferrer">
                   <MessageCircle className="mr-2 h-4 w-4" />
@@ -2746,7 +2745,7 @@ export function ShopClient({
               <div className="mb-5 px-1">
                 <h2
                   className={cn(
-                    "text-lg md:text-xl font-black uppercase tracking-tight",
+                    "text-lg md:text-xl font-bold tracking-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -2765,7 +2764,7 @@ export function ShopClient({
                 <div
                   key={idx}
                   className={cn(
-                    "p-5 flex items-start gap-3.5 transition-all",
+                    "p-5 flex items-start gap-3.5 transition-colors",
                     cardRadiusClass,
                     cardSurfaceClass
                   )}
@@ -2781,7 +2780,7 @@ export function ShopClient({
                   <div className="min-w-0">
                     <p
                       className={cn(
-                        "text-xs font-black uppercase tracking-wide",
+                        "text-xs font-semibold",
                         isDarkSurface ? "text-white" : "text-slate-900"
                       )}
                     >
@@ -2789,7 +2788,7 @@ export function ShopClient({
                     </p>
                     <p
                       className={cn(
-                        "text-[11px] leading-snug mt-0.5",
+                        "text-xs leading-snug mt-0.5",
                         isDarkSurface ? "text-slate-400" : "text-slate-600"
                       )}
                     >
@@ -2816,14 +2815,14 @@ export function ShopClient({
             <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 px-1 gap-2">
               <div>
                 <p
-                  className="text-[10px] font-black uppercase tracking-[0.2em] mb-1.5"
+                  className="text-xs font-semibold mb-1"
                   style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
                 >
                   Browse Collections
                 </p>
                 <h2
                   className={cn(
-                    "text-xl md:text-2xl font-black uppercase tracking-tight",
+                    "text-xl md:text-2xl font-bold tracking-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -2843,7 +2842,7 @@ export function ShopClient({
                     setSelectedCategory("All");
                     scrollToCatalog();
                   }}
-                  className="text-[10px] font-black uppercase tracking-wider underline underline-offset-4 self-start sm:self-auto"
+                  className="text-xs font-semibold underline underline-offset-4 self-start sm:self-auto"
                   style={{ color: isDarkSurface ? "#FFFFFF" : primaryColor }}
                 >
                   Show All Categories
@@ -2883,11 +2882,11 @@ export function ShopClient({
                         : undefined
                     }
                     className={cn(
-                      "group text-left overflow-hidden flex flex-col transition-all border",
+                      "group text-left overflow-hidden flex flex-col transition-colors border",
                       cardRadiusClass,
                       isDarkSurface
                         ? "bg-slate-900 border-slate-800 hover:border-slate-600 text-white"
-                        : "bg-white border-slate-200 hover:shadow-lg text-slate-900"
+                        : "bg-white border-slate-200 hover:border-slate-400 text-slate-900"
                     )}
                   >
                     <div
@@ -2909,10 +2908,10 @@ export function ShopClient({
                       )}
                     </div>
                     <div className="p-3.5 space-y-1 w-full">
-                      <p className="text-xs font-black uppercase truncate">{cat.name}</p>
+                      <p className="text-xs font-semibold truncate">{cat.name}</p>
                       <p
                         className={cn(
-                          "text-[10px] font-semibold tabular-nums truncate",
+                          "text-xs font-medium font-mono tabular-nums truncate",
                           isDarkSurface ? "text-slate-400" : "text-slate-500"
                         )}
                       >
@@ -2949,14 +2948,14 @@ export function ShopClient({
             <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 px-1 gap-3">
               <div>
                 <p
-                  className="text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 flex items-center gap-1.5"
+                  className="text-xs font-semibold mb-1 flex items-center gap-1.5"
                   style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
                 >
                   <Sparkles className="h-3.5 w-3.5" /> Fresh Inventory Drops
                 </p>
                 <h2
                   className={cn(
-                    "text-xl md:text-2xl font-black uppercase tracking-tight",
+                    "text-xl md:text-2xl font-bold tracking-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -2979,7 +2978,7 @@ export function ShopClient({
                   scrollToCatalog();
                 }}
                 className={cn(
-                  "h-9 px-4 text-[10px] font-black uppercase tracking-wider gap-1.5 self-start sm:self-auto",
+                  "h-9 px-4 text-xs font-semibold gap-1.5 self-start sm:self-auto",
                   buttonRadiusClass,
                   isDarkSurface
                     ? "border-slate-700 bg-slate-900 text-white hover:bg-slate-800"
@@ -3022,19 +3021,19 @@ export function ShopClient({
                   ? "bg-slate-900 border-slate-800 text-white"
                   : isWarmSurface
                     ? "bg-[#F4EFE7] border-stone-200 text-stone-900"
-                    : "bg-white border-slate-200 text-slate-900 shadow-sm"
+                    : "bg-white border-slate-200 text-slate-900"
               )}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
                   <p
-                    className="text-[10px] font-black uppercase tracking-[0.2em] mb-1 flex items-center gap-1.5"
+                    className="text-xs font-semibold mb-1 flex items-center gap-1.5"
                     style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
                   >
                     <Ticket className="h-3.5 w-3.5" /> Direct Checkout Savings
                   </p>
                   <h2
-                    className="text-xl md:text-2xl font-black uppercase tracking-tight"
+                    className="text-xl md:text-2xl font-bold tracking-tight"
                     style={{ fontFamily: storeFonts.headingFont }}
                   >
                     {section.content.title || "Active Offers & Promo Codes"}
@@ -3073,12 +3072,12 @@ export function ShopClient({
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between gap-2">
                             <span
-                              className="text-xs font-black uppercase tracking-wider"
+                              className="text-xs font-bold font-mono tabular-nums"
                               style={{ color: primaryColor }}
                             >
                               {savingLabel}
                             </span>
-                            <span className="font-mono text-xs font-black px-2.5 py-1 rounded-md border bg-white text-slate-900">
+                            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md border bg-white text-slate-900">
                               {cpn.code}
                             </span>
                           </div>
@@ -3087,7 +3086,7 @@ export function ShopClient({
                               {cpn.description}
                             </p>
                           )}
-                          <p className={cn("text-[11px] font-medium tabular-nums", isDarkSurface ? "text-slate-400" : "text-slate-500")}>
+                          <p className={cn("text-xs font-medium font-mono tabular-nums", isDarkSurface ? "text-slate-400" : "text-slate-500")}>
                             {cpn.minOrderAmount > 0
                               ? `Min. order ${currencySymbol}${cpn.minOrderAmount.toLocaleString()}`
                               : "No minimum order"}
@@ -3102,7 +3101,7 @@ export function ShopClient({
                           onClick={() => handleApplyOfferCode(cpn.code)}
                           style={{ backgroundColor: primaryColor }}
                           className={cn(
-                            "w-full h-10 text-white text-[10px] font-black uppercase tracking-wider gap-1.5",
+                            "w-full h-10 text-white text-xs font-semibold gap-1.5",
                             buttonRadiusClass
                           )}
                         >
@@ -3172,7 +3171,7 @@ export function ShopClient({
                     }}
                   >
                     <PlayCircle className="h-14 w-14 opacity-90" />
-                    <span className="text-xs font-black uppercase tracking-widest opacity-85">
+                    <span className="text-xs font-medium opacity-85">
                       {section.content.badgeText || "Product Walkthrough"}
                     </span>
                   </div>
@@ -3181,14 +3180,14 @@ export function ShopClient({
 
               <div className="lg:col-span-6 p-7 md:p-10 flex flex-col justify-center space-y-4">
                 <p
-                  className="text-[10px] font-black uppercase tracking-[0.2em]"
+                  className="text-xs font-medium"
                   style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
                 >
                   {section.content.badgeText || "Product Spotlight"}
                 </p>
                 <h2
                   className={cn(
-                    "text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight",
+                    "text-2xl md:text-3xl font-semibold tracking-tight leading-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -3196,12 +3195,12 @@ export function ShopClient({
                   {section.content.title || "See Our Quality Up Close"}
                 </h2>
                 {section.content.subtitle && (
-                  <p className={cn("text-sm font-semibold", isDarkSurface ? "text-slate-200" : "text-slate-700")}>
+                  <p className={cn("text-sm font-medium", isDarkSurface ? "text-slate-200" : "text-slate-700")}>
                     {section.content.subtitle}
                   </p>
                 )}
                 {section.content.body && (
-                  <p className={cn("text-xs sm:text-sm leading-relaxed", isDarkSurface ? "text-slate-400" : "text-slate-600")}>
+                  <p className={cn("text-sm leading-relaxed", isDarkSurface ? "text-slate-400" : "text-slate-600")}>
                     {section.content.body}
                   </p>
                 )}
@@ -3211,7 +3210,7 @@ export function ShopClient({
                     onClick={scrollToCatalog}
                     style={{ backgroundColor: primaryColor }}
                     className={cn(
-                      "h-11 px-6 text-white text-xs font-black uppercase tracking-wider gap-2",
+                      "h-11 px-6 text-white text-sm font-semibold gap-2",
                       buttonRadiusClass
                     )}
                   >
@@ -3234,14 +3233,14 @@ export function ShopClient({
           <section key={section.id} className="max-w-4xl mx-auto px-4 py-12 text-left">
             <div className="text-center max-w-xl mx-auto mb-8 space-y-2">
               <p
-                className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-1.5"
+                className="text-xs font-medium flex items-center justify-center gap-1.5"
                 style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
               >
                 <HelpCircle className="h-3.5 w-3.5" /> Store Support & Answers
               </p>
               <h2
                 className={cn(
-                  "text-2xl md:text-3xl font-black uppercase tracking-tight",
+                  "text-2xl md:text-3xl font-semibold tracking-tight",
                   isDarkSurface ? "text-white" : "text-slate-900"
                 )}
                 style={{ fontFamily: storeFonts.headingFont }}
@@ -3272,7 +3271,7 @@ export function ShopClient({
                     >
                       <span
                         className={cn(
-                          "text-sm font-black tracking-tight",
+                          "text-sm font-semibold tracking-tight",
                           isDarkSurface ? "text-white" : "text-slate-900"
                         )}
                       >
@@ -3289,7 +3288,7 @@ export function ShopClient({
                     {isOpen && (
                       <div
                         className={cn(
-                          "px-5 pb-5 pt-1 text-xs sm:text-sm leading-relaxed border-t",
+                          "px-5 pb-5 pt-1 text-sm leading-relaxed border-t",
                           isDarkSurface ? "text-slate-300 border-slate-800" : "text-slate-600 border-slate-100"
                         )}
                       >
@@ -3323,14 +3322,14 @@ export function ShopClient({
             >
               <div className="lg:col-span-7 space-y-4">
                 <p
-                  className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-1.5"
+                  className="text-xs font-medium flex items-center gap-1.5"
                   style={{ color: isDarkSurface ? "#94A3B8" : primaryColor }}
                 >
                   <MapPin className="h-3.5 w-3.5" /> Storefront & Dispatch Desk
                 </p>
                 <h2
                   className={cn(
-                    "text-2xl md:text-3xl font-black uppercase tracking-tight",
+                    "text-2xl md:text-3xl font-semibold tracking-tight",
                     isDarkSurface ? "text-white" : "text-slate-900"
                   )}
                   style={{ fontFamily: storeFonts.headingFont }}
@@ -3338,7 +3337,7 @@ export function ShopClient({
                   {section.content.title || "Visit Our Store & Dispatch Desk"}
                 </h2>
                 {section.content.subtitle && (
-                  <p className={cn("text-sm font-medium", isDarkSurface ? "text-slate-300" : "text-slate-600")}>
+                  <p className={cn("text-sm", isDarkSurface ? "text-slate-300" : "text-slate-600")}>
                     {section.content.subtitle}
                   </p>
                 )}
@@ -3346,27 +3345,27 @@ export function ShopClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                   <div
                     className={cn(
-                      "p-4 rounded-2xl border space-y-1",
+                      "p-4 rounded-xl border space-y-1",
                       isDarkSurface ? "bg-slate-800/70 border-slate-700" : "bg-slate-50 border-slate-200/70"
                     )}
                   >
-                    <p className="text-[10px] font-black uppercase tracking-wider opacity-65">
+                    <p className="text-xs font-medium opacity-70">
                       Delivery Coverage
                     </p>
-                    <p className="text-xs font-bold leading-snug">
+                    <p className="text-xs font-semibold leading-snug">
                       {section.content.deliveryZones || "Local Same-Day Delivery · Pan-India Insured Dispatch"}
                     </p>
                   </div>
                   <div
                     className={cn(
-                      "p-4 rounded-2xl border space-y-1",
+                      "p-4 rounded-xl border space-y-1",
                       isDarkSurface ? "bg-slate-800/70 border-slate-700" : "bg-slate-50 border-slate-200/70"
                     )}
                   >
-                    <p className="text-[10px] font-black uppercase tracking-wider opacity-65">
+                    <p className="text-xs font-medium opacity-70">
                       Counter Self-Pickup
                     </p>
-                    <p className="text-xs font-bold leading-snug">
+                    <p className="text-xs font-semibold leading-snug">
                       {pickupEnabled
                         ? "Available during business hours"
                         : "Online Delivery Dispatch Only"}
@@ -3377,7 +3376,7 @@ export function ShopClient({
 
               <div
                 className={cn(
-                  "lg:col-span-5 p-6 rounded-2xl border space-y-4",
+                  "lg:col-span-5 p-6 rounded-xl border space-y-4",
                   isDarkSurface ? "bg-slate-950/60 border-slate-800" : "bg-slate-50 border-slate-200"
                 )}
               >
@@ -3393,7 +3392,7 @@ export function ShopClient({
                     </p>
                   )}
                   {merchantPhoneDisplay && (
-                    <p className="flex items-center gap-2.5 font-medium">
+                    <p className="flex items-center gap-2.5 font-medium font-mono tabular-nums">
                       <Phone className="h-4 w-4 shrink-0" style={{ color: primaryColor }} />
                       <a href={`tel:${merchantPhoneDisplay}`} className="hover:underline">
                         {merchantPhoneDisplay}
@@ -3402,7 +3401,7 @@ export function ShopClient({
                   )}
                 </div>
                 {section.content.body && (
-                  <p className={cn("text-[11px] leading-relaxed", isDarkSurface ? "text-slate-400" : "text-slate-600")}>
+                  <p className={cn("text-xs leading-relaxed", isDarkSurface ? "text-slate-400" : "text-slate-600")}>
                     {section.content.body}
                   </p>
                 )}
@@ -3411,7 +3410,7 @@ export function ShopClient({
                     asChild
                     style={{ backgroundColor: primaryColor }}
                     className={cn(
-                      "flex-1 h-10 text-white text-[10px] font-black uppercase tracking-wider gap-1.5",
+                      "flex-1 h-10 text-white text-xs font-semibold gap-1.5",
                       buttonRadiusClass
                     )}
                   >
@@ -3424,7 +3423,7 @@ export function ShopClient({
                       asChild
                       variant="outline"
                       className={cn(
-                        "h-10 px-4 text-[10px] font-black uppercase tracking-wider gap-1.5 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100",
+                        "h-10 px-4 text-xs font-medium gap-1.5 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100",
                         buttonRadiusClass
                       )}
                     >
@@ -3450,19 +3449,19 @@ export function ShopClient({
       case "newsletter": {
         return (
           <section key={section.id} className="max-w-7xl mx-auto px-4 pt-10 text-left">
-            <div className={cn("bg-slate-900 text-white p-7 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-slate-800 shadow-xl", cardRadiusClass)}>
+            <div className={cn("bg-slate-900 text-white p-7 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center border border-slate-800", cardRadiusClass)}>
               <div className="lg:col-span-6 space-y-2.5">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 flex items-center gap-1.5">
+                <p className="text-xs font-medium text-amber-300 flex items-center gap-1.5">
                   <BellRing className="h-3.5 w-3.5" />
-                  {section.content.discountLabel || "VIP RESTOCK & OFFER ALERTS"}
+                  {section.content.discountLabel || "Restock & Offer Alerts"}
                 </p>
                 <h2
-                  className="text-2xl md:text-3xl font-black uppercase tracking-tight"
+                  className="text-2xl md:text-3xl font-semibold tracking-tight"
                   style={{ fontFamily: storeFonts.headingFont }}
                 >
                   {section.content.title || "Get Early Access to New Drops & Promo Codes"}
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
+                <p className="text-sm text-slate-300 leading-relaxed max-w-xl">
                   {section.content.subtitle ||
                     "Join our store alert list for restock updates, festival discounts, and subscriber-only codes."}
                 </p>
@@ -3479,7 +3478,7 @@ export function ShopClient({
                     value={leadName}
                     onChange={(e) => setLeadName(e.target.value)}
                     disabled={isSubmittingLead}
-                    className="h-11 rounded-xl bg-white/10 border-white/15 text-white placeholder:text-slate-400 text-xs font-semibold"
+                    className="h-11 rounded-xl bg-white/10 border-white/15 text-white placeholder:text-slate-400 text-sm"
                   />
                   <Input
                     aria-label="WhatsApp Number or Email"
@@ -3487,7 +3486,7 @@ export function ShopClient({
                     value={leadContact}
                     onChange={(e) => setLeadContact(e.target.value)}
                     disabled={isSubmittingLead}
-                    className="h-11 rounded-xl bg-white/10 border-white/15 text-white placeholder:text-slate-400 text-xs font-semibold"
+                    className="h-11 rounded-xl bg-white/10 border-white/15 text-white placeholder:text-slate-400 text-sm"
                   />
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3496,7 +3495,7 @@ export function ShopClient({
                     disabled={isSubmittingLead}
                     style={{ backgroundColor: primaryColor }}
                     className={cn(
-                      "h-11 px-7 text-white text-xs font-black uppercase tracking-wider gap-2 shrink-0",
+                      "h-11 px-7 text-white text-sm font-semibold gap-2 shrink-0",
                       buttonRadiusClass
                     )}
                   >
@@ -3507,7 +3506,7 @@ export function ShopClient({
                     )}
                     {section.content.cta || "Notify Me"}
                   </Button>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     Direct store alerts only · No spam
                   </p>
                 </div>
@@ -3515,7 +3514,7 @@ export function ShopClient({
                   <p
                     role="status"
                     className={cn(
-                      "text-xs font-bold px-3.5 py-2 rounded-xl",
+                      "text-xs font-medium px-3.5 py-2 rounded-xl",
                       leadFeedback.type === "success"
                         ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/30"
                         : "bg-rose-500/20 text-rose-200 border border-rose-400/30"
@@ -3535,14 +3534,14 @@ export function ShopClient({
         return (
           <section
             key={section.id}
-            className="bg-slate-900 py-20 text-white overflow-hidden relative mt-8"
+            className="bg-slate-900 py-16 text-white overflow-hidden relative mt-8"
           >
             <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center text-left">
               <div className="space-y-6 text-left">
-                <Badge className="bg-white/10 text-white border-white/20 py-1.5 px-4 rounded-full text-[9px] font-black uppercase tracking-widest">
+                <p className="text-xs font-medium text-slate-300">
                   Direct Consumer Guarantee
-                </Badge>
-                <h2 className="text-3xl md:text-5xl font-black leading-tight uppercase tracking-tight">
+                </p>
+                <h2 className="text-3xl md:text-4xl font-bold leading-tight tracking-tight text-balance">
                   {section.content.title || "Genuine Products. Direct From the Merchant."}
                 </h2>
                 {section.content.body && (
@@ -3572,52 +3571,53 @@ export function ShopClient({
                   ].map((item, i) => (
                     <div
                       key={i}
-                      className="flex gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 text-left"
+                      className="flex gap-4 p-4 bg-white/5 rounded-xl border border-white/10 text-left"
                     >
                       <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10">
                         <item.icon className="h-5 w-5 text-accent" />
                       </div>
                       <div>
-                        <h4 className="font-black text-xs uppercase tracking-wider text-accent">
+                        <h4 className="font-semibold text-sm text-white">
                           {item.title}
                         </h4>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{item.desc}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-white p-8 sm:p-10 rounded-[2.5rem] shadow-2xl text-slate-900 border text-left space-y-6">
-                <div className="flex items-center gap-3 border-b pb-4">
+              <div className="bg-white p-8 sm:p-10 rounded-2xl text-slate-900 border border-slate-200 text-left space-y-6">
+                <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
                   {logoUrl ? (
                     <img
                       src={logoUrl}
                       alt={storeDisplayName}
-                      className="h-12 w-12 rounded-xl object-cover border shadow-sm shrink-0"
+                      referrerPolicy="no-referrer"
+                      className="h-12 w-12 rounded-xl object-cover border border-slate-200 shrink-0"
                     />
                   ) : (
                     <div
-                      className="h-12 w-12 rounded-xl flex items-center justify-center text-white shadow-md font-black text-lg shrink-0"
+                      className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-semibold text-lg shrink-0"
                       style={{ backgroundColor: primaryColor }}
                     >
                       {storeDisplayName.charAt(0)}
                     </div>
                   )}
                   <div className="text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                    <p className="text-xs font-medium text-slate-500">
                       About Merchant
                     </p>
-                    <p className="text-base font-black uppercase">{storeDisplayName}</p>
+                    <p className="text-base font-semibold text-slate-900">{storeDisplayName}</p>
                   </div>
                 </div>
-                <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+                <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
                   <p className="flex items-start gap-2.5">
-                    <MapPin className="h-4 w-4 shrink-0 text-primary mt-0.5" />
+                    <MapPin className="h-4 w-4 shrink-0 text-primary mt-1" />
                     <span>{merchantAddressDisplay}</span>
                   </p>
                   {merchantPhoneDisplay && (
-                    <p className="flex items-center gap-2.5">
+                    <p className="flex items-center gap-2.5 font-mono tabular-nums">
                       <Phone className="h-4 w-4 shrink-0 text-primary" />
                       <span>{merchantPhoneDisplay}</span>
                     </p>
@@ -3631,7 +3631,7 @@ export function ShopClient({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <Button
-                    className="w-full h-12 rounded-xl text-white font-black uppercase text-[10px] tracking-widest"
+                    className="w-full h-11 rounded-xl text-white font-semibold text-xs"
                     style={{ backgroundColor: primaryColor }}
                     onClick={handleShareStore}
                   >
@@ -3641,7 +3641,7 @@ export function ShopClient({
                     <Button
                       asChild
                       variant="outline"
-                      className="w-full h-12 rounded-xl border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-black uppercase text-[10px] tracking-widest"
+                      className="w-full h-11 rounded-xl border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-semibold text-xs"
                     >
                       <a
                         href={buildWhatsAppUrl(
@@ -3716,7 +3716,7 @@ export function ShopClient({
               <button
                 type="button"
                 onClick={scrollToCatalog}
-                className="underline underline-offset-2 font-black uppercase text-[10px] shrink-0"
+                className="underline underline-offset-2 font-semibold text-xs shrink-0"
               >
                 {announcementBar.ctaLabel}
               </button>
@@ -3725,7 +3725,7 @@ export function ShopClient({
                 href={announcementBar.ctaUrl}
                 target={announcementBar.ctaUrl.startsWith("http") ? "_blank" : undefined}
                 rel={announcementBar.ctaUrl.startsWith("http") ? "noopener noreferrer" : undefined}
-                className="underline underline-offset-2 font-black uppercase text-[10px] shrink-0"
+                className="underline underline-offset-2 font-semibold text-xs shrink-0"
               >
                 {announcementBar.ctaLabel}
               </a>
@@ -3744,7 +3744,7 @@ export function ShopClient({
 
       {/* Merchant Preview Banner */}
       {isPreview && (
-        <div className="bg-slate-900 text-white px-4 py-2 text-center text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2">
+        <div className="bg-slate-900 text-white px-4 py-2 text-center text-xs font-medium flex items-center justify-center gap-2">
           <Eye className="h-3.5 w-3.5 text-amber-400" />
           <span>Storefront Preview Mode — Visible via Merchant Preview Link</span>
         </div>
@@ -3753,7 +3753,7 @@ export function ShopClient({
       {/* Navigation Header */}
       <header
         className={cn(
-          "sticky top-0 z-50 backdrop-blur-md border-b shadow-sm",
+          "sticky top-0 z-50 backdrop-blur-md border-b",
           isDarkSurface
             ? "bg-slate-900/95 border-slate-800 text-white"
             : isWarmSurface
@@ -3761,47 +3761,41 @@ export function ShopClient({
               : "bg-white/95 border-slate-200 text-slate-900"
         )}
       >
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
             {logoUrl ? (
               <img
                 src={logoUrl}
                 alt={storeDisplayName}
                 referrerPolicy="no-referrer"
-                className="h-10 w-10 rounded-2xl object-cover border shadow-sm shrink-0"
+                className="h-10 w-10 rounded-xl object-cover border border-slate-200 shrink-0"
               />
             ) : (
               <div
-                className="h-10 w-10 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md shrink-0"
+                className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-semibold text-lg shrink-0"
                 style={{ backgroundColor: primaryColor }}
               >
                 {storeDisplayName.charAt(0)}
               </div>
             )}
-            <div className="flex flex-col text-left">
-              <span
-                className={cn(
-                  "text-sm font-black leading-none uppercase tracking-tight",
-                  isDarkSurface ? "text-white" : "text-slate-900"
-                )}
-                style={{ fontFamily: storeFonts.headingFont }}
-              >
-                {storeDisplayName}
-              </span>
-              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 uppercase tracking-tighter mt-1">
-                <BadgeCheck className="h-3 w-3 shrink-0" />
-                Official Store
-              </span>
-            </div>
+            <span
+              className={cn(
+                "text-base font-bold leading-none tracking-tight whitespace-nowrap truncate",
+                isDarkSurface ? "text-white" : "text-slate-900"
+              )}
+              style={{ fontFamily: storeFonts.headingFont }}
+            >
+              {storeDisplayName}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
               aria-label="Track Order"
               className={cn(
-                "h-10 rounded-full font-black uppercase text-[10px] tracking-wider gap-1.5 px-3.5",
+                "h-10 rounded-lg font-medium text-xs gap-1.5 px-3.5 whitespace-nowrap",
                 isDarkSurface
                   ? "border-slate-700 bg-slate-800 text-white hover:bg-slate-700"
                   : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -3821,19 +3815,19 @@ export function ShopClient({
               size="icon"
               aria-label="Open Saved Items"
               className={cn(
-                "relative h-11 w-11 rounded-full",
+                "relative h-10 w-10 rounded-lg",
                 isDarkSurface
                   ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-                  : "bg-muted/20 text-slate-700 hover:bg-muted/40"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               )}
               title="Saved Items"
               onClick={() => setIsWishlistOpen(true)}
             >
               <Heart className={cn("h-4 w-4", wishlistProducts.length > 0 && "fill-rose-500 text-rose-500")} />
               {wishlistProducts.length > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 bg-rose-600 text-white border-2 border-white text-[10px] font-black flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-rose-600 text-white border-2 border-white text-[11px] font-semibold font-mono tabular-nums flex items-center justify-center">
                   {wishlistProducts.length}
-                </Badge>
+                </span>
               )}
             </Button>
 
@@ -3842,10 +3836,10 @@ export function ShopClient({
               size="icon"
               aria-label="Share Store"
               className={cn(
-                "h-11 w-11 rounded-full",
+                "h-10 w-10 rounded-lg",
                 isDarkSurface
                   ? "bg-slate-800 text-slate-200 hover:bg-slate-700"
-                  : "bg-muted/20 text-slate-700 hover:bg-muted/40"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               )}
               title="Share Store"
               onClick={handleShareStore}
@@ -3867,26 +3861,26 @@ export function ShopClient({
                   size="icon"
                   aria-label="Open Shopping Bag"
                   className={cn(
-                    "relative h-11 w-11 rounded-full",
+                    "relative h-10 w-10 rounded-lg",
                     isDarkSurface
                       ? "bg-slate-800 text-white hover:bg-slate-700"
-                      : "bg-muted/20 text-slate-900 hover:bg-muted/40"
+                      : "bg-slate-100 text-slate-900 hover:bg-slate-200"
                   )}
                 >
                   <ShoppingCart className="h-5 w-5" />
                   {cartStats.totalItems > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 bg-red-600 text-white border-2 border-white text-[10px] font-black flex items-center justify-center">
+                    <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] px-1 rounded-full bg-red-600 text-white border-2 border-white text-[11px] font-semibold font-mono tabular-nums flex items-center justify-center">
                       {cartStats.totalItems}
-                    </Badge>
+                    </span>
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent className="w-full sm:max-w-md p-0 flex flex-col border-none shadow-2xl bg-white text-left">
+              <SheetContent className="w-full sm:max-w-md p-0 flex flex-col border-l border-slate-200 bg-white text-left">
                 <SheetHeader className="p-6 bg-slate-900 text-white shrink-0 text-left">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <ShoppingCart className="h-6 w-6 text-accent" />
-                      <SheetTitle className="text-white text-xl font-black uppercase tracking-tight">
+                      <ShoppingCart className="h-5 w-5 text-accent" />
+                      <SheetTitle className="text-white text-lg font-semibold tracking-tight">
                         {checkoutStep === "info"
                           ? "Delivery & Payment"
                           : checkoutStep === "success"
@@ -3898,46 +3892,46 @@ export function ShopClient({
                       <button
                         type="button"
                         onClick={() => setCheckoutStep("cart")}
-                        className="h-8 px-2.5 text-[9px] font-black uppercase text-accent border border-accent/20 rounded-lg hover:bg-accent/10"
+                        className="h-8 px-3 text-xs font-medium text-accent border border-accent/30 rounded-lg hover:bg-accent/10"
                       >
                         Back to Bag
                       </button>
                     )}
                   </div>
-                  <SheetDescription className="text-white/50 text-[9px] font-bold uppercase tracking-widest mt-1">
+                  <SheetDescription className="text-slate-400 text-xs mt-1">
                     Direct Secure Storefront Checkout
                   </SheetDescription>
                 </SheetHeader>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
                   {checkoutStep === "success" ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-10 text-center space-y-6 animate-in zoom-in-95">
-                      <div className="h-24 w-24 rounded-[2.5rem] bg-emerald-50 flex items-center justify-center border-4 border-white shadow-xl shadow-emerald-200/50">
-                        <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6">
+                      <div className="h-20 w-20 rounded-2xl bg-emerald-50 flex items-center justify-center border border-emerald-200">
+                        <CheckCircle2 className="h-10 w-10 text-emerald-600" />
                       </div>
                       <div className="space-y-2">
-                        <h3 className="text-2xl font-black text-slate-900 uppercase">
-                          Order Confirmed!
+                        <h3 className="text-xl font-semibold text-slate-900">
+                          Order Confirmed
                         </h3>
-                        <p className="text-sm text-muted-foreground font-medium px-2">
+                        <p className="text-sm text-slate-600 px-2">
                           Thank you for ordering from {storeDisplayName}. Your order has been registered with the store.
                         </p>
                       </div>
-                      <Card className="w-full bg-slate-50 border-none p-5 rounded-[1.5rem] shadow-inner text-left space-y-2">
+                      <Card className="w-full bg-slate-50 border border-slate-200 p-5 rounded-xl text-left space-y-2.5">
                         <div>
-                          <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">
+                          <p className="text-xs font-medium text-slate-500">
                             Confirmation Order ID
                           </p>
-                          <p className="text-base font-mono font-black text-primary">
+                          <p className="text-base font-mono tabular-nums font-semibold text-primary">
                             {confirmedOrderId}
                           </p>
                         </div>
                         {confirmedPaymentLabel && (
                           <div>
-                            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">
+                            <p className="text-xs font-medium text-slate-500">
                               Checkout Mode
                             </p>
-                            <p className="text-xs font-black text-slate-800 uppercase">
+                            <p className="text-sm font-semibold text-slate-800">
                               {confirmedPaymentLabel}
                             </p>
                           </div>
@@ -3955,13 +3949,13 @@ export function ShopClient({
                               setIsCartOpen(false);
                               setIsTrackModalOpen(true);
                             }}
-                            className="w-full h-11 rounded-2xl font-black uppercase text-[10px] tracking-widest gap-2"
+                            className="w-full h-11 rounded-xl font-medium text-sm gap-2"
                           >
                             <PackageCheck className="h-4 w-4" /> Track This Order
                           </Button>
                         )}
                         <SheetClose asChild>
-                          <Button className="w-full h-14 bg-slate-900 text-white font-black uppercase text-xs tracking-widest rounded-2xl">
+                          <Button className="w-full h-12 bg-slate-900 text-white font-semibold text-sm rounded-xl">
                             Continue Shopping
                           </Button>
                         </SheetClose>
@@ -3973,13 +3967,13 @@ export function ShopClient({
                         <div className="space-y-4">
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-primary" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">
+                            <h4 className="text-xs font-semibold text-slate-900">
                               1. Customer Details
                             </h4>
                           </div>
                           <div className="grid grid-cols-1 gap-4">
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                              <Label className="text-xs font-medium text-slate-600 ml-1">
                                 Full Name *
                               </Label>
                               <Input
@@ -3988,11 +3982,11 @@ export function ShopClient({
                                   setCustomerInfo({ ...customerInfo, name: e.target.value })
                                 }
                                 placeholder="e.g. Priya Patel"
-                                className="h-11 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-sm"
+                                className="h-11 rounded-xl bg-slate-50 border-slate-200 font-medium text-sm"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                              <Label className="text-xs font-medium text-slate-600 ml-1">
                                 WhatsApp Mobile *
                               </Label>
                               <div className="relative">
@@ -4006,12 +4000,12 @@ export function ShopClient({
                                     })
                                   }
                                   placeholder="9876543210"
-                                  className="h-11 pl-11 rounded-xl bg-muted/20 border-none shadow-inner font-bold font-mono text-sm"
+                                  className="h-11 pl-11 rounded-xl bg-slate-50 border-slate-200 font-mono tabular-nums text-sm"
                                 />
                               </div>
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                              <Label className="text-xs font-medium text-slate-600 ml-1">
                                 Email Address (Optional)
                               </Label>
                               <div className="relative">
@@ -4025,7 +4019,7 @@ export function ShopClient({
                                     })
                                   }
                                   placeholder="customer@example.com"
-                                  className="h-11 pl-11 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-sm"
+                                  className="h-11 pl-11 rounded-xl bg-slate-50 border-slate-200 text-sm"
                                 />
                               </div>
                             </div>
@@ -4037,7 +4031,7 @@ export function ShopClient({
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-primary" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">
+                            <h4 className="text-xs font-semibold text-slate-900">
                               2. Delivery Address {paymentMethod === "COD" ? "*" : ""}
                             </h4>
                           </div>
@@ -4047,7 +4041,7 @@ export function ShopClient({
                               setCustomerInfo({ ...customerInfo, address: e.target.value })
                             }
                             placeholder="Flat / House No, Building, Landmark, Locality, Pincode..."
-                            className="min-h-[84px] rounded-2xl bg-muted/20 border-none shadow-inner p-3.5 text-xs font-medium leading-relaxed"
+                            className="min-h-[84px] rounded-xl bg-slate-50 border-slate-200 p-3.5 text-sm leading-relaxed"
                           />
                         </div>
 
@@ -4057,7 +4051,7 @@ export function ShopClient({
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <CreditCard className="h-4 w-4 text-primary" />
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">
+                            <h4 className="text-xs font-semibold text-slate-900">
                               3. Select Payment Mode
                             </h4>
                           </div>
@@ -4066,19 +4060,19 @@ export function ShopClient({
                               type="button"
                               onClick={() => setPaymentMethod("ONLINE")}
                               className={cn(
-                                "p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all",
+                                "p-3.5 rounded-xl border text-left flex items-center justify-between transition-colors",
                                 paymentMethod === "ONLINE"
-                                  ? "border-primary bg-primary/5 shadow-sm"
+                                  ? "border-primary bg-primary/5"
                                   : "border-slate-200 bg-white hover:bg-slate-50"
                               )}
                             >
                               <div className="flex items-center gap-3">
                                 <CreditCard className="h-4 w-4 text-primary shrink-0" />
                                 <div>
-                                  <p className="text-xs font-black uppercase text-slate-900">
+                                  <p className="text-xs font-semibold text-slate-900">
                                     Pay Online (UPI / Cards)
                                   </p>
-                                  <p className="text-[10px] text-muted-foreground font-medium">
+                                  <p className="text-xs text-slate-500">
                                     Instant verified payment via Razorpay
                                   </p>
                                 </div>
@@ -4098,19 +4092,19 @@ export function ShopClient({
                                 type="button"
                                 onClick={() => setPaymentMethod("COD")}
                                 className={cn(
-                                  "p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all",
+                                  "p-3.5 rounded-xl border text-left flex items-center justify-between transition-colors",
                                   paymentMethod === "COD"
-                                    ? "border-amber-600 bg-amber-50/60 shadow-sm"
+                                    ? "border-amber-600 bg-amber-50/60"
                                     : "border-slate-200 bg-white hover:bg-slate-50"
                                 )}
                               >
                                 <div className="flex items-center gap-3">
                                   <Banknote className="h-4 w-4 text-amber-600 shrink-0" />
                                   <div>
-                                    <p className="text-xs font-black uppercase text-slate-900">
+                                    <p className="text-xs font-semibold text-slate-900">
                                       Cash on Delivery (COD)
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground font-medium">
+                                    <p className="text-xs text-slate-500">
                                       Pay cash or UPI upon doorstep delivery
                                       {shippingConfig.codFee > 0
                                         ? ` (+${currencySymbol}${shippingConfig.codFee.toLocaleString()} handling fee)`
@@ -4134,19 +4128,19 @@ export function ShopClient({
                                 type="button"
                                 onClick={() => setPaymentMethod("WHATSAPP")}
                                 className={cn(
-                                  "p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all",
+                                  "p-3.5 rounded-xl border text-left flex items-center justify-between transition-colors",
                                   paymentMethod === "WHATSAPP"
-                                    ? "border-emerald-600 bg-emerald-50/70 shadow-sm"
+                                    ? "border-emerald-600 bg-emerald-50/70"
                                     : "border-slate-200 bg-white hover:bg-slate-50"
                                 )}
                               >
                                 <div className="flex items-center gap-3">
                                   <MessageCircle className="h-4 w-4 text-emerald-600 shrink-0" />
                                   <div>
-                                    <p className="text-xs font-black uppercase text-slate-900">
+                                    <p className="text-xs font-semibold text-slate-900">
                                       Order via WhatsApp
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground font-medium">
+                                    <p className="text-xs text-slate-500">
                                       Logs order & opens direct merchant WhatsApp chat
                                     </p>
                                   </div>
@@ -4166,9 +4160,9 @@ export function ShopClient({
                       </div>
                     </ScrollArea>
                   ) : cart.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-4 opacity-40">
-                      <ShoppingBag className="h-16 w-16" />
-                      <p className="text-sm font-black uppercase tracking-widest leading-relaxed">
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-3 opacity-60">
+                      <ShoppingBag className="h-12 w-12 text-slate-400" />
+                      <p className="text-sm font-medium text-slate-600 leading-relaxed">
                         Your bag is empty.
                         <br />
                         Browse our catalog to add items.
@@ -4180,13 +4174,13 @@ export function ShopClient({
                         {shippingProgress.hasThreshold && (
                           <div
                             className={cn(
-                              "p-3.5 rounded-2xl border space-y-2 text-left",
+                              "p-3.5 rounded-xl border space-y-2 text-left",
                               shippingProgress.qualified
                                 ? "bg-emerald-50 border-emerald-200"
                                 : "bg-blue-50/70 border-blue-200"
                             )}
                           >
-                            <div className="flex items-center justify-between gap-2 text-xs font-black">
+                            <div className="flex items-center justify-between gap-2 text-xs font-semibold">
                               <span className="flex items-center gap-1.5 text-slate-800">
                                 <Truck
                                   className={cn(
@@ -4197,10 +4191,10 @@ export function ShopClient({
                                   )}
                                 />
                                 {shippingProgress.qualified
-                                  ? "You unlocked FREE delivery!"
-                                  : `Add ${currencySymbol}${shippingProgress.remainingAmount.toLocaleString()} more for FREE delivery`}
+                                  ? "You unlocked free delivery"
+                                  : `Add ${currencySymbol}${shippingProgress.remainingAmount.toLocaleString()} more for free delivery`}
                               </span>
-                              <span className="text-[10px] font-mono text-muted-foreground">
+                              <span className="text-xs font-mono tabular-nums text-slate-500">
                                 {shippingProgress.progressPercent}%
                               </span>
                             </div>
@@ -4214,12 +4208,13 @@ export function ShopClient({
                         {cart.map((item) => (
                           <div
                             key={item.id}
-                            className="flex gap-4 group p-3 rounded-2xl bg-muted/10 border text-left"
+                            className="flex gap-4 group p-3 rounded-xl bg-slate-50 border border-slate-200 text-left"
                           >
-                            <div className="h-16 w-16 rounded-xl overflow-hidden bg-muted shrink-0 border border-border/50">
+                            <div className="h-16 w-16 rounded-lg overflow-hidden bg-white shrink-0 border border-slate-200">
                               {item.image ? (
                                 <img
                                   src={item.image}
+                                  referrerPolicy="no-referrer"
                                   className="h-full w-full object-cover"
                                   alt={item.name}
                                 />
@@ -4229,7 +4224,7 @@ export function ShopClient({
                             </div>
                             <div className="flex-1 min-w-0 space-y-2 text-left">
                               <div className="flex justify-between items-start gap-2">
-                                <h4 className="text-xs font-black uppercase text-slate-900 leading-tight line-clamp-1">
+                                <h4 className="text-sm font-semibold text-slate-900 leading-tight line-clamp-1">
                                   {item.name}
                                 </h4>
                                 <button
@@ -4242,28 +4237,28 @@ export function ShopClient({
                                 </button>
                               </div>
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
+                                <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200">
                                   <button
                                     type="button"
                                     aria-label={`Decrease quantity of ${item.name}`}
                                     onClick={() => updateCartQty(item.id, -1)}
-                                    className="h-6 w-6 rounded-md hover:bg-muted/30 flex items-center justify-center"
+                                    className="h-6 w-6 rounded-md hover:bg-slate-100 flex items-center justify-center"
                                   >
                                     <Minus className="h-3 w-3" />
                                   </button>
-                                  <span className="text-xs font-black w-6 text-center">
+                                  <span className="text-xs font-semibold font-mono tabular-nums w-6 text-center">
                                     {item.quantity}
                                   </span>
                                   <button
                                     type="button"
                                     aria-label={`Increase quantity of ${item.name}`}
                                     onClick={() => updateCartQty(item.id, 1)}
-                                    className="h-6 w-6 rounded-md hover:bg-muted/30 flex items-center justify-center"
+                                    className="h-6 w-6 rounded-md hover:bg-slate-100 flex items-center justify-center"
                                   >
                                     <Plus className="h-3 w-3" />
                                   </button>
                                 </div>
-                                <span className="text-xs font-black text-primary">
+                                <span className="text-sm font-bold font-mono tabular-nums text-primary">
                                   {currencySymbol}
                                   {(item.price * item.quantity).toLocaleString()}
                                 </span>
@@ -4273,16 +4268,16 @@ export function ShopClient({
                         ))}
 
                         {/* Promo Code Box */}
-                        <div className="p-3.5 rounded-2xl bg-slate-50 border space-y-2.5 text-left">
+                        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 text-left">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 flex items-center gap-1.5">
+                            <span className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
                               <Ticket className="h-3.5 w-3.5 text-primary" /> Promo Code
                             </span>
                             {cartPricing.appliedCouponCode && (
                               <button
                                 type="button"
                                 onClick={handleRemoveCoupon}
-                                className="text-[10px] font-black uppercase text-red-600 hover:underline"
+                                className="text-xs font-medium text-red-600 hover:underline"
                               >
                                 Remove
                               </button>
@@ -4290,10 +4285,10 @@ export function ShopClient({
                           </div>
                           {cartPricing.appliedCouponCode ? (
                             <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
-                              <span className="text-xs font-mono font-black text-emerald-800">
+                              <span className="text-xs font-mono font-semibold text-emerald-800">
                                 {cartPricing.appliedCouponCode}
                               </span>
-                              <span className="text-xs font-black text-emerald-700">
+                              <span className="text-xs font-semibold font-mono tabular-nums text-emerald-700">
                                 -{currencySymbol}
                                 {cartPricing.discountAmount.toLocaleString()}
                               </span>
@@ -4313,14 +4308,14 @@ export function ShopClient({
                                   }
                                 }}
                                 placeholder="Enter coupon code"
-                                className="h-10 bg-white rounded-xl font-mono text-xs font-bold uppercase"
+                                className="h-10 bg-white rounded-xl font-mono text-xs font-semibold uppercase"
                               />
                               <Button
                                 type="button"
                                 variant="secondary"
                                 disabled={isApplyingCoupon}
                                 onClick={handleApplyCoupon}
-                                className="h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0"
+                                className="h-10 px-4 rounded-xl text-xs font-medium shrink-0"
                               >
                                 {isApplyingCoupon ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -4333,7 +4328,7 @@ export function ShopClient({
                           {couponFeedback && (
                             <p
                               className={cn(
-                                "text-[11px] font-bold",
+                                "text-xs font-medium",
                                 couponFeedback.type === "success"
                                   ? "text-emerald-700"
                                   : "text-red-600"
@@ -4349,21 +4344,21 @@ export function ShopClient({
                 </div>
 
                 {cart.length > 0 && checkoutStep !== "success" && (
-                  <div className="p-6 bg-slate-50 border-t space-y-4 shrink-0">
+                  <div className="p-6 bg-slate-50 border-t border-slate-200 space-y-4 shrink-0">
                     <div className="space-y-1.5">
-                      <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                      <div className="flex justify-between text-xs font-medium text-slate-600">
                         <span>Items Subtotal ({cartStats.totalItems})</span>
-                        <span>
+                        <span className="font-mono tabular-nums">
                           {currencySymbol}
                           {cartPricing.subtotal.toLocaleString()}
                         </span>
                       </div>
                       {cartPricing.discountAmount > 0 && (
-                        <div className="flex justify-between text-[11px] font-bold text-emerald-700">
+                        <div className="flex justify-between text-xs font-medium text-emerald-700">
                           <span>
                             Promo Discount ({cartPricing.appliedCouponCode})
                           </span>
-                          <span>
+                          <span className="font-mono tabular-nums">
                             -{currencySymbol}
                             {cartPricing.discountAmount.toLocaleString()}
                           </span>
@@ -4371,11 +4366,12 @@ export function ShopClient({
                       )}
                       {(shippingConfig.shippingFee > 0 ||
                         shippingConfig.freeShippingThreshold > 0) && (
-                        <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                        <div className="flex justify-between text-xs font-medium text-slate-600">
                           <span>Shipping</span>
                           <span
                             className={cn(
-                              cartPricing.shippingFee === 0 && "text-emerald-700 font-black"
+                              "font-mono tabular-nums",
+                              cartPricing.shippingFee === 0 && "text-emerald-700 font-semibold"
                             )}
                           >
                             {cartPricing.shippingFee === 0
@@ -4387,17 +4383,17 @@ export function ShopClient({
                       {checkoutStep === "info" &&
                         paymentMethod === "COD" &&
                         cartPricing.codFee > 0 && (
-                          <div className="flex justify-between text-[11px] font-bold text-slate-500">
+                          <div className="flex justify-between text-xs font-medium text-slate-600">
                             <span>COD Handling Fee</span>
-                            <span>
+                            <span className="font-mono tabular-nums">
                               {currencySymbol}
                               {cartPricing.codFee.toLocaleString()}
                             </span>
                           </div>
                         )}
-                      <div className="flex justify-between text-base font-black text-slate-900 uppercase pt-1 border-t">
+                      <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-200">
                         <span>Order Total</span>
-                        <span>
+                        <span className="font-mono tabular-nums">
                           {currencySymbol}
                           {cartPricing.grandTotal.toLocaleString()}
                         </span>
@@ -4409,7 +4405,7 @@ export function ShopClient({
                         <>
                           <Button
                             onClick={() => handleProceedToInfo("ONLINE")}
-                            className="w-full h-13 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all"
+                            className="w-full h-12 text-white font-semibold text-sm rounded-xl transition-colors"
                             style={{ backgroundColor: primaryColor }}
                           >
                             Proceed to Checkout <ArrowRight className="ml-2 h-4 w-4" />
@@ -4418,7 +4414,7 @@ export function ShopClient({
                             <Button
                               variant="outline"
                               onClick={() => handleProceedToInfo("WHATSAPP")}
-                              className="w-full h-11 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 font-bold uppercase text-[10px] tracking-widest gap-2 rounded-xl"
+                              className="w-full h-11 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200 font-semibold text-xs gap-2 rounded-xl"
                             >
                               <MessageCircle className="h-4 w-4" /> Checkout via WhatsApp
                             </Button>
@@ -4432,7 +4428,7 @@ export function ShopClient({
                             !customerInfo.name.trim() ||
                             customerInfo.phone.trim().length < 10
                           }
-                          className="w-full h-14 text-white font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all"
+                          className="w-full h-12 text-white font-semibold text-sm rounded-xl transition-colors font-mono tabular-nums"
                           style={{
                             backgroundColor:
                               paymentMethod === "WHATSAPP"
@@ -4476,7 +4472,7 @@ export function ShopClient({
               <History className="h-4 w-4 text-primary" />
               <h2
                 className={cn(
-                  "text-lg font-black uppercase tracking-tight",
+                  "text-lg font-semibold tracking-tight",
                   isDarkSurface ? "text-white" : "text-slate-900"
                 )}
                 style={{ fontFamily: storeFonts.headingFont }}
@@ -4484,7 +4480,7 @@ export function ShopClient({
                 Recently Viewed
               </h2>
             </div>
-            <span className="text-[10px] font-bold uppercase text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               Pick up where you left off
             </span>
           </div>
@@ -4497,7 +4493,7 @@ export function ShopClient({
                   key={item.id}
                   onClick={() => setSelectedProductId(item.id)}
                   className={cn(
-                    "cursor-pointer overflow-hidden p-3 flex items-center gap-3 transition-all",
+                    "cursor-pointer overflow-hidden p-3 flex items-center gap-3 transition-colors",
                     cardRadiusClass,
                     cardSurfaceClass
                   )}
@@ -4513,7 +4509,7 @@ export function ShopClient({
                       />
                     ) : (
                       <span
-                        className="h-full w-full flex items-center justify-center font-black text-white text-sm"
+                        className="h-full w-full flex items-center justify-center font-semibold text-white text-sm"
                         style={{ backgroundColor: primaryColor }}
                       >
                         {item.name?.charAt(0) || "P"}
@@ -4523,14 +4519,14 @@ export function ShopClient({
                   <div className="min-w-0 text-left">
                     <p
                       className={cn(
-                        "text-xs font-black uppercase truncate",
+                        "text-sm font-semibold truncate",
                         isDarkSurface ? "text-white" : "text-slate-900"
                       )}
                     >
                       {item.name}
                     </p>
                     <p
-                      className="text-xs font-black mt-0.5 tabular-nums"
+                      className="text-xs font-bold mt-0.5 font-mono tabular-nums"
                       style={{ color: isDarkSurface ? "#93C5FD" : primaryColor }}
                     >
                       {currencySymbol}
@@ -4566,7 +4562,7 @@ export function ShopClient({
                   >
                     <ShieldCheck className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-black uppercase tracking-wide">{highlight}</span>
+                  <span className="text-xs font-semibold">{highlight}</span>
                 </div>
               ))}
             </div>
@@ -4580,18 +4576,18 @@ export function ShopClient({
                     src={logoUrl}
                     alt={storeDisplayName}
                     referrerPolicy="no-referrer"
-                    className="h-8 w-8 rounded-lg object-cover border shadow-sm"
+                    className="h-8 w-8 rounded-lg object-cover border border-slate-200"
                   />
                 ) : (
                   <div
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md"
+                    className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-semibold text-sm"
                     style={{ backgroundColor: primaryColor }}
                   >
                     {storeDisplayName.charAt(0)}
                   </div>
                 )}
                 <span
-                  className="font-black text-sm uppercase"
+                  className="font-semibold text-sm"
                   style={{ fontFamily: storeFonts.headingFont }}
                 >
                   {storeDisplayName}
@@ -4610,7 +4606,7 @@ export function ShopClient({
                   setIsTrackModalOpen(true);
                 }}
                 className={cn(
-                  "h-9 text-[10px] font-black uppercase tracking-wider gap-1.5",
+                  "h-9 text-xs font-medium gap-1.5",
                   buttonRadiusClass,
                   isDarkSurface ? "border-slate-700 bg-slate-800 text-white" : ""
                 )}
@@ -4641,7 +4637,7 @@ export function ShopClient({
             </div>
           </div>
 
-          <div className="pt-4 border-t border-current/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] opacity-80 font-semibold uppercase tracking-wider">
+          <div className="pt-4 border-t border-current/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs opacity-80">
             <span>
               © {new Date().getFullYear()} {storeDisplayName}. All Rights Reserved.
             </span>
@@ -4667,7 +4663,9 @@ export function ShopClient({
               >
                 Privacy &amp; Terms
               </button>
-              {merchantPhoneDisplay && <span>Desk: {merchantPhoneDisplay}</span>}
+              {merchantPhoneDisplay && (
+                <span className="font-mono tabular-nums">Desk: {merchantPhoneDisplay}</span>
+              )}
             </div>
           </div>
         </div>
@@ -4680,18 +4678,15 @@ export function ShopClient({
       >
         <SheetContent
           side="right"
-          className="w-full sm:max-w-2xl p-0 flex flex-col border-none shadow-2xl bg-white text-left"
+          className="w-full sm:max-w-2xl p-0 flex flex-col border-l border-slate-200 bg-white text-left"
         >
           {viewingProduct ? (
             <>
-              <SheetHeader className="p-8 bg-slate-900 text-white shrink-0 relative text-left">
-                <div className="flex justify-between items-start mb-6">
-                  <Badge
-                    variant="outline"
-                    className="bg-white/10 text-accent border-white/20 uppercase text-[9px] font-black px-3 py-1"
-                  >
+              <SheetHeader className="p-6 md:p-8 bg-slate-900 text-white shrink-0 relative text-left">
+                <div className="flex justify-between items-center mb-5">
+                  <span className="text-xs font-mono tabular-nums text-slate-300">
                     SKU: {viewingProduct.sku || viewingProduct.id.slice(-6).toUpperCase()}
-                  </Badge>
+                  </span>
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
@@ -4727,23 +4722,23 @@ export function ShopClient({
                     >
                       <Share2 className="h-4 w-4" />
                     </Button>
-                    <SheetClose className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20">
+                    <SheetClose className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20">
                       <X className="h-5 w-5" />
                     </SheetClose>
                   </div>
                 </div>
-                <div className="flex items-center gap-5 relative z-10 text-left">
-                  <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center text-primary font-black text-2xl shrink-0 shadow-xl">
+                <div className="flex items-center gap-4 relative z-10 text-left">
+                  <div className="h-14 w-14 rounded-xl bg-white flex items-center justify-center text-primary font-semibold text-xl shrink-0">
                     {viewingProduct.name?.charAt(0)}
                   </div>
                   <div className="space-y-1 text-left min-w-0">
                     <SheetTitle
-                      className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight leading-tight"
+                      className="text-xl sm:text-2xl font-semibold text-white tracking-tight leading-tight"
                       style={{ fontFamily: storeFonts.headingFont }}
                     >
                       {viewingProduct.name}
                     </SheetTitle>
-                    <p className="text-accent text-[10px] font-bold uppercase tracking-[0.2em]">
+                    <p className="text-slate-300 text-xs font-medium">
                       {viewingProduct.category || "General"}
                     </p>
                   </div>
@@ -4751,7 +4746,7 @@ export function ShopClient({
               </SheetHeader>
 
               <ScrollArea className="flex-1">
-                <div className="p-8 space-y-8 text-left">
+                <div className="p-6 md:p-8 space-y-6 text-left">
                   {(() => {
                     const gallery = getProductGalleryImages(viewingProduct).filter(
                       (imgUrl) => !brokenImageUrls[imgUrl]
@@ -4761,7 +4756,7 @@ export function ShopClient({
 
                     return (
                       <div className="space-y-3">
-                        <div className="aspect-[1.5/1] rounded-[2rem] overflow-hidden bg-slate-100 border border-slate-200/70 shadow-inner flex items-center justify-center">
+                        <div className="aspect-[1.5/1] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
                           {currentImg ? (
                             <img
                               src={currentImg}
@@ -4778,12 +4773,12 @@ export function ShopClient({
                               }}
                             >
                               <div
-                                className="h-20 w-20 rounded-3xl flex items-center justify-center text-white font-black text-3xl shadow-lg"
+                                className="h-20 w-20 rounded-2xl flex items-center justify-center text-white font-semibold text-3xl"
                                 style={{ backgroundColor: primaryColor }}
                               >
                                 {viewingProduct.name?.charAt(0) || "P"}
                               </div>
-                              <p className="text-xs font-black uppercase tracking-widest text-slate-500">
+                              <p className="text-xs font-medium text-slate-600">
                                 {viewingProduct.category || "Official Product"}
                               </p>
                             </div>
@@ -4800,7 +4795,7 @@ export function ShopClient({
                                 className={cn(
                                   "h-16 w-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all",
                                   idx === activeGalleryIdx
-                                    ? "ring-2 ring-offset-1 shadow-md"
+                                    ? "ring-2 ring-offset-1"
                                     : "border-slate-200 opacity-70 hover:opacity-100"
                                 )}
                                 style={
@@ -4825,11 +4820,11 @@ export function ShopClient({
                   })()}
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col justify-center text-left">
-                      <p className="text-[9px] font-black uppercase text-primary/70 tracking-widest">
+                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center text-left">
+                      <p className="text-xs font-medium text-slate-500">
                         Online Price
                       </p>
-                      <p className="text-2xl font-black text-primary mt-1">
+                      <p className="text-2xl font-bold font-mono tabular-nums text-primary mt-1">
                         {currencySymbol}
                         {(
                           viewingProduct.onlinePrice ?? viewingProduct.price
@@ -4838,19 +4833,19 @@ export function ShopClient({
                       {viewingProduct.onlinePrice !== undefined &&
                         viewingProduct.onlinePrice < viewingProduct.price &&
                         showDiscount && (
-                          <p className="text-xs text-muted-foreground line-through font-bold mt-0.5">
+                          <p className="text-xs text-slate-500 line-through font-mono tabular-nums mt-0.5">
                             {currencySymbol}
                             {viewingProduct.price.toLocaleString()}
                           </p>
                         )}
                     </div>
-                    <div className="p-5 bg-muted/20 rounded-2xl border flex flex-col justify-center text-left">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">
+                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center text-left">
+                      <p className="text-xs font-medium text-slate-500">
                         Stock Availability
                       </p>
-                      <Badge
+                      <span
                         className={cn(
-                          "w-fit border-none text-[10px] font-bold tracking-wide uppercase h-7 px-3 mt-2",
+                          "w-fit inline-flex items-center rounded-md text-xs font-semibold font-mono tabular-nums px-2.5 py-1 mt-2",
                           viewingProduct.stock > (viewingProduct.minThreshold || 2)
                             ? "bg-emerald-100 text-emerald-800"
                             : viewingProduct.stock > 0
@@ -4861,36 +4856,36 @@ export function ShopClient({
                         {viewingProduct.stock > 0
                           ? `${viewingProduct.stock} ${viewingProduct.stock === 1 ? "Unit" : "Units"} in Stock`
                           : "Waitlist Only"}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
 
                   <Separator className="opacity-40" />
 
                   <div className="space-y-3 text-left">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                      <Info className="h-4 w-4" /> Description & Specs
+                    <h4 className="text-xs font-semibold text-slate-900 flex items-center gap-2">
+                      <Info className="h-4 w-4 text-primary" /> Description & Specs
                     </h4>
-                    <p className="text-xs sm:text-sm font-medium text-slate-600 leading-relaxed text-left whitespace-pre-line">
+                    <p className="text-sm text-slate-600 leading-relaxed text-left whitespace-pre-line">
                       {viewingProduct.description ||
                         "Official product specifications verified by the merchant. Contact us via WhatsApp for instant inquiries."}
                     </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="p-3.5 rounded-xl bg-slate-50 border flex flex-col gap-1 text-left">
-                      <span className="text-[8px] font-black text-slate-400 uppercase">
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1 text-left">
+                      <span className="text-xs font-medium text-slate-500">
                         Product SKU
                       </span>
-                      <span className="text-xs font-mono font-black">
+                      <span className="text-xs font-mono tabular-nums font-semibold text-slate-900">
                         {viewingProduct.sku || "N/A"}
                       </span>
                     </div>
-                    <div className="p-3.5 rounded-xl bg-slate-50 border flex flex-col gap-1 text-left">
-                      <span className="text-[8px] font-black text-slate-400 uppercase">
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1 text-left">
+                      <span className="text-xs font-medium text-slate-500">
                         Category
                       </span>
-                      <span className="text-xs font-black uppercase">
+                      <span className="text-xs font-semibold text-slate-900">
                         {viewingProduct.category || "General"}
                       </span>
                     </div>
@@ -4898,9 +4893,9 @@ export function ShopClient({
                 </div>
               </ScrollArea>
 
-              <SheetFooter className="p-6 bg-muted/10 border-t flex flex-col sm:flex-row gap-3">
+              <SheetFooter className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row gap-3">
                 <Button
-                  className="flex-1 h-14 bg-primary text-white font-black uppercase text-xs tracking-wider rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 h-12 bg-primary text-white font-semibold text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
                   style={{ backgroundColor: primaryColor }}
                   disabled={viewingProduct.stock <= 0}
                   onClick={() => {
@@ -4911,7 +4906,7 @@ export function ShopClient({
                   <Plus className="h-4 w-4" /> Add to Bag
                 </Button>
                 <Button
-                  className="flex-1 h-14 bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-xs tracking-wider rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 h-12 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm rounded-xl transition-colors flex items-center justify-center gap-2"
                   disabled={viewingProduct.stock <= 0}
                   onClick={() => handleBuyNow(viewingProduct)}
                 >
@@ -4921,7 +4916,7 @@ export function ShopClient({
                   <Button
                     variant="outline"
                     aria-label="Order on WhatsApp"
-                    className="h-14 w-14 rounded-xl border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 shadow-md active:scale-95 transition-all shrink-0"
+                    className="h-12 w-12 rounded-xl border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors shrink-0"
                     title="Order on WhatsApp"
                     onClick={(e) => handleOrderOnWhatsAppDirect(viewingProduct, e)}
                   >
@@ -4940,9 +4935,9 @@ export function ShopClient({
 
       {/* --- TRACK ORDER MODAL --- */}
       <Dialog open={isTrackModalOpen} onOpenChange={setIsTrackModalOpen}>
-        <DialogContent className="sm:max-w-lg rounded-3xl p-0 overflow-hidden bg-white [&>button]:text-white [&>button]:opacity-85 [&>button]:hover:opacity-100">
+        <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden bg-white [&>button]:text-white [&>button]:opacity-85 [&>button]:hover:opacity-100">
           <DialogHeader className="p-6 bg-slate-900 text-white text-left">
-            <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 text-white">
+            <DialogTitle className="text-lg font-semibold tracking-tight flex items-center gap-2 text-white">
               <PackageCheck className="h-5 w-5 text-accent" /> Track Your Order
             </DialogTitle>
             <DialogDescription className="text-slate-300 text-xs">
@@ -4956,7 +4951,7 @@ export function ShopClient({
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="track-order-id"
-                    className="text-[10px] font-black uppercase text-slate-600"
+                    className="text-xs font-medium text-slate-600"
                   >
                     Order ID *
                   </Label>
@@ -4965,13 +4960,13 @@ export function ShopClient({
                     value={trackOrderIdInput}
                     onChange={(e) => setTrackOrderIdInput(e.target.value)}
                     placeholder="ORD-1775660965-4821"
-                    className="h-11 rounded-xl font-mono text-xs font-bold uppercase"
+                    className="h-11 rounded-xl font-mono tabular-nums text-xs font-semibold uppercase"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="track-order-phone"
-                    className="text-[10px] font-black uppercase text-slate-600"
+                    className="text-xs font-medium text-slate-600"
                   >
                     Checkout Phone *
                   </Label>
@@ -4982,7 +4977,7 @@ export function ShopClient({
                       setTrackPhoneInput(e.target.value.replace(/[^\d+\s-]/g, ""))
                     }
                     placeholder="9876543210"
-                    className="h-11 rounded-xl font-mono text-xs font-bold"
+                    className="h-11 rounded-xl font-mono tabular-nums text-xs font-semibold"
                   />
                 </div>
               </div>
@@ -4990,7 +4985,7 @@ export function ShopClient({
                 type="submit"
                 disabled={isTrackingOrder}
                 style={{ backgroundColor: primaryColor }}
-                className="w-full h-11 rounded-xl text-white font-black uppercase text-xs tracking-wider"
+                className="w-full h-11 rounded-xl text-white font-semibold text-sm"
               >
                 {isTrackingOrder ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -5004,7 +4999,7 @@ export function ShopClient({
             {trackOrderError && (
               <div
                 role="alert"
-                className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-start gap-2"
+                className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-start gap-2"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>{trackOrderError}</span>
@@ -5012,40 +5007,39 @@ export function ShopClient({
             )}
 
             {trackedOrder && (
-              <div className="space-y-4 pt-2 border-t">
+              <div className="space-y-4 pt-2 border-t border-slate-200">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground">
+                    <p className="text-xs font-medium text-slate-500">
                       Order Reference
                     </p>
-                    <p className="text-sm font-mono font-black text-slate-900">
+                    <p className="text-sm font-mono tabular-nums font-semibold text-slate-900">
                       {trackedOrder.orderId}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px] font-black uppercase">
-                      {trackedOrder.paymentMethod}
-                    </Badge>
-                    <Badge
+                  <div className="flex items-center gap-2 text-xs font-medium">
+                    <span className="text-slate-600">{trackedOrder.paymentMethod}</span>
+                    <span className="text-slate-300" aria-hidden="true">·</span>
+                    <span
                       className={cn(
-                        "text-[10px] font-black uppercase border-none",
+                        "font-semibold",
                         trackedOrder.status === "delivered"
-                          ? "bg-emerald-600 text-white"
+                          ? "text-emerald-700"
                           : trackedOrder.status === "cancelled" ||
                               trackedOrder.status === "refunded"
-                            ? "bg-red-600 text-white"
-                            : "bg-blue-600 text-white"
+                            ? "text-red-700"
+                            : "text-blue-700"
                       )}
                     >
                       {trackedOrder.status}
-                    </Badge>
+                    </span>
                   </div>
                 </div>
 
                 {/* Progress Stepper */}
                 {trackedOrder.status === "cancelled" ||
                 trackedOrder.status === "refunded" ? (
-                  <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-xs font-bold text-red-800 uppercase">
+                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs font-semibold text-red-800">
                     This order is currently marked as {trackedOrder.status}.
                   </div>
                 ) : (
@@ -5082,7 +5076,7 @@ export function ShopClient({
                               done ? "text-emerald-600" : "text-slate-300"
                             )}
                           />
-                          <p className="text-[10px] font-black uppercase">{step.label}</p>
+                          <p className="text-xs font-medium">{step.label}</p>
                         </div>
                       );
                     })}
@@ -5090,14 +5084,14 @@ export function ShopClient({
                 )}
 
                 {(trackedOrder.courierName || trackedOrder.trackingNumber) && (
-                  <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-between gap-3">
+                  <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <Truck className="h-4 w-4 text-blue-600 shrink-0" />
                       <div>
-                        <p className="text-[10px] font-black uppercase text-blue-900">
+                        <p className="text-xs font-semibold text-blue-900">
                           {trackedOrder.courierName || "Courier Dispatch"}
                         </p>
-                        <p className="text-xs font-mono font-bold text-blue-700">
+                        <p className="text-xs font-mono tabular-nums font-medium text-blue-700">
                           {trackedOrder.trackingNumber || "Awaiting AWB"}
                         </p>
                       </div>
@@ -5105,8 +5099,8 @@ export function ShopClient({
                   </div>
                 )}
 
-                <div className="p-3.5 rounded-2xl bg-slate-50 border space-y-2">
-                  <p className="text-[10px] font-black uppercase text-slate-500">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <p className="text-xs font-medium text-slate-500">
                     Items & Summary
                   </p>
                   <div className="space-y-1 text-xs">
@@ -5115,7 +5109,7 @@ export function ShopClient({
                         <span>
                           {it.name} × {it.quantity}
                         </span>
-                        <span className="font-bold">
+                        <span className="font-mono tabular-nums font-semibold">
                           {currencySymbol}
                           {it.lineTotal.toLocaleString()}
                         </span>
@@ -5125,12 +5119,12 @@ export function ShopClient({
                   <Separator />
                   <div className="space-y-1 text-xs">
                     {trackedOrder.discountAmount > 0 && (
-                      <div className="flex justify-between text-emerald-700 font-bold">
+                      <div className="flex justify-between text-emerald-700 font-semibold">
                         <span>
                           Discount
                           {trackedOrder.couponCode ? ` (${trackedOrder.couponCode})` : ""}
                         </span>
-                        <span>
+                        <span className="font-mono tabular-nums">
                           -{currencySymbol}
                           {trackedOrder.discountAmount.toLocaleString()}
                         </span>
@@ -5139,7 +5133,7 @@ export function ShopClient({
                     {trackedOrder.shippingFee > 0 && (
                       <div className="flex justify-between text-slate-600">
                         <span>Shipping</span>
-                        <span>
+                        <span className="font-mono tabular-nums">
                           {currencySymbol}
                           {trackedOrder.shippingFee.toLocaleString()}
                         </span>
@@ -5148,15 +5142,15 @@ export function ShopClient({
                     {trackedOrder.codFee > 0 && (
                       <div className="flex justify-between text-slate-600">
                         <span>COD Fee</span>
-                        <span>
+                        <span className="font-mono tabular-nums">
                           {currencySymbol}
                           {trackedOrder.codFee.toLocaleString()}
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between font-black text-slate-900 pt-1">
+                    <div className="flex justify-between font-bold text-slate-900 pt-1">
                       <span>Total Amount</span>
-                      <span>
+                      <span className="font-mono tabular-nums">
                         {currencySymbol}
                         {trackedOrder.totalAmount.toLocaleString()}
                       </span>
@@ -5166,21 +5160,21 @@ export function ShopClient({
 
                 {trackedOrder.statusHistory.length > 0 && (
                   <div className="space-y-1.5">
-                    <p className="text-[10px] font-black uppercase text-slate-500">
+                    <p className="text-xs font-medium text-slate-500">
                       Timeline Updates
                     </p>
                     <div className="space-y-1.5">
                       {trackedOrder.statusHistory.map((h, i) => (
                         <div
                           key={i}
-                          className="text-[11px] bg-white border rounded-xl px-3 py-2 flex justify-between gap-2"
+                          className="text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 flex justify-between gap-2"
                         >
-                          <span className="font-bold text-slate-700">
-                            <span className="uppercase text-primary">{h.status}</span>
+                          <span className="font-medium text-slate-700">
+                            <span className="font-semibold text-primary">{h.status}</span>
                             {h.note ? ` — ${h.note}` : ""}
                           </span>
                           {h.changedAt && (
-                            <span className="text-[10px] text-muted-foreground shrink-0">
+                            <span className="text-xs font-mono tabular-nums text-slate-500 shrink-0">
                               {new Date(h.changedAt).toLocaleDateString()}
                             </span>
                           )}
@@ -5197,27 +5191,27 @@ export function ShopClient({
 
       {/* --- SAVED ITEMS / WISHLIST DRAWER --- */}
       <Sheet open={isWishlistOpen} onOpenChange={setIsWishlistOpen}>
-        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col border-none shadow-2xl bg-white text-left">
+        <SheetContent className="w-full sm:max-w-md p-0 flex flex-col border-l border-slate-200 bg-white text-left">
           <SheetHeader className="p-6 bg-slate-900 text-white shrink-0 text-left">
             <div className="flex items-center gap-3">
               <Heart className="h-5 w-5 text-rose-400 fill-current" />
-              <SheetTitle className="text-white text-lg font-black uppercase tracking-tight">
+              <SheetTitle className="text-white text-lg font-semibold tracking-tight font-mono tabular-nums">
                 Saved Items ({wishlistProducts.length})
               </SheetTitle>
             </div>
-            <SheetDescription className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">
+            <SheetDescription className="text-slate-400 text-xs mt-1">
               Bookmark favorites and move them to your bag anytime
             </SheetDescription>
           </SheetHeader>
 
           <ScrollArea className="flex-1 p-6">
             {wishlistProducts.length === 0 ? (
-              <div className="py-16 text-center space-y-3 opacity-60">
+              <div className="py-16 text-center space-y-3 opacity-70">
                 <Heart className="h-12 w-12 mx-auto text-slate-300" />
-                <p className="text-xs font-black uppercase tracking-wider text-slate-600">
+                <p className="text-sm font-semibold text-slate-600">
                   No saved items yet
                 </p>
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
                   Tap the heart icon on any product card to save it here.
                 </p>
               </div>
@@ -5230,14 +5224,14 @@ export function ShopClient({
                   return (
                     <div
                       key={p.id}
-                      className="p-3.5 rounded-2xl border bg-slate-50/70 flex items-center gap-3.5 text-left"
+                      className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-3.5 text-left"
                     >
                       <div
                         onClick={() => {
                           setIsWishlistOpen(false);
                           setSelectedProductId(p.id);
                         }}
-                        className="h-16 w-16 rounded-xl overflow-hidden bg-slate-200 shrink-0 cursor-pointer flex items-center justify-center"
+                        className="h-16 w-16 rounded-lg overflow-hidden bg-slate-200 shrink-0 cursor-pointer flex items-center justify-center"
                       >
                         {pImg && !brokenImageUrls[pImg] ? (
                           <img
@@ -5249,7 +5243,7 @@ export function ShopClient({
                           />
                         ) : (
                           <span
-                            className="h-full w-full flex items-center justify-center font-black text-white text-base"
+                            className="h-full w-full flex items-center justify-center font-semibold text-white text-base"
                             style={{ backgroundColor: primaryColor }}
                           >
                             {p.name?.charAt(0) || "P"}
@@ -5257,10 +5251,10 @@ export function ShopClient({
                         )}
                       </div>
                       <div className="flex-1 min-w-0 space-y-1">
-                        <p className="text-xs font-black uppercase text-slate-900 truncate">
+                        <p className="text-sm font-semibold text-slate-900 truncate">
                           {p.name}
                         </p>
-                        <p className="text-xs font-black tabular-nums" style={{ color: primaryColor }}>
+                        <p className="text-xs font-bold font-mono tabular-nums" style={{ color: primaryColor }}>
                           {currencySymbol}
                           {pPrice.toLocaleString()}
                         </p>
@@ -5271,7 +5265,7 @@ export function ShopClient({
                             disabled={out}
                             onClick={() => addToCart(p, true)}
                             style={{ backgroundColor: primaryColor }}
-                            className="h-7 px-3 text-[10px] font-black uppercase text-white rounded-lg"
+                            className="h-8 px-3 text-xs font-medium text-white rounded-lg"
                           >
                             {out ? "Out of Stock" : "Add to Bag"}
                           </Button>
@@ -5280,7 +5274,7 @@ export function ShopClient({
                             size="sm"
                             variant="ghost"
                             onClick={() => handleToggleWishlist(p)}
-                            className="h-7 px-2 text-[10px] font-bold uppercase text-rose-600"
+                            className="h-8 px-2 text-xs font-medium text-rose-600"
                           >
                             Remove
                           </Button>
@@ -5300,9 +5294,9 @@ export function ShopClient({
         open={Boolean(policyModalTab)}
         onOpenChange={(open) => !open && setPolicyModalTab(null)}
       >
-        <DialogContent className="sm:max-w-lg rounded-3xl p-0 overflow-hidden bg-white [&>button]:text-white [&>button]:opacity-85 [&>button]:hover:opacity-100">
+        <DialogContent className="sm:max-w-lg rounded-2xl p-0 overflow-hidden bg-white [&>button]:text-white [&>button]:opacity-85 [&>button]:hover:opacity-100">
           <DialogHeader className="p-6 bg-slate-900 text-white text-left">
-            <DialogTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2 text-white">
+            <DialogTitle className="text-lg font-semibold tracking-tight flex items-center gap-2 text-white">
               <FileText className="h-5 w-5 text-accent" /> {storeDisplayName} Policies
             </DialogTitle>
             <DialogDescription className="text-slate-300 text-xs">
@@ -5322,7 +5316,7 @@ export function ShopClient({
                   type="button"
                   onClick={() => setPolicyModalTab(tab.id)}
                   className={cn(
-                    "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-colors",
+                    "h-9 rounded-xl text-xs font-medium border transition-colors",
                     policyModalTab === tab.id
                       ? "bg-slate-900 text-white border-slate-900"
                       : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
@@ -5333,7 +5327,7 @@ export function ShopClient({
               ))}
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
               {policyModalTab === "shipping"
                 ? policyConfig.shippingPolicy
                 : policyModalTab === "return"
@@ -5341,7 +5335,7 @@ export function ShopClient({
                   : policyConfig.privacyPolicy}
             </div>
 
-            <div className="pt-2 border-t flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground font-semibold">
+            <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 font-medium font-mono tabular-nums">
               {merchantPhoneDisplay && <span>Phone: {merchantPhoneDisplay}</span>}
               {merchantEmailDisplay && <span>Email: {merchantEmailDisplay}</span>}
             </div>

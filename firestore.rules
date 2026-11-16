@@ -376,6 +376,54 @@ service cloud.firestore {
         }
       }
 
+      // TEAM ATTENDANCE, STAFF PAYMENTS & PUBLIC TRACKING MIRROR (NO PII)
+      match /attendance/{recordId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create, update: if (
+          (isBusinessAdmin(businessId) || isPlatformOwner()) &&
+          request.resource.data.businessId == businessId &&
+          request.resource.data.staffId is string &&
+          request.resource.data.date is string
+        );
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /staffPayments/{paymentId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create, update: if (
+          (isBusinessAdmin(businessId) || isPlatformOwner()) &&
+          request.resource.data.businessId == businessId &&
+          request.resource.data.staffId is string &&
+          request.resource.data.amount is number &&
+          request.resource.data.amount >= 0
+        );
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /paymentRequests/{requestId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if (
+          (isBusinessMember(businessId) && request.resource.data.requesterId == request.auth.uid) ||
+          isPlatformOwner()
+        );
+        allow update, delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /publicStaff/{staffId} {
+        allow get: if resource.data.sharePublic == true || isBusinessMember(businessId) || isPlatformOwner();
+        allow list: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+
+        match /records/{recordId} {
+          allow get, list: if (
+            get(/databases/$(database)/documents/businesses/$(businessId)/publicStaff/$(staffId)).data.sharePublic == true ||
+            isBusinessMember(businessId) ||
+            isPlatformOwner()
+          );
+          allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+        }
+      }
+
       // BUSINESS DEFAULT CATCH-ALL
       match /{allPaths=**} {
         allow read: if isBusinessMember(businessId) || isPlatformOwner();

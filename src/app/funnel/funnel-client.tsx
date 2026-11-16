@@ -194,7 +194,7 @@ export function FunnelClient({
   const isCharcoal = themeConfig.themeSurface === "charcoal";
   const surfaceBgClass = isCharcoal
     ? "bg-slate-950 text-slate-100"
-    : themeConfig.themeSurface === "warm"
+    : (themeConfig.themeSurface as string) === "warm"
       ? "bg-[#FCF9F4] text-slate-900"
       : "bg-slate-50 text-slate-900";
 
@@ -869,19 +869,20 @@ export function FunnelClient({
               <img
                 src={normalizedStore.logoUrl}
                 alt={normalizedStore.storeName}
+                referrerPolicy="no-referrer"
                 className="h-9 w-9 rounded-lg object-cover border shrink-0 bg-white"
               />
             ) : (
               <div
-                className="h-9 w-9 rounded-lg flex items-center justify-center text-white font-black shrink-0"
+                className="h-9 w-9 rounded-lg flex items-center justify-center text-white font-bold shrink-0"
                 style={{ backgroundColor: accentColor }}
               >
                 {normalizedStore.storeName.slice(0, 1).toUpperCase()}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-black truncate">{normalizedStore.storeName}</p>
-              <p className={cn("text-[10px] font-bold uppercase tracking-wider truncate", mutedTextClass)}>
+              <p className="text-sm font-bold truncate">{normalizedStore.storeName}</p>
+              <p className={cn("text-xs font-medium truncate", mutedTextClass)}>
                 {isPreview ? "Preview Mode · Verified Store" : "Official Direct Offer"}
               </p>
             </div>
@@ -889,19 +890,18 @@ export function FunnelClient({
 
           <div className="flex items-center gap-2 shrink-0">
             {funnel.couponCode && (
-              <Badge
-                variant="outline"
-                className="hidden sm:inline-flex text-[10px] font-black border-dashed"
+              <span
+                className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-md border border-dashed text-xs font-mono font-semibold"
                 style={{ borderColor: accentColor, color: accentColor }}
               >
-                CODE: {funnel.couponCode}
-              </Badge>
+                Code: {funnel.couponCode}
+              </span>
             )}
             <Button
               type="button"
               size="sm"
               onClick={scrollToConversionTarget}
-              className={cn("text-white font-black text-xs px-4 h-9 shadow-sm", buttonShapeClass)}
+              className={cn("text-white font-semibold text-xs px-4 h-9", buttonShapeClass)}
               style={{ backgroundColor: accentColor }}
             >
               {funnel.stickyCtaLabel || "Claim Offer"}
@@ -922,22 +922,21 @@ export function FunnelClient({
               <section
                 key={section.id}
                 className={cn(
-                  "overflow-hidden border shadow-lg p-6 sm:p-10",
+                  "overflow-hidden border p-6 sm:p-10",
                   radiusClass,
                   isCharcoal
-                    ? "bg-gradient-to-br from-slate-900 to-slate-950 border-slate-800"
-                    : "bg-white border-slate-200/80"
+                    ? "bg-slate-900 border-slate-800"
+                    : "bg-white border-slate-200"
                 )}
               >
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
                   <div className="md:col-span-7 space-y-5 min-w-0">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider text-white" style={{ backgroundColor: accentColor }}>
-                      <Sparkles className="h-3.5 w-3.5" />
-                      {c.badgeText || "EXCLUSIVE OFFER"}
-                    </div>
+                    <p className="text-xs font-semibold" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                      {c.badgeText || "Exclusive Direct Offer"}
+                    </p>
 
                     <h1
-                      className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-[1.1]"
+                      className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]"
                       style={{ fontFamily: fontInfo.headingFont }}
                     >
                       {c.title || funnel.name}
@@ -950,19 +949,19 @@ export function FunnelClient({
 
                     {selectedProduct && (
                       <div className="flex flex-wrap items-center gap-3 pt-1">
-                        <span className="text-2xl font-black" style={{ color: accentColor }}>
+                        <span className="text-2xl font-bold font-mono tabular-nums" style={{ color: accentColor }}>
                           {currencySymbol}
                           {effectiveUnitPrice.toLocaleString()}
                         </span>
                         {Number(selectedProduct.price) > effectiveUnitPrice && (
-                          <span className={cn("text-base line-through font-semibold", mutedTextClass)}>
+                          <span className={cn("text-base line-through font-semibold font-mono tabular-nums", mutedTextClass)}>
                             {currencySymbol}
                             {Number(selectedProduct.price).toLocaleString()}
                           </span>
                         )}
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 font-bold text-[10px]">
+                        <span className="text-xs font-semibold text-emerald-700">
                           In Stock · Ready to Ship
-                        </Badge>
+                        </span>
                       </div>
                     )}
 
@@ -972,7 +971,7 @@ export function FunnelClient({
                         size="lg"
                         onClick={scrollToConversionTarget}
                         className={cn(
-                          "text-white font-black text-sm px-7 h-12 shadow-md",
+                          "text-white font-semibold text-sm px-7 h-12",
                           buttonShapeClass
                         )}
                         style={{ backgroundColor: accentColor }}
@@ -982,7 +981,7 @@ export function FunnelClient({
                       </Button>
 
                       {normalizedStore.codEnabled && (
-                        <div className={cn("flex items-center gap-1.5 text-xs font-bold", mutedTextClass)}>
+                        <div className={cn("flex items-center gap-1.5 text-xs font-semibold", mutedTextClass)}>
                           <ShieldCheck className="h-4 w-4 text-emerald-600" />
                           COD & UPI Available
                         </div>
@@ -996,6 +995,7 @@ export function FunnelClient({
                         <img
                           src={heroPrimaryImg}
                           alt={selectedProduct?.name || funnel.name}
+                          referrerPolicy="no-referrer"
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -1078,11 +1078,11 @@ export function FunnelClient({
             return (
               <section key={section.id} className="space-y-5">
                 <div className="text-center max-w-2xl mx-auto space-y-2">
-                  <Badge variant="outline" className="text-[10px] font-black uppercase">
-                    {c.badgeText || "WHY SWITCH TODAY"}
-                  </Badge>
+                  <p className="text-xs font-semibold" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                    {c.badgeText || "Why Switch Today"}
+                  </p>
                   <h2
-                    className="text-2xl sm:text-3xl font-black tracking-tight"
+                    className="text-2xl sm:text-3xl font-bold tracking-tight"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "Stop Overpaying for Unverified Alternatives"}
@@ -1091,9 +1091,9 @@ export function FunnelClient({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <Card className={cn("border-rose-200 bg-rose-50/70 text-slate-900", radiusClass)}>
+                  <Card className={cn("border-rose-200 bg-rose-50/70 text-slate-900 shadow-none", radiusClass)}>
                     <CardContent className="p-6 space-y-4">
-                      <div className="flex items-center gap-2 text-rose-700 font-black text-sm uppercase">
+                      <div className="flex items-center gap-2 text-rose-700 font-bold text-sm">
                         <XCircle className="h-5 w-5" />
                         {c.painTitle || "Common Frustrations Elsewhere"}
                       </div>
@@ -1108,9 +1108,9 @@ export function FunnelClient({
                     </CardContent>
                   </Card>
 
-                  <Card className={cn("border-emerald-200 bg-emerald-50/80 text-slate-900", radiusClass)}>
+                  <Card className={cn("border-emerald-200 bg-emerald-50/80 text-slate-900 shadow-none", radiusClass)}>
                     <CardContent className="p-6 space-y-4">
-                      <div className="flex items-center gap-2 text-emerald-800 font-black text-sm uppercase">
+                      <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
                         <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                         {c.solutionTitle || "What You Get With Us"}
                       </div>
@@ -1138,11 +1138,11 @@ export function FunnelClient({
             return (
               <section key={section.id} className="space-y-5">
                 <div className="text-center max-w-2xl mx-auto space-y-2">
-                  <Badge variant="outline" className="text-[10px] font-black uppercase">
-                    {c.badgeText || "SIDE-BY-SIDE PROOF"}
-                  </Badge>
+                  <p className="text-xs font-semibold" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                    {c.badgeText || "Side-by-Side Proof"}
+                  </p>
                   <h2
-                    className="text-2xl sm:text-3xl font-black tracking-tight"
+                    className="text-2xl sm:text-3xl font-bold tracking-tight"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "How Our Direct Offer Compares"}
@@ -1150,19 +1150,19 @@ export function FunnelClient({
                   {c.subtitle && <p className={cn("text-sm", mutedTextClass)}>{c.subtitle}</p>}
                 </div>
 
-                <Card className={cn("overflow-hidden border shadow-sm", radiusClass, cardSurfaceClass)}>
+                <Card className={cn("overflow-hidden border shadow-none", radiusClass, cardSurfaceClass)}>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className={isCharcoal ? "bg-slate-800/80 border-b border-slate-700" : "bg-slate-100/80 border-b"}>
-                          <th className="p-4 text-xs font-black uppercase">Feature / Promise</th>
+                          <th className="p-4 text-xs font-bold">Feature / Promise</th>
                           <th
-                            className="p-4 text-xs font-black uppercase text-center text-white"
+                            className="p-4 text-xs font-bold text-center text-white"
                             style={{ backgroundColor: accentColor }}
                           >
                             {c.usLabel || normalizedStore.storeName}
                           </th>
-                          <th className="p-4 text-xs font-black uppercase text-center opacity-70">
+                          <th className="p-4 text-xs font-bold text-center opacity-70">
                             {c.othersLabel || "Typical Sellers"}
                           </th>
                         </tr>
@@ -1170,7 +1170,7 @@ export function FunnelClient({
                       <tbody className="divide-y divide-slate-200/70">
                         {rows.map((r, idx) => (
                           <tr key={idx}>
-                            <td className="p-4 text-xs sm:text-sm font-bold">{r.feature}</td>
+                            <td className="p-4 text-xs sm:text-sm font-semibold">{r.feature}</td>
                             <td className="p-4 text-center">
                               {r.us ? (
                                 <CheckCircle2 className="h-5 w-5 text-emerald-600 mx-auto" />
@@ -1202,11 +1202,11 @@ export function FunnelClient({
             return (
               <section key={section.id} className="space-y-6">
                 <div className="text-center max-w-2xl mx-auto space-y-2">
-                  <Badge variant="outline" className="text-[10px] font-black uppercase">
-                    {c.badgeText || "SIMPLE 3-STEP PROCESS"}
-                  </Badge>
+                  <p className="text-xs font-semibold" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                    {c.badgeText || "Simple 3-Step Process"}
+                  </p>
                   <h2
-                    className="text-2xl sm:text-3xl font-black tracking-tight"
+                    className="text-2xl sm:text-3xl font-bold tracking-tight"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "From Click to Doorstep in 3 Easy Steps"}
@@ -1216,15 +1216,15 @@ export function FunnelClient({
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {steps.map((st, idx) => (
-                    <Card key={idx} className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+                    <Card key={idx} className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                       <CardContent className="p-6 space-y-3">
                         <div
-                          className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-sm"
+                          className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-mono font-bold text-sm"
                           style={{ backgroundColor: accentColor }}
                         >
                           {st.stepNumber || `0${idx + 1}`}
                         </div>
-                        <h3 className="text-base font-black">{st.title}</h3>
+                        <h3 className="text-base font-bold">{st.title}</h3>
                         <p className={cn("text-xs sm:text-sm leading-relaxed", mutedTextClass)}>
                           {st.description}
                         </p>
@@ -1250,7 +1250,7 @@ export function FunnelClient({
               <section key={section.id}>
                 <Card
                   className={cn(
-                    "border-2 shadow-lg overflow-hidden",
+                    "border-2 shadow-none overflow-hidden",
                     radiusClass,
                     cardSurfaceClass
                   )}
@@ -1260,11 +1260,11 @@ export function FunnelClient({
                     className="p-5 sm:p-6 text-white text-center space-y-1"
                     style={{ backgroundColor: accentColor }}
                   >
-                    <p className="text-[11px] font-black uppercase tracking-widest opacity-90">
-                      {c.badgeText || "LIMITED BUNDLE VALUE"}
+                    <p className="text-xs font-semibold opacity-90">
+                      {c.badgeText || "Limited Bundle Value"}
                     </p>
                     <h2
-                      className="text-2xl sm:text-3xl font-black"
+                      className="text-2xl sm:text-3xl font-bold"
                       style={{ fontFamily: fontInfo.headingFont }}
                     >
                       {c.title || "Everything Included in Today's Offer"}
@@ -1334,11 +1334,11 @@ export function FunnelClient({
             return (
               <section key={section.id} className="space-y-6">
                 <div className="text-center max-w-2xl mx-auto space-y-2">
-                  <Badge variant="outline" className="text-[10px] font-black uppercase">
-                    {c.badgeText || "CHOOSE YOUR PACK"}
-                  </Badge>
+                  <p className="text-xs font-semibold" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                    {c.badgeText || "Choose Your Pack"}
+                  </p>
                   <h2
-                    className="text-2xl sm:text-3xl font-black tracking-tight"
+                    className="text-2xl sm:text-3xl font-bold tracking-tight"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "Pick the Bundle That Saves You Most"}
@@ -1353,10 +1353,9 @@ export function FunnelClient({
                       <Card
                         key={tier.id}
                         className={cn(
-                          "border-2 transition-all flex flex-col justify-between",
+                          "border-2 transition-colors flex flex-col justify-between shadow-none",
                           radiusClass,
-                          cardSurfaceClass,
-                          isSelected || tier.highlight ? "shadow-xl" : "shadow-sm"
+                          cardSurfaceClass
                         )}
                         style={{
                           borderColor: isSelected
@@ -1368,10 +1367,10 @@ export function FunnelClient({
                       >
                         <CardContent className="p-6 space-y-4">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-base font-black">{tier.name}</span>
+                            <span className="text-base font-bold">{tier.name}</span>
                             {tier.badge && (
                               <Badge
-                                className="text-[10px] font-black text-white border-none"
+                                className="text-xs font-semibold text-white border-none"
                                 style={{ backgroundColor: accentColor }}
                               >
                                 {tier.badge}
@@ -1380,12 +1379,12 @@ export function FunnelClient({
                           </div>
 
                           <div className="flex items-baseline gap-2.5">
-                            <span className="text-3xl font-black" style={{ color: accentColor }}>
+                            <span className="text-3xl font-bold font-mono tabular-nums" style={{ color: accentColor }}>
                               {currencySymbol}
                               {Number(tier.price).toLocaleString()}
                             </span>
                             {tier.compareAtPrice && Number(tier.compareAtPrice) > Number(tier.price) && (
-                              <span className={cn("text-sm line-through font-bold", mutedTextClass)}>
+                              <span className={cn("text-sm line-through font-semibold font-mono tabular-nums", mutedTextClass)}>
                                 {currencySymbol}
                                 {Number(tier.compareAtPrice).toLocaleString()}
                               </span>
@@ -1407,7 +1406,7 @@ export function FunnelClient({
                             type="button"
                             onClick={() => handleSelectTier(tier)}
                             className={cn(
-                              "w-full font-black text-xs h-11",
+                              "w-full font-semibold text-xs h-11",
                               buttonShapeClass,
                               isSelected || tier.highlight ? "text-white" : ""
                             )}
@@ -1436,20 +1435,20 @@ export function FunnelClient({
               <section key={section.id}>
                 <Card
                   className={cn(
-                    "border-2 border-emerald-200 bg-emerald-50/70 text-slate-900 shadow-sm",
+                    "border border-emerald-200 bg-emerald-50/70 text-slate-900 shadow-none",
                     radiusClass
                   )}
                 >
                   <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
-                    <div className="h-20 w-20 rounded-full bg-emerald-600 text-white flex flex-col items-center justify-center shrink-0 shadow-md">
-                      <Award className="h-8 w-8" />
-                      <span className="text-[10px] font-black">{days}-DAY</span>
+                    <div className="h-20 w-20 rounded-full bg-emerald-600 text-white flex flex-col items-center justify-center shrink-0">
+                      <Award className="h-7 w-7" />
+                      <span className="text-xs font-mono font-bold tabular-nums">{days}-Day</span>
                     </div>
                     <div className="space-y-2 flex-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800">
-                        {c.badgeText || "100% RISK-FREE PROMISE"}
+                      <p className="text-xs font-semibold text-emerald-800">
+                        {c.badgeText || "100% Risk-Free Promise"}
                       </p>
-                      <h3 className="text-xl font-black text-slate-950">
+                      <h3 className="text-xl font-bold text-slate-950">
                         {c.title || `${days}-Day Ironclad Replacement & Quality Guarantee`}
                       </h3>
                       <p className="text-sm text-slate-700 leading-relaxed">
@@ -1469,7 +1468,7 @@ export function FunnelClient({
               <section key={section.id} id="funnel-checkout" className="scroll-mt-20">
                 <Card
                   className={cn(
-                    "border-2 shadow-xl overflow-hidden",
+                    "border-2 shadow-none overflow-hidden",
                     radiusClass,
                     cardSurfaceClass
                   )}
@@ -1482,15 +1481,15 @@ export function FunnelClient({
                     <div className="flex items-center gap-2">
                       <Zap className="h-5 w-5" />
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-90">
-                          {c.badgeText || "EXPRESS 30-SEC CHECKOUT"}
+                        <p className="text-xs font-semibold opacity-90">
+                          {c.badgeText || "Express 30-Sec Checkout"}
                         </p>
-                        <h2 className="text-lg sm:text-xl font-black">
+                        <h2 className="text-lg sm:text-xl font-bold">
                           {c.title || "Complete Your Order & Claim Instant Dispatch"}
                         </h2>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs font-bold opacity-95">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold opacity-95">
                       <Lock className="h-4 w-4" /> Encrypted Direct Store Checkout
                     </div>
                   </div>
@@ -1606,10 +1605,10 @@ export function FunnelClient({
                                       : "bg-white text-slate-800 border-slate-200"
                                   )}
                                 >
-                                  <div className="flex items-center gap-2 font-black text-xs text-slate-900">
+                                  <div className="flex items-center gap-2 font-semibold text-xs text-slate-900">
                                     <Banknote className="h-4 w-4 text-amber-600" /> Cash on Delivery
                                   </div>
-                                  <p className="text-[10px] text-slate-500 mt-0.5">
+                                  <p className="text-xs text-slate-500 mt-0.5">
                                     Pay at doorstep
                                   </p>
                                 </button>
@@ -1625,10 +1624,10 @@ export function FunnelClient({
                                     : "bg-white text-slate-800 border-slate-200"
                                 )}
                               >
-                                <div className="flex items-center gap-2 font-black text-xs text-slate-900">
+                                <div className="flex items-center gap-2 font-semibold text-xs text-slate-900">
                                   <CreditCard className="h-4 w-4 text-primary" /> UPI / Cards
                                 </div>
-                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                <p className="text-xs text-slate-500 mt-0.5">
                                   Instant Razorpay pay
                                 </p>
                               </button>
@@ -1644,10 +1643,10 @@ export function FunnelClient({
                                       : "bg-white text-slate-800 border-slate-200"
                                   )}
                                 >
-                                  <div className="flex items-center gap-2 font-black text-xs text-slate-900">
+                                  <div className="flex items-center gap-2 font-semibold text-xs text-slate-900">
                                     <MessageCircle className="h-4 w-4 text-emerald-600" /> WhatsApp Order
                                   </div>
-                                  <p className="text-[10px] text-slate-500 mt-0.5">
+                                  <p className="text-xs text-slate-500 mt-0.5">
                                     Confirm on chat
                                   </p>
                                 </button>
@@ -1715,15 +1714,15 @@ export function FunnelClient({
                                   />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-black text-amber-950">
+                                      <span className="text-xs font-semibold text-amber-950">
                                         {c.orderBumpTitle || "YES! Add Priority Care & Bonus Add-On"}
                                       </span>
-                                      <Badge className="bg-amber-200 text-amber-950 border-none text-[10px] font-black shrink-0">
+                                      <span className="text-xs font-mono font-bold tabular-nums text-amber-950 shrink-0">
                                         +{currencySymbol}
                                         {effectiveBumpPrice.toLocaleString()}
-                                      </Badge>
+                                      </span>
                                     </div>
-                                    <p className="text-[11px] text-amber-900/80 mt-0.5 leading-snug">
+                                    <p className="text-xs text-amber-900/80 mt-0.5 leading-snug">
                                       {c.orderBumpDescription ||
                                         "One-time exclusive add-on shipped inside the same parcel."}
                                     </p>
@@ -1747,7 +1746,7 @@ export function FunnelClient({
                                   size="sm"
                                   disabled={isApplyingCoupon}
                                   onClick={() => handleApplyCoupon()}
-                                  className="h-9 px-3 text-xs font-bold shrink-0"
+                                  className="h-9 px-3 text-xs font-semibold shrink-0"
                                 >
                                   {isApplyingCoupon ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1759,7 +1758,7 @@ export function FunnelClient({
                               {couponFeedback && (
                                 <p
                                   className={cn(
-                                    "text-[11px] font-bold",
+                                    "text-xs font-semibold",
                                     couponFeedback.ok ? "text-emerald-700" : "text-rose-600"
                                   )}
                                 >
@@ -1771,13 +1770,13 @@ export function FunnelClient({
                             {/* Free Shipping Progress */}
                             {freeShippingProgress.hasThreshold && (
                               <div className="space-y-1">
-                                <div className="flex justify-between text-[10px] font-bold text-slate-600">
+                                <div className="flex justify-between text-xs font-semibold text-slate-600">
                                   <span>
                                     {freeShippingProgress.qualified
                                       ? "Free Delivery Unlocked!"
                                       : `Add ${currencySymbol}${freeShippingProgress.remainingAmount.toLocaleString()} more for Free Delivery`}
                                   </span>
-                                  <span>{freeShippingProgress.progressPercent}%</span>
+                                  <span className="font-mono tabular-nums">{freeShippingProgress.progressPercent}%</span>
                                 </div>
                                 <Progress value={freeShippingProgress.progressPercent} className="h-1.5" />
                               </div>
@@ -1787,7 +1786,7 @@ export function FunnelClient({
                             <div className="border-t pt-3 space-y-1.5 text-xs">
                               <div className="flex justify-between">
                                 <span className="text-slate-600">Subtotal</span>
-                                <span className="font-bold tabular-nums">
+                                <span className="font-bold font-mono tabular-nums">
                                   {currencySymbol}
                                   {checkoutPricing.subtotal.toLocaleString()}
                                 </span>
@@ -1795,7 +1794,7 @@ export function FunnelClient({
                               {checkoutPricing.discountAmount > 0 && (
                                 <div className="flex justify-between text-emerald-700 font-bold">
                                   <span>Promo Discount ({checkoutPricing.appliedCouponCode})</span>
-                                  <span className="tabular-nums">
+                                  <span className="font-mono tabular-nums">
                                     -{currencySymbol}
                                     {checkoutPricing.discountAmount.toLocaleString()}
                                   </span>
@@ -1804,7 +1803,7 @@ export function FunnelClient({
                               {checkoutPricing.shippingFee > 0 && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-600">Shipping</span>
-                                  <span className="font-bold tabular-nums">
+                                  <span className="font-bold font-mono tabular-nums">
                                     {currencySymbol}
                                     {checkoutPricing.shippingFee.toLocaleString()}
                                   </span>
@@ -1813,15 +1812,15 @@ export function FunnelClient({
                               {checkoutPricing.codFee > 0 && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-600">COD Handling</span>
-                                  <span className="font-bold tabular-nums">
+                                  <span className="font-bold font-mono tabular-nums">
                                     {currencySymbol}
                                     {checkoutPricing.codFee.toLocaleString()}
                                   </span>
                                 </div>
                               )}
-                              <div className="flex justify-between items-baseline border-t pt-2.5 text-base font-black text-slate-950">
+                              <div className="flex justify-between items-baseline border-t pt-2.5 text-base font-bold text-slate-950">
                                 <span>Total Payable</span>
-                                <span className="tabular-nums" style={{ color: accentColor }}>
+                                <span className="font-mono tabular-nums" style={{ color: accentColor }}>
                                   {currencySymbol}
                                   {checkoutPricing.grandTotal.toLocaleString()}
                                 </span>
@@ -1833,7 +1832,7 @@ export function FunnelClient({
                               size="lg"
                               disabled={isPlacingOrder}
                               className={cn(
-                                "w-full text-white font-black h-12 text-sm shadow-md",
+                                "w-full text-white font-semibold h-12 text-sm",
                                 buttonShapeClass
                               )}
                               style={{ backgroundColor: accentColor }}
@@ -1868,29 +1867,29 @@ export function FunnelClient({
             return (
               <section key={section.id}>
                 <Card
-                  className={cn("border-none text-white shadow-lg", radiusClass)}
+                  className={cn("border-none text-white shadow-none", radiusClass)}
                   style={{ backgroundColor: accentColor }}
                 >
                   <CardContent className="p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="space-y-1.5 text-center md:text-left">
-                      <Badge className="bg-white/20 text-white border-none text-[10px] font-black uppercase">
-                        <Clock className="h-3 w-3 mr-1" /> {c.discountLabel || "FLASH DEAL LIVE"}
-                      </Badge>
-                      <h2 className="text-xl sm:text-2xl font-black">
+                      <p className="text-xs font-semibold text-white/90 flex items-center justify-center md:justify-start gap-1.5">
+                        <Clock className="h-3.5 w-3.5" /> {c.discountLabel || "Flash Deal Live"}
+                      </p>
+                      <h2 className="text-xl sm:text-2xl font-bold">
                         {c.title || "Limited-Time Funnel Pricing"}
                       </h2>
                       {c.subtitle && <p className="text-xs sm:text-sm opacity-90">{c.subtitle}</p>}
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
-                      {[{ v: hrs, l: "HRS" }, { v: mins, l: "MIN" }, { v: secs, l: "SEC" }].map(
+                      {[{ v: hrs, l: "Hrs" }, { v: mins, l: "Min" }, { v: secs, l: "Sec" }].map(
                         (box) => (
                           <div
                             key={box.l}
                             className="bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2 text-center min-w-[60px]"
                           >
-                            <p className="text-xl font-black tabular-nums">{box.v}</p>
-                            <p className="text-[9px] font-bold opacity-80">{box.l}</p>
+                            <p className="text-xl font-bold font-mono tabular-nums">{box.v}</p>
+                            <p className="text-xs font-medium opacity-85">{box.l}</p>
                           </div>
                         )
                       )}
@@ -1908,7 +1907,7 @@ export function FunnelClient({
               <section key={section.id} className="space-y-4">
                 <div className="text-center max-w-xl mx-auto space-y-1">
                   <h2
-                    className="text-xl sm:text-2xl font-black"
+                    className="text-xl sm:text-2xl font-bold"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "Active Offers & Promo Codes"}
@@ -1917,26 +1916,26 @@ export function FunnelClient({
                 </div>
 
                 {activeCoupons.length === 0 ? (
-                  <Card className={cn("border border-dashed p-5 text-center text-xs", radiusClass, cardSurfaceClass)}>
+                  <Card className={cn("border border-dashed p-5 text-center text-xs shadow-none", radiusClass, cardSurfaceClass)}>
                     <Ticket className="h-6 w-6 mx-auto mb-1 opacity-50" />
                     Direct bundle savings already active on this funnel!
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {activeCoupons.map((cp) => (
-                      <Card key={cp.id} className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+                      <Card key={cp.id} className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                         <CardContent className="p-4 flex items-center justify-between gap-3">
                           <div>
-                            <Badge className="font-mono font-black text-xs text-white" style={{ backgroundColor: accentColor }}>
+                            <span className="inline-block px-2 py-0.5 rounded-md font-mono font-bold text-xs text-white" style={{ backgroundColor: accentColor }}>
                               {cp.code}
-                            </Badge>
+                            </span>
                             <p className="text-xs font-bold mt-1.5">
                               {cp.discountType === "percent"
                                 ? `${cp.discountValue}% OFF`
                                 : `Flat ${currencySymbol}${cp.discountValue} OFF`}
                             </p>
                             {cp.minOrderAmount > 0 && (
-                              <p className={cn("text-[10px]", mutedTextClass)}>
+                              <p className={cn("text-xs font-mono tabular-nums", mutedTextClass)}>
                                 Min order {currencySymbol}
                                 {cp.minOrderAmount.toLocaleString()}
                               </p>
@@ -1946,7 +1945,7 @@ export function FunnelClient({
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="font-bold text-xs"
+                            className="font-semibold text-xs"
                             onClick={() => {
                               handleApplyCoupon(cp.code);
                               scrollToConversionTarget();
@@ -1968,15 +1967,15 @@ export function FunnelClient({
             const ytId = extractYouTubeVideoId(c.mediaUrl);
             return (
               <section key={section.id}>
-                <Card className={cn("border shadow-sm overflow-hidden", radiusClass, cardSurfaceClass)}>
+                <Card className={cn("border shadow-none overflow-hidden", radiusClass, cardSurfaceClass)}>
                   <CardContent className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                     <div className="md:col-span-6 space-y-3">
-                      <Badge variant="outline" className="text-[10px] font-black uppercase">
-                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
+                      <p className="text-xs font-semibold flex items-center gap-1.5" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                        <PlayCircle className="h-3.5 w-3.5" />
                         {c.badgeText || "Product Demo"}
-                      </Badge>
+                      </p>
                       <h2
-                        className="text-2xl font-black"
+                        className="text-2xl font-bold"
                         style={{ fontFamily: fontInfo.headingFont }}
                       >
                         {c.title || "See Our Quality Up Close"}
@@ -1987,7 +1986,7 @@ export function FunnelClient({
                       <Button
                         type="button"
                         onClick={scrollToConversionTarget}
-                        className={cn("text-white font-black text-xs h-10 px-5", buttonShapeClass)}
+                        className={cn("text-white font-semibold text-xs h-10 px-5", buttonShapeClass)}
                         style={{ backgroundColor: accentColor }}
                       >
                         {c.cta || "Claim Offer"} <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -2009,6 +2008,7 @@ export function FunnelClient({
                           <img
                             src={heroPrimaryImg}
                             alt={c.title || "Showcase"}
+                            referrerPolicy="no-referrer"
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -2027,7 +2027,7 @@ export function FunnelClient({
               <section key={section.id} className="space-y-5">
                 <div className="text-center max-w-2xl mx-auto space-y-1">
                   <h2
-                    className="text-2xl sm:text-3xl font-black"
+                    className="text-2xl sm:text-3xl font-bold"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "Trusted by Verified Buyers"}
@@ -2037,7 +2037,7 @@ export function FunnelClient({
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {reviews.map((rev, idx) => (
-                    <Card key={idx} className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+                    <Card key={idx} className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                       <CardContent className="p-5 space-y-3">
                         <div className="flex items-center gap-0.5 text-amber-500">
                           {Array.from({ length: rev.rating || 5 }).map((_, sIdx) => (
@@ -2046,9 +2046,9 @@ export function FunnelClient({
                         </div>
                         <p className="text-sm italic leading-relaxed">&ldquo;{rev.quote}&rdquo;</p>
                         <div className="pt-1">
-                          <p className="text-xs font-black">{rev.name}</p>
+                          <p className="text-xs font-bold">{rev.name}</p>
                           {rev.role && (
-                            <p className={cn("text-[10px] font-bold uppercase", mutedTextClass)}>
+                            <p className={cn("text-xs font-medium", mutedTextClass)}>
                               {rev.role}
                             </p>
                           )}
@@ -2068,7 +2068,7 @@ export function FunnelClient({
               <section key={section.id} className="space-y-5 max-w-3xl mx-auto">
                 <div className="text-center space-y-1">
                   <h2
-                    className="text-2xl sm:text-3xl font-black"
+                    className="text-2xl sm:text-3xl font-bold"
                     style={{ fontFamily: fontInfo.headingFont }}
                   >
                     {c.title || "Frequently Asked Questions"}
@@ -2080,11 +2080,11 @@ export function FunnelClient({
                   {faqs.map((faq, idx) => {
                     const isOpen = openFaqIdx === idx;
                     return (
-                      <Card key={idx} className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+                      <Card key={idx} className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                         <button
                           type="button"
                           onClick={() => setOpenFaqIdx(isOpen ? null : idx)}
-                          className="w-full p-4 text-left flex items-center justify-between gap-3 font-black text-sm"
+                          className="w-full p-4 text-left flex items-center justify-between gap-3 font-semibold text-sm"
                         >
                           <span>{faq.question}</span>
                           {isOpen ? (
@@ -2111,16 +2111,16 @@ export function FunnelClient({
             return (
               <section key={section.id} id="funnel-lead" className="scroll-mt-20">
                 <Card
-                  className={cn("border-2 shadow-lg", radiusClass, cardSurfaceClass)}
+                  className={cn("border-2 shadow-none", radiusClass, cardSurfaceClass)}
                   style={{ borderColor: accentColor }}
                 >
                   <CardContent className="p-6 sm:p-8 max-w-2xl mx-auto text-center space-y-4">
-                    <Badge className="text-white border-none text-[10px] font-black" style={{ backgroundColor: accentColor }}>
-                      <BellRing className="h-3.5 w-3.5 mr-1" />
-                      {c.discountLabel || "PRIORITY CALLBACK & VIP ACCESS"}
-                    </Badge>
+                    <p className="text-xs font-semibold flex items-center justify-center gap-1.5" style={{ color: isCharcoal ? "#94A3B8" : accentColor }}>
+                      <BellRing className="h-3.5 w-3.5" />
+                      {c.discountLabel || "Priority Callback & VIP Access"}
+                    </p>
                     <h2
-                      className="text-2xl sm:text-3xl font-black"
+                      className="text-2xl sm:text-3xl font-bold"
                       style={{ fontFamily: fontInfo.headingFont }}
                     >
                       {c.title || "Request Instant Callback & Exclusive Deal"}
@@ -2155,7 +2155,7 @@ export function FunnelClient({
                         <Button
                           type="submit"
                           disabled={isSubmittingLead}
-                          className={cn("text-white font-black h-11 px-6 shrink-0", buttonShapeClass)}
+                          className={cn("text-white font-semibold h-11 px-6 shrink-0", buttonShapeClass)}
                           style={{ backgroundColor: accentColor }}
                         >
                           {isSubmittingLead ? (
@@ -2184,7 +2184,7 @@ export function FunnelClient({
               <section key={section.id} className="space-y-4">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-black" style={{ fontFamily: fontInfo.headingFont }}>
+                    <h2 className="text-xl sm:text-2xl font-bold" style={{ fontFamily: fontInfo.headingFont }}>
                       {c.title || section.label}
                     </h2>
                     {c.subtitle && <p className={cn("text-xs sm:text-sm", mutedTextClass)}>{c.subtitle}</p>}
@@ -2199,7 +2199,7 @@ export function FunnelClient({
                       <Card
                         key={p.id}
                         className={cn(
-                          "border shadow-sm overflow-hidden flex flex-col justify-between",
+                          "border shadow-none overflow-hidden flex flex-col justify-between",
                           radiusClass,
                           cardSurfaceClass,
                           isActivePick ? "ring-2 ring-primary" : ""
@@ -2208,7 +2208,7 @@ export function FunnelClient({
                         <div>
                           <div className="aspect-square bg-slate-100 overflow-hidden">
                             {pImg ? (
-                              <img src={pImg} alt={p.name} className="w-full h-full object-cover" />
+                              <img src={pImg} alt={p.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-slate-400">
                                 <ShoppingBag className="h-8 w-8" />
@@ -2216,9 +2216,9 @@ export function FunnelClient({
                             )}
                           </div>
                           <div className="p-4 space-y-1">
-                            <p className="text-xs font-black truncate">{p.name}</p>
+                            <p className="text-xs font-semibold truncate">{p.name}</p>
                             {c.showPricing !== false && (
-                              <p className="text-sm font-black" style={{ color: accentColor }}>
+                              <p className="text-sm font-bold font-mono tabular-nums" style={{ color: accentColor }}>
                                 {currencySymbol}
                                 {effPrice.toLocaleString()}
                               </p>
@@ -2230,7 +2230,7 @@ export function FunnelClient({
                             type="button"
                             size="sm"
                             variant={isActivePick ? "default" : "outline"}
-                            className="w-full text-xs font-bold"
+                            className="w-full text-xs font-semibold"
                             onClick={() => {
                               setSelectedProductId(p.id);
                               setSelectedTier(null);
@@ -2255,14 +2255,14 @@ export function FunnelClient({
             if (cats.length === 0) return null;
             return (
               <section key={section.id} className="space-y-4">
-                <h2 className="text-xl sm:text-2xl font-black" style={{ fontFamily: fontInfo.headingFont }}>
+                <h2 className="text-xl sm:text-2xl font-bold" style={{ fontFamily: fontInfo.headingFont }}>
                   {c.title || "Shop by Category"}
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {cats.map((cat) => (
-                    <Card key={cat.name} className={cn("border shadow-sm p-3 text-center", radiusClass, cardSurfaceClass)}>
-                      <p className="text-xs font-black truncate">{cat.name}</p>
-                      <p className={cn("text-[10px] mt-0.5", mutedTextClass)}>
+                    <Card key={cat.name} className={cn("border shadow-none p-3 text-center", radiusClass, cardSurfaceClass)}>
+                      <p className="text-xs font-bold truncate">{cat.name}</p>
+                      <p className={cn("text-xs font-mono tabular-nums mt-0.5", mutedTextClass)}>
                         {cat.count} items · From {currencySymbol}
                         {cat.minPrice.toLocaleString()}
                       </p>
@@ -2282,10 +2282,10 @@ export function FunnelClient({
             );
             return (
               <section key={section.id}>
-                <Card className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+                <Card className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                   <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="space-y-1.5">
-                      <div className="flex items-center gap-2 font-black text-base">
+                      <div className="flex items-center gap-2 font-bold text-base">
                         <MapPin className="h-5 w-5" style={{ color: accentColor }} />
                         {c.title || "Store Dispatch & Pickup Desk"}
                       </div>
@@ -2293,10 +2293,10 @@ export function FunnelClient({
                         {normalizedStore.storeAddress || c.body || "Verified dispatch hub"}
                       </p>
                       {c.deliveryZones && (
-                        <p className="text-[11px] font-bold text-emerald-700">{c.deliveryZones}</p>
+                        <p className="text-xs font-semibold text-emerald-700">{c.deliveryZones}</p>
                       )}
                     </div>
-                    <Button asChild variant="outline" className="font-bold text-xs shrink-0">
+                    <Button asChild variant="outline" className="font-semibold text-xs shrink-0">
                       <a href={mapHref} target="_blank" rel="noopener noreferrer">
                         {c.cta || "Get Directions"} <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                       </a>
@@ -2310,10 +2310,10 @@ export function FunnelClient({
           if (section.type === "whatsapp" || section.type === "contact") {
             return (
               <section key={section.id}>
-                <Card className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+                <Card className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                   <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="space-y-1 text-center sm:text-left">
-                      <h3 className="text-lg font-black">{c.title || "Prefer Direct WhatsApp Assistance?"}</h3>
+                      <h3 className="text-lg font-bold">{c.title || "Prefer Direct WhatsApp Assistance?"}</h3>
                       <p className={cn("text-xs sm:text-sm", mutedTextClass)}>
                         {c.subtitle || `Connect directly with ${normalizedStore.storeName} support desk.`}
                       </p>
@@ -2329,7 +2329,7 @@ export function FunnelClient({
                             )
                           )
                         }
-                        className={cn("bg-emerald-600 hover:bg-emerald-700 text-white font-black shrink-0", buttonShapeClass)}
+                        className={cn("bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shrink-0", buttonShapeClass)}
                       >
                         <MessageCircle className="h-4 w-4 mr-1.5" />
                         {c.cta || "Chat on WhatsApp"}
@@ -2344,9 +2344,9 @@ export function FunnelClient({
           // Fallback for about
           return (
             <section key={section.id}>
-              <Card className={cn("border shadow-sm", radiusClass, cardSurfaceClass)}>
+              <Card className={cn("border shadow-none", radiusClass, cardSurfaceClass)}>
                 <CardContent className="p-6 space-y-2 text-center">
-                  <h3 className="text-lg font-black">{c.title || section.label}</h3>
+                  <h3 className="text-lg font-bold">{c.title || section.label}</h3>
                   <p className={cn("text-sm max-w-2xl mx-auto", mutedTextClass)}>
                     {c.body || c.subtitle}
                   </p>
@@ -2361,7 +2361,7 @@ export function FunnelClient({
       <footer className={cn("border-t py-8 px-4", isCharcoal ? "border-slate-800 bg-slate-900" : "bg-white border-slate-200")}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <div className="text-center sm:text-left">
-            <p className="font-black">{normalizedStore.storeName}</p>
+            <p className="font-bold">{normalizedStore.storeName}</p>
             <p className={mutedTextClass}>{normalizedStore.footerConfig.tagline}</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 font-semibold">
@@ -2385,14 +2385,14 @@ export function FunnelClient({
       {funnel.stickyCtaEnabled && (
         <div
           className={cn(
-            "fixed bottom-0 inset-x-0 z-40 border-t px-4 py-3 backdrop-blur-md shadow-2xl",
+            "fixed bottom-0 inset-x-0 z-40 border-t px-4 py-3 backdrop-blur-md",
             isCharcoal ? "bg-slate-950/95 border-slate-800" : "bg-white/95 border-slate-200"
           )}
         >
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-black truncate">{selectedProduct?.name || funnel.name}</p>
-              <p className="text-xs font-bold tabular-nums" style={{ color: accentColor }}>
+              <p className="text-xs font-bold truncate">{selectedProduct?.name || funnel.name}</p>
+              <p className="text-xs font-bold font-mono tabular-nums" style={{ color: accentColor }}>
                 {currencySymbol}
                 {checkoutPricing.grandTotal.toLocaleString()}
                 {normalizedStore.codEnabled ? " · COD Available" : ""}
@@ -2401,7 +2401,7 @@ export function FunnelClient({
             <Button
               type="button"
               onClick={scrollToConversionTarget}
-              className={cn("text-white font-black text-xs sm:text-sm h-10 px-6 shrink-0 shadow-md", buttonShapeClass)}
+              className={cn("text-white font-semibold text-xs sm:text-sm h-10 px-6 shrink-0", buttonShapeClass)}
               style={{ backgroundColor: accentColor }}
             >
               {funnel.stickyCtaLabel || "Claim Offer"}

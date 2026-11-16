@@ -1,29 +1,28 @@
 "use client";
 
-import { use, useState, useMemo, useEffect, Suspense } from "react";
-import { 
-  ArrowLeft, 
-  Plus, 
-  Save, 
-  Loader2, 
-  Search, 
-  User, 
-  Zap, 
-  Sun,
-  ClipboardCheck,
-  SearchCode,
-  ChevronRight,
-  Info,
-  ShieldCheck,
-  AlertTriangle
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { useState, useEffect, Suspense } from "react";
+import { Loader2, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp, query, where, getDocs, limit, getDoc } from "firebase/firestore";
+import { PageHeader, EmptyStatePanel } from "@/components/ui/editorial";
+import {
+  useFirestore,
+  useUser,
+  useDoc,
+  useMemoFirebase,
+  useCollection,
+  addDocumentNonBlocking,
+  updateDocumentNonBlocking,
+} from "@/firebase";
+import {
+  collection,
+  doc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+  getDoc,
+} from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SurveyForm } from "../../components/SurveyForm";
@@ -34,12 +33,14 @@ function NewSurveyContent() {
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const incomingInquiryId = searchParams.get('inquiryId');
+  const incomingInquiryId = searchParams.get("inquiryId");
 
-  const userProfileRef = useMemoFirebase(() => 
-    user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
   const [inquiry, setInquiry] = useState<any>(null);
@@ -47,10 +48,16 @@ function NewSurveyContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingSurveyCount, setExistingSurveyCount] = useState(0);
 
-  // Fetch Team
-  const teamQuery = useMemoFirebase(() => 
-    businessId ? query(collection(firestore, 'users'), where('businessId', '==', businessId)) : null
-  , [firestore, businessId]);
+  const teamQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "users"),
+            where("businessId", "==", businessId)
+          )
+        : null,
+    [firestore, businessId]
+  );
   const { data: teamMembers = [] } = useCollection<any>(teamQuery);
 
   useEffect(() => {
@@ -58,13 +65,21 @@ function NewSurveyContent() {
       if (!incomingInquiryId || !businessId) return;
       setIsInquiryLoading(true);
       try {
-        const docRef = doc(firestore, 'businesses', businessId, 'solarInquiries', incomingInquiryId);
+        const docRef = doc(
+          firestore,
+          "businesses",
+          businessId,
+          "solarInquiries",
+          incomingInquiryId
+        );
         const snap = await getDoc(docRef);
         if (snap.exists()) {
           setInquiry({ ...snap.data(), id: snap.id });
-          
-          // Check for existing surveys to prevent duplicates
-          const sQuery = query(collection(firestore, 'businesses', businessId, 'solarSurveys'), where('inquiryId', '==', incomingInquiryId));
+
+          const sQuery = query(
+            collection(firestore, "businesses", businessId, "solarSurveys"),
+            where("inquiryId", "==", incomingInquiryId)
+          );
           const sSnap = await getDocs(sQuery);
           setExistingSurveyCount(sSnap.size);
         }
@@ -77,16 +92,24 @@ function NewSurveyContent() {
 
   const handleSubmit = async (data: any) => {
     if (!businessId || !inquiry || !user) return;
-    
-    // Double-check prevention
+
     if (existingSurveyCount > 0) {
-      toast({ variant: "destructive", title: "Duplicate Prevented", description: "A technical audit node already exists for this inquiry." });
+      toast({
+        variant: "destructive",
+        title: "Duplicate Prevented",
+        description: "A site survey already exists for this inquiry.",
+      });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const surveysRef = collection(firestore, 'businesses', businessId, 'solarSurveys');
+      const surveysRef = collection(
+        firestore,
+        "businesses",
+        businessId,
+        "solarSurveys"
+      );
       const docRef = await addDocumentNonBlocking(surveysRef, {
         ...data,
         businessId,
@@ -97,76 +120,105 @@ function NewSurveyContent() {
         customerPhone: inquiry.customerPhone,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       });
 
-      // Update Inquiry Status
-      const inqRef = doc(firestore, 'businesses', businessId, 'solarInquiries', inquiry.id);
-      updateDocumentNonBlocking(inqRef, { status: 'SITE_SURVEY_PENDING', updatedAt: serverTimestamp() });
+      const inqRef = doc(
+        firestore,
+        "businesses",
+        businessId,
+        "solarInquiries",
+        inquiry.id
+      );
+      updateDocumentNonBlocking(inqRef, {
+        status: "SITE_SURVEY_PENDING",
+        updatedAt: serverTimestamp(),
+      });
 
-      // NOTIFICATION: Trigger Survey Scheduled for Assigned Specialist
       if (data.assignedTo && docRef) {
         createSolarNotification(firestore, {
           businessId,
           recipientId: data.assignedTo,
           title: "New Survey Assigned",
           message: `Technical audit scheduled for ${inquiry.customerName} on ${data.surveyDate}.`,
-          type: 'solar_alert',
-          severity: 'INFO',
-          entityType: 'SOLAR_SURVEY',
-          entityId: docRef.id
+          type: "solar_alert",
+          severity: "INFO",
+          entityType: "SOLAR_SURVEY",
+          entityId: docRef.id,
         });
       }
 
-      toast({ title: "Survey Node Established", description: "Identity audit linked successfully." });
+      toast({
+        title: "Site Survey Saved",
+        description: "Survey record created and linked to inquiry.",
+      });
       router.push(`/solar/surveys/${docRef?.id}`);
     } catch (e) {
-    console.error(e);
-      toast({ variant: "destructive", title: "Transmission Error" });
+      console.error(e);
+      toast({ variant: "destructive", title: "Save Failed" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isProfileLoading || isInquiryLoading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-primary h-10 w-10 opacity-20" /></div>;
+  if (isProfileLoading || isInquiryLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-slate-600 h-8 w-8" />
+      </div>
+    );
+  }
 
   if (!inquiry) {
     return (
-      <div className="max-w-2xl mx-auto py-20 text-center space-y-6 px-4">
-         <div className="h-16 w-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner"><AlertTriangle className="h-8 w-8" /></div>
-         <h2 className="text-xl font-black uppercase text-slate-900">Inquiry Node Missing</h2>
-         <p className="text-muted-foreground text-sm font-medium leading-relaxed">Please start the survey from an active inquiry registry node to maintain data integrity.</p>
-         <Button asChild variant="outline" className="rounded-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest"><Link href="/solar/inquiries">Back to Inquiries</Link></Button>
+      <div className="max-w-xl mx-auto py-16">
+        <EmptyStatePanel
+          icon={AlertTriangle}
+          title="Inquiry Missing"
+          description="Please start a site survey from an active solar inquiry to preserve traceability."
+          action={
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href="/solar/inquiries">Back to Inquiries</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   if (existingSurveyCount > 0) {
     return (
-      <div className="max-w-2xl mx-auto py-20 text-center space-y-6 px-4">
-         <div className="h-16 w-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner"><ShieldCheck className="h-8 w-8" /></div>
-         <h2 className="text-xl font-black uppercase text-slate-900">Duplicate Node Blocked</h2>
-         <p className="text-muted-foreground text-sm font-medium leading-relaxed">A Site Survey already exists for this inquiry. Multiple audits per node are restricted for consistency.</p>
-         <Button asChild variant="outline" className="rounded-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest"><Link href={`/solar/inquiries/${inquiry.id}`}>Return to Inquiry</Link></Button>
+      <div className="max-w-xl mx-auto py-16">
+        <EmptyStatePanel
+          icon={ShieldCheck}
+          title="Survey Already Exists"
+          description="A site survey is already linked to this inquiry. Open the existing survey to update measurements."
+          action={
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href={`/solar/inquiries/${inquiry.id}`}>
+                Return to Inquiry
+              </Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20 px-2 sm:px-4 text-left">
-      <div className="flex items-center gap-4 text-left">
-        <Button asChild variant="ghost" size="icon" className="h-10 w-10 rounded-full shrink-0"><Link href={`/solar/inquiries/${inquiry.id}`}><ArrowLeft className="h-5 w-5" /></Link></Button>
-        <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none uppercase">Technical Audit</h1>
-          <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1.5 opacity-60">Site Survey Node for {inquiry.customerName}</p>
-        </div>
-      </div>
+    <div className="max-w-4xl mx-auto space-y-8 pb-20 text-left">
+      <PageHeader
+        backHref={`/solar/inquiries/${inquiry.id}`}
+        backLabel="Back to Inquiry"
+        title="Technical Site Survey"
+        description={`Site assessment form for ${inquiry.customerName}`}
+      />
 
-      <SurveyForm 
-        inquiry={inquiry} 
-        teamMembers={teamMembers} 
-        onSubmit={handleSubmit} 
-        isSubmitting={isSubmitting} 
+      <SurveyForm
+        inquiry={inquiry}
+        teamMembers={teamMembers}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
       />
     </div>
   );
@@ -174,7 +226,13 @@ function NewSurveyContent() {
 
 export default function NewSolarSurveyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-primary h-10 w-10 opacity-20" /></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <Loader2 className="animate-spin text-slate-600 h-8 w-8" />
+        </div>
+      }
+    >
       <NewSurveyContent />
     </Suspense>
   );

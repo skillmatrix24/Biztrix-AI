@@ -1,11 +1,9 @@
-
 "use client";
 
 import React from "react";
-import { History, Gem, Ticket, Handshake, Zap, Gift, Calendar } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Gem, Ticket, Handshake, Zap, Gift, Calendar, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { SectionCard, EmptyStatePanel } from "@/components/ui/editorial";
 import { cn } from "@/lib/utils";
 
 interface HistoryTabProps {
@@ -13,66 +11,131 @@ interface HistoryTabProps {
   currencySymbol: string;
 }
 
+function formatActivityTitle(raw?: string) {
+  if (!raw) return "Activity";
+  return raw
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 export function HistoryTab({ activities, currencySymbol }: HistoryTabProps) {
   return (
-    <div className="space-y-8 animate-in fade-in text-left">
-      <Card className="border-none shadow-xl overflow-hidden bg-white rounded-[2rem] sm:rounded-[3.5rem] border mx-1 sm:mx-0">
-        <div className="divide-y overflow-hidden">
-          {(!activities || activities.length === 0) ? (
-            <div className="p-16 sm:p-24 text-center opacity-30 italic text-sm sm:text-base font-black uppercase tracking-widest">No history logged yet.</div>
-          ) : (
-            activities.map((a: any) => (
-              <div key={a.id} className="p-4 sm:p-6 space-y-3 sm:space-y-4 hover:bg-muted/5 transition-all text-left">
-                <div className="flex items-center justify-between text-left gap-4">
-                  <div className="flex items-center gap-4 sm:gap-6 min-w-0 text-left">
-                    <div className={cn(
-                      "h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-primary shadow-inner shrink-0",
-                      a.type === 'purchase_reward' ? "bg-green-50 text-green-600" : 
-                      a.type === 'coupon_redeem' ? "bg-orange-50 text-orange-600" : "bg-primary/5"
-                    )}>
-                      {a.type === 'purchase_reward' ? <Gem className="h-5 w-5 sm:h-6 sm:w-6" /> : 
-                       a.type === 'coupon_redeem' ? <Ticket className="h-5 w-5 sm:h-6 sm:w-6" /> : 
-                       a.type === 'referral_bonus' ? <Handshake className="h-5 w-5 sm:h-6 sm:w-6" /> : 
-                       a.type === 'profile_bonus' ? <Zap className="h-5 w-5 sm:h-6 sm:w-6" /> : <Gift className="h-5 w-5 sm:h-6 sm:w-6" />}
+    <div className="text-left">
+      <SectionCard
+        title="Points & Cashback Ledger"
+        description="Chronological record of rewards earned, bonus credits, and redemptions."
+        bodyClassName="p-0"
+      >
+        {!activities || activities.length === 0 ? (
+          <div className="p-6">
+            <EmptyStatePanel
+              icon={History}
+              title="No Activity Logged Yet"
+              description="Points earned from visits, referrals, and redemptions will appear here."
+            />
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-200">
+            {activities.map((a: any) => (
+              <div
+                key={a.id}
+                className="p-5 sm:p-6 space-y-3 hover:bg-slate-50/70 transition-colors text-left"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div
+                      className={cn(
+                        "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 border",
+                        a.type === "purchase_reward"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                          : a.type === "coupon_redeem"
+                            ? "bg-orange-50 border-orange-200 text-orange-700"
+                            : "bg-slate-50 border-slate-200 text-primary"
+                      )}
+                    >
+                      {a.type === "purchase_reward" ? (
+                        <Gem className="h-5 w-5" />
+                      ) : a.type === "coupon_redeem" ? (
+                        <Ticket className="h-5 w-5" />
+                      ) : a.type === "referral_bonus" ? (
+                        <Handshake className="h-5 w-5" />
+                      ) : a.type === "profile_bonus" ? (
+                        <Zap className="h-5 w-5" />
+                      ) : (
+                        <Gift className="h-5 w-5" />
+                      )}
                     </div>
-                    <div className="min-w-0 text-left">
-                      <p className="text-sm sm:text-lg font-black text-slate-900 uppercase tracking-tight truncate">{a.type?.replace(/_/g, ' ')}</p>
-                      <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2 mt-1">
-                        <Calendar className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {new Date(a.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' , year: 'numeric' })}
+                    <div className="min-w-0">
+                      <p className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                        {formatActivityTitle(a.type)}
+                      </p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-mono tabular-nums">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {new Date(a.timestamp).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
                       </p>
                     </div>
                   </div>
                   <div className="text-right shrink-0 space-y-1">
-                     {a.points > 0 && <p className="text-base sm:text-xl font-black text-primary">+{a.points?.toLocaleString()} <span className="text-[8px] sm:text-[10px] opacity-40">PTS</span></p>}
-                     {a.cashback > 0 && <p className="text-xs sm:text-base font-black text-green-600">+{currencySymbol}{a.cashback?.toLocaleString()} <span className="text-[7px] sm:text-[8px] opacity-40">CASH</span></p>}
+                    {a.points > 0 && (
+                      <p className="text-base sm:text-lg font-bold text-primary font-mono tabular-nums">
+                        +{a.points?.toLocaleString()}{" "}
+                        <span className="text-xs font-medium text-slate-500">
+                          pts
+                        </span>
+                      </p>
+                    )}
+                    {a.cashback > 0 && (
+                      <p className="text-sm font-bold text-emerald-700 font-mono tabular-nums">
+                        +{currencySymbol}
+                        {a.cashback?.toLocaleString()}{" "}
+                        <span className="text-xs font-medium text-slate-500">
+                          cashback
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
-                
-                <div className="pl-14 sm:pl-18 flex flex-wrap gap-x-4 sm:gap-x-8 gap-y-2 sm:gap-y-4 text-left">
-                   {a.invoiceValue > 0 && (
-                     <div className="space-y-0.5 text-left">
-                        <p className="text-[7px] sm:text-[8px] font-black text-slate-400 uppercase tracking-tighter">Bill Value</p>
-                        <p className="text-[10px] sm:text-xs font-bold text-slate-700">{currencySymbol}{a.invoiceValue.toLocaleString()}</p>
-                     </div>
-                   )}
-                   {a.couponCode && (
-                     <div className="space-y-0.5 text-left">
-                        <p className="text-[7px] sm:text-[8px] font-black text-orange-400 uppercase tracking-tighter">Coupon Used</p>
-                        <Badge variant="outline" className="h-4 text-[6px] sm:text-[7px] font-black bg-orange-50 border-orange-200 text-orange-600 uppercase px-1.5 sm:px-2">{a.couponCode}</Badge>
-                     </div>
-                   )}
-                   {a.description && (
-                     <div className="w-full pt-1 sm:pt-2 text-left">
-                        <p className="text-[7px] sm:text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1 sm:mb-1.5">Audit Remark</p>
-                        <p className="text-[10px] sm:text-xs font-medium text-slate-500 italic leading-relaxed text-left max-w-2xl">"{a.description}"</p>
-                     </div>
-                   )}
-                </div>
+
+                {(a.invoiceValue > 0 || a.couponCode || a.description) && (
+                  <div className="pl-15 flex flex-wrap gap-x-6 gap-y-2 pt-1">
+                    {a.invoiceValue > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500">Bill Value</p>
+                        <p className="text-xs font-semibold text-slate-800 font-mono tabular-nums">
+                          {currencySymbol}
+                          {a.invoiceValue.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {a.couponCode && (
+                      <div>
+                        <p className="text-xs text-slate-500">Coupon Used</p>
+                        <Badge
+                          variant="outline"
+                          className="mt-0.5 text-xs font-mono font-semibold bg-orange-50 border-orange-200 text-orange-700"
+                        >
+                          {a.couponCode}
+                        </Badge>
+                      </div>
+                    )}
+                    {a.description && (
+                      <div className="w-full pt-1">
+                        <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                          {a.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            ))
-          )}
-        </div>
-      </Card>
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 }

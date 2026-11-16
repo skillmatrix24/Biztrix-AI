@@ -125,11 +125,11 @@ export function AddSectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl rounded-3xl p-0 overflow-hidden bg-white text-left">
+      <DialogContent className="sm:max-w-3xl rounded-2xl p-0 overflow-hidden bg-white text-left border border-slate-200">
         <DialogHeader className="p-6 bg-slate-900 text-white text-left">
-          <DialogTitle className="text-base font-black uppercase tracking-tight text-white flex items-center gap-2">
+          <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
             <Plus className="h-4 w-4 text-accent" />{" "}
-            {prioritizeFunnel ? "Add Funnel & Storefront Block" : "Add Professional Storefront Section"}
+            {prioritizeFunnel ? "Add Funnel & Storefront Block" : "Add Storefront Section"}
           </DialogTitle>
           <DialogDescription className="text-slate-300 text-xs">
             Choose any of the {STORE_SECTION_CATALOG.length} storefront & sales funnel blocks below to append it to your layout.
@@ -143,15 +143,15 @@ export function AddSectionDialog({
               <div key={group.id} className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       {group.title}
                       {group.id === "funnel" && (
-                        <Badge className="bg-amber-100 text-amber-800 border-none text-[8px] font-black uppercase">
+                        <Badge variant="secondary" className="bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold rounded-md">
                           Funnel Pro
                         </Badge>
                       )}
                     </h4>
-                    <p className="text-[11px] text-muted-foreground">{group.subtitle}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{group.subtitle}</p>
                   </div>
                 </div>
 
@@ -167,7 +167,7 @@ export function AddSectionDialog({
                           onAddSection(entry.type);
                           onOpenChange(false);
                         }}
-                        className="p-4 rounded-2xl border border-slate-200 hover:border-primary hover:bg-primary/5 transition-all text-left flex items-start justify-between gap-3 group"
+                        className="p-4 rounded-2xl border border-slate-200 hover:border-primary hover:bg-primary/5 transition-colors text-left flex items-start justify-between gap-3 group"
                       >
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="h-10 w-10 rounded-xl bg-slate-100 group-hover:bg-primary/10 flex items-center justify-center shrink-0 transition-colors">
@@ -175,19 +175,16 @@ export function AddSectionDialog({
                           </div>
                           <div className="min-w-0 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-black uppercase text-slate-900">
+                              <span className="text-xs font-bold text-slate-900">
                                 {entry.label}
                               </span>
                               {count > 0 && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[8px] font-black uppercase px-1.5 h-4 bg-emerald-100 text-emerald-800 border-none"
-                                >
-                                  {count} Active/Added
-                                </Badge>
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono tabular-nums">
+                                  {count} Added
+                                </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-slate-500 leading-snug">
+                            <p className="text-xs text-slate-500 leading-snug">
                               {entry.description}
                             </p>
                           </div>

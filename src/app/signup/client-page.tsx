@@ -1,33 +1,48 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Bot, 
-  Mail, 
-  Lock, 
-  ArrowRight, 
-  Loader2, 
-  User, 
+import {
+  Bot,
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader2,
+  User,
   Building2,
   CheckCircle2,
   Zap,
-  Sparkles,
+  ShieldCheck,
   Eye,
   EyeOff,
   LayoutDashboard,
-  Home
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth, useFirestore, initiateEmailSignUp, initiateGoogleSignIn, useUser } from "@/firebase";
-import { doc, setDoc, getDoc, getDocs, deleteDoc, collection, query, where, serverTimestamp } from "firebase/firestore";
+import {
+  useAuth,
+  useFirestore,
+  initiateEmailSignUp,
+  initiateGoogleSignIn,
+  useUser,
+} from "@/firebase";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  deleteDoc,
+  collection,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { addDays } from "date-fns";
 
@@ -61,24 +76,30 @@ export default function SignupPage() {
     setMounted(true);
   }, []);
 
-  const provisionUser = async (uid: string, email: string, name: string, businessName: string) => {
-    const userDocRef = doc(firestore, 'users', uid);
+  const provisionUser = async (
+    uid: string,
+    email: string,
+    name: string,
+    businessName: string
+  ) => {
+    const userDocRef = doc(firestore, "users", uid);
     const userSnap = await getDoc(userDocRef);
     const existingProfile = userSnap.exists() ? userSnap.data() : null;
 
-    // Check if business exists
     let businessExists = false;
     if (existingProfile?.businessId) {
-      const bizSnap = await getDoc(doc(firestore, 'businesses', existingProfile.businessId));
+      const bizSnap = await getDoc(
+        doc(firestore, "businesses", existingProfile.businessId)
+      );
       businessExists = bizSnap.exists();
     }
 
     if (existingProfile && businessExists) return;
 
     const invitedUsersQuery = query(
-      collection(firestore, 'users'), 
-      where('email', '==', email.toLowerCase()),
-      where('status', '==', 'pending')
+      collection(firestore, "users"),
+      where("email", "==", email.toLowerCase()),
+      where("status", "==", "pending")
     );
     const invitedSnap = await getDocs(invitedUsersQuery);
 
@@ -89,13 +110,19 @@ export default function SignupPage() {
         ...invitedProfile,
         id: uid,
         name: name || invitedProfile.name,
-        status: 'active',
-        updatedAt: serverTimestamp()
+        status: "active",
+        updatedAt: serverTimestamp(),
       };
       await setDoc(userDocRef, profileData, { merge: true });
-      await setDoc(doc(firestore, 'businesses', bid, 'users', uid), profileData, { merge: true });
-      await deleteDoc(doc(firestore, 'users', invitedSnap.docs[0].id)).catch(() => {});
-      await deleteDoc(doc(firestore, 'businesses', bid, 'invites', email.toLowerCase())).catch(() => {});
+      await setDoc(
+        doc(firestore, "businesses", bid, "users", uid),
+        profileData,
+        { merge: true }
+      );
+      await deleteDoc(doc(firestore, "users", invitedSnap.docs[0].id)).catch(() => {});
+      await deleteDoc(
+        doc(firestore, "businesses", bid, "invites", email.toLowerCase())
+      ).catch(() => {});
     } else {
       const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;
       const trialEndDate = addDays(new Date(), 14);
@@ -105,34 +132,38 @@ export default function SignupPage() {
         businessId: tenantId,
         email: email.toLowerCase(),
         name: name,
-        role: 'admin',
+        role: "admin",
         createdAt: new Date().toISOString(),
-        status: 'active',
+        status: "active",
         dashboardLayout: [
-          { id: 'hero', label: 'AI Slate', enabled: true, order: 0 },
-          { id: 'pulse', label: 'Daily Pulse', enabled: true, order: 1 },
-          { id: 'stats', label: 'Main Stats', enabled: true, order: 2 },
-          { id: 'assistant', label: 'AI Assistant', enabled: true, order: 3 },
-        ]
+          { id: "hero", label: "AI Slate", enabled: true, order: 0 },
+          { id: "pulse", label: "Daily Pulse", enabled: true, order: 1 },
+          { id: "stats", label: "Main Stats", enabled: true, order: 2 },
+          { id: "assistant", label: "AI Assistant", enabled: true, order: 3 },
+        ],
       };
 
-      // 1. Root Business first to satisfy rules
-      await setDoc(doc(firestore, 'businesses', tenantId), {
-        id: tenantId,
-        name: businessName || `${name}'s Business`,
-        ownerId: uid,
-        status: 'trial',
-        trialStartDate: serverTimestamp(),
-        trialEndDate: trialEndDate,
-        createdAt: serverTimestamp(),
-        activeAddonIds: []
-      }, { merge: true });
+      await setDoc(
+        doc(firestore, "businesses", tenantId),
+        {
+          id: tenantId,
+          name: businessName || `${name}'s Business`,
+          ownerId: uid,
+          status: "trial",
+          trialStartDate: serverTimestamp(),
+          trialEndDate: trialEndDate,
+          createdAt: serverTimestamp(),
+          activeAddonIds: [],
+        },
+        { merge: true }
+      );
 
-      // 2. Global Profile
       await setDoc(userDocRef, profileData, { merge: true });
-
-      // 3. Membership Link
-      await setDoc(doc(firestore, 'businesses', tenantId, 'users', uid), profileData, { merge: true });
+      await setDoc(
+        doc(firestore, "businesses", tenantId, "users", uid),
+        profileData,
+        { merge: true }
+      );
     }
   };
 
@@ -142,8 +173,17 @@ export default function SignupPage() {
     setError(null);
 
     try {
-      const userCredential = await initiateEmailSignUp(auth, formData.email, formData.password);
-      await provisionUser(userCredential.user.uid, formData.email, formData.name, formData.businessName);
+      const userCredential = await initiateEmailSignUp(
+        auth,
+        formData.email,
+        formData.password
+      );
+      await provisionUser(
+        userCredential.user.uid,
+        formData.email,
+        formData.name,
+        formData.businessName
+      );
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
@@ -158,137 +198,198 @@ export default function SignupPage() {
       const result = await initiateGoogleSignIn(auth);
       const googleUser = result.user;
       await provisionUser(
-        googleUser.uid, 
-        googleUser.email || "", 
-        googleUser.displayName || "User", 
-        formData.businessName || `${googleUser.displayName || 'My'} Business`
+        googleUser.uid,
+        googleUser.email || "",
+        googleUser.displayName || "User",
+        formData.businessName || `${googleUser.displayName || "My"} Business`
       );
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
-      toast({ variant: "destructive", title: "Auth Error", description: "Google signup failed." });
+      if (
+        err.code === "auth/cancelled-popup-request" ||
+        err.code === "auth/popup-closed-by-user"
+      ) {
+        setLoading(false);
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Auth Error",
+        description: "Google signup failed.",
+      });
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-xl grid grid-cols-1 md:grid-cols-5 gap-8 items-center">
-        
-        <div className="hidden md:flex md:col-span-2 flex-col space-y-8">
+    <div className="min-h-screen bg-slate-50/70 flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 items-center">
+        {/* Left Editorial Brand Column */}
+        <div className="hidden md:flex md:col-span-5 flex-col space-y-6 text-left">
           <div className="space-y-4">
-            <Link href="/" className="inline-flex">
-              <div className="h-14 w-14 bg-primary rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl hover:scale-105 transition-transform">
-                <Bot className="h-8 w-8" />
+            <Link href="/" className="inline-flex items-center gap-2.5 group">
+              <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-105">
+                <Bot className="h-5 w-5" />
               </div>
+              <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                Biztrix AI
+              </span>
             </Link>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Scale your business on <span className="text-primary">Autopilot.</span></h1>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight leading-tight text-balance">
+              Run your entire business from one clear workspace.
+            </h1>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Billing, GST reporting, inventory control, leads, and customer support ready out of the box.
+            </p>
           </div>
-          
-          <div className="space-y-4">
+
+          <div className="space-y-3 pt-2 border-t border-slate-200">
             {[
-              { icon: Zap, text: "AI-Powered Billing" },
-              { icon: Sparkles, text: "Real-time P&L" },
-              { icon: CheckCircle2, text: "14-Day Free Trial" }
+              { icon: Zap, text: "Fast POS billing & GST invoices" },
+              { icon: CheckCircle2, text: "14-day free trial on all modules" },
+              { icon: ShieldCheck, text: "Isolated multi-tenant cloud workspace" },
             ].map((f, i) => (
-              <div key={i} className="flex items-center gap-3 text-sm font-bold text-slate-600 uppercase tracking-wider">
-                <f.icon className="h-4 w-4 text-primary" /> {f.text}
+              <div key={i} className="flex items-center gap-3 text-sm text-slate-700 font-medium">
+                <div className="h-7 w-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                  <f.icon className="h-4 w-4 text-slate-900" />
+                </div>
+                <span>{f.text}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="md:col-span-3">
-          <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-            <CardHeader className="bg-primary py-6 sm:py-8 text-center text-white">
-              <CardTitle className="text-xl font-bold">Start Your Business</CardTitle>
-              <CardDescription className="text-white/70 text-xs font-bold uppercase tracking-widest mt-1">Unified Operating System</CardDescription>
+        {/* Right Form Card */}
+        <div className="md:col-span-7 w-full">
+          <div className="md:hidden text-center space-y-2 mb-6">
+            <Link href="/" className="inline-flex items-center gap-2.5">
+              <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                <Bot className="h-5 w-5" />
+              </div>
+              <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                Biztrix AI
+              </span>
+            </Link>
+            <h1 className="text-xl font-semibold text-slate-900 mt-3 tracking-tight">
+              Create Business Account
+            </h1>
+            <p className="text-sm text-slate-500">
+              Launch your workspace in under a minute.
+            </p>
+          </div>
+
+          <Card className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-none">
+            <CardHeader className="bg-slate-900 text-white p-6 text-left">
+              <h2 className="text-lg font-bold tracking-tight">Start Your Business</h2>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Core Business OS is free forever · Pro modules include a 14-day trial
+              </p>
             </CardHeader>
+
             <CardContent className="p-6 sm:p-8 pb-4">
-              <form onSubmit={handleSignup} className="space-y-5">
+              <form onSubmit={handleSignup} className="space-y-4">
                 {error && (
-                  <Alert variant="destructive" className="rounded-xl border-destructive/20 bg-destructive/5">
+                  <Alert
+                    variant="destructive"
+                    className="rounded-xl border-rose-200 bg-rose-50 text-rose-900"
+                  >
                     <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
                   </Alert>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="signup-name" className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Full Name</Label>
+                  <div className="space-y-1.5 text-left">
+                    <Label htmlFor="signup-name" className="text-xs font-semibold text-slate-700">
+                      Full Name
+                    </Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
                         id="signup-name"
-                        placeholder="John Doe" 
-                        required 
-                        className="h-11 pl-10 rounded-xl bg-muted/20 border-none shadow-inner"
+                        placeholder="John Doe"
+                        required
+                        className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
                         value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="signup-biz" className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Business Name</Label>
+                  <div className="space-y-1.5 text-left">
+                    <Label htmlFor="signup-biz" className="text-xs font-semibold text-slate-700">
+                      Business Name
+                    </Label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
+                      <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input
                         id="signup-biz"
-                        placeholder="Acme Solutions" 
-                        className="h-11 pl-10 rounded-xl bg-muted/20 border-none shadow-inner"
+                        placeholder="Acme Solutions"
+                        className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
                         value={formData.businessName}
-                        onChange={(e) => setFormData({...formData, businessName: e.target.value})}
+                        onChange={(e) =>
+                          setFormData({ ...formData, businessName: e.target.value })
+                        }
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-email" className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Email Address</Label>
+                <div className="space-y-1.5 text-left">
+                  <Label htmlFor="signup-email" className="text-xs font-semibold text-slate-700">
+                    Email Address
+                  </Label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
                       id="signup-email"
-                      type="email" 
-                      placeholder="john@company.com" 
-                      required 
-                      className="h-11 pl-10 rounded-xl bg-muted/20 border-none shadow-inner"
+                      type="email"
+                      placeholder="john@company.com"
+                      required
+                      className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
                       value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-password" className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Secure Password</Label>
+                <div className="space-y-1.5 text-left">
+                  <Label htmlFor="signup-password" className="text-xs font-semibold text-slate-700">
+                    Password
+                  </Label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
                       id="signup-password"
-                      type={showPassword ? "text" : "password"} 
-                      placeholder="Min. 8 characters" 
-                      required 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Minimum 8 characters"
+                      required
                       minLength={8}
-                      className="h-11 pl-11 pr-12 rounded-xl bg-muted/20 border-none shadow-inner text-sm"
+                      className="h-11 pl-10 pr-11 rounded-xl bg-white border-slate-200 text-sm"
                       value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     />
-                    <button 
+                    <button
                       type="button"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={loading}
-                  className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all mt-4"
+                  className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-colors mt-2"
                 >
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                    <span className="flex items-center gap-2">Join Business OS <ArrowRight className="h-4 w-4" /></span>
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Create Workspace <ArrowRight className="h-4 w-4" />
+                    </span>
                   )}
                 </Button>
               </form>
@@ -297,36 +398,53 @@ export default function SignupPage() {
                 <div className="absolute inset-0 flex items-center">
                   <Separator />
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold">
-                  <span className="bg-white px-4 text-muted-foreground">Or</span>
+                <div className="relative flex justify-center text-xs font-medium">
+                  <span className="bg-white px-3 text-slate-400">or continue with</span>
                 </div>
               </div>
 
-              <Button 
+              <Button
                 type="button"
-                variant="outline" 
+                variant="outline"
                 onClick={handleGoogleSignup}
                 disabled={loading}
-                className="w-full h-12 rounded-xl border-primary/10 hover:bg-primary/5 font-bold text-xs gap-3 shadow-sm mb-4"
+                className="w-full h-11 rounded-xl border-slate-200 hover:bg-slate-50 font-semibold text-xs gap-2.5 text-slate-800"
               >
                 <GoogleIcon />
-                Sign up with Gmail
+                Sign up with Google
               </Button>
             </CardContent>
-            <CardFooter className="p-6 sm:p-8 pt-0 flex flex-col gap-4">
-              <div className="flex justify-center w-full">
-                <p className="text-xs text-muted-foreground">
-                  Already registered? <Link href="/login" className="font-bold text-primary hover:underline uppercase tracking-tight">Sign In Here</Link>
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-3 w-full">
-                <Button asChild variant="ghost" className="h-10 rounded-xl text-primary font-bold uppercase text-[9px] tracking-widest hover:bg-primary/5">
+
+            <CardFooter className="p-6 sm:p-8 pt-2 flex flex-col gap-3">
+              <p className="text-xs text-slate-500 text-center">
+                Already have an account?{" "}
+                <Link href="/login" className="font-semibold text-primary hover:underline">
+                  Sign in
+                </Link>
+              </p>
+
+              <div
+                className={
+                  mounted && user
+                    ? "grid grid-cols-2 gap-3 w-full"
+                    : "flex justify-center w-full"
+                }
+              >
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="h-9 rounded-xl text-slate-600 font-medium text-xs hover:bg-slate-100 hover:text-slate-900"
+                >
                   <Link href="/">
-                    <Home className="mr-2 h-3.5 w-3.5" /> Home
+                    <Home className="mr-2 h-3.5 w-3.5" /> Back to Home
                   </Link>
                 </Button>
                 {mounted && user && (
-                  <Button asChild variant="ghost" className="h-10 rounded-xl text-primary font-bold uppercase text-[9px] tracking-widest hover:bg-primary/5">
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="h-9 rounded-xl text-primary font-medium text-xs hover:bg-primary/5"
+                  >
                     <Link href="/dashboard">
                       <LayoutDashboard className="mr-2 h-3.5 w-3.5" /> Dashboard
                     </Link>

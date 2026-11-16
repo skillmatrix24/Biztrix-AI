@@ -1,35 +1,38 @@
 "use client";
 
 import { useMemo } from "react";
-import { 
-  Trophy, 
-  Target, 
-  TrendingUp, 
-  Users, 
-  Crown, 
-  Loader2, 
+import {
+  Target,
+  TrendingUp,
+  Crown,
+  Loader2,
   LayoutList,
   Users2,
-  Building
+  Building,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { 
-  useFirestore, 
-  useCollection, 
-  useMemoFirebase, 
-  useUser, 
-  useDoc 
+import {
+  PageHeader,
+  KpiStatCard,
+  EmptyStatePanel,
+} from "@/components/ui/editorial";
+import {
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+  useUser,
+  useDoc,
 } from "@/firebase";
 import { collection, query, doc, where } from "firebase/firestore";
 import { cn, getCurrencySymbol } from "@/lib/utils";
@@ -38,180 +41,304 @@ export default function AgentPerformancePage() {
   const firestore = useFirestore();
   const { user } = useUser();
 
-  const userProfileRef = useMemoFirebase(() => 
-    user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid]);
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid]
+  );
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
-  const businessRef = useMemoFirebase(() => 
-    businessId ? doc(firestore, 'businesses', businessId) : null
-  , [firestore, businessId]);
+  const businessRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
   const { data: business } = useDoc<any>(businessRef);
 
   const currencySymbol = getCurrencySymbol(business?.currency);
-  
-  const teamQuery = useMemoFirebase(() => 
-    businessId ? query(collection(firestore, 'users'), where('businessId', '==', businessId)) : null
-  , [firestore, businessId]);
-  const { data: teamMembers, isLoading: isTeamLoading } = useCollection<any>(teamQuery);
 
-  const propertiesQuery = useMemoFirebase(() => 
-    businessId ? collection(firestore, 'businesses', businessId, 'properties') : null
-  , [firestore, businessId]);
+  const teamQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(collection(firestore, "users"), where("businessId", "==", businessId))
+        : null,
+    [firestore, businessId]
+  );
+  const { data: teamMembers, isLoading: isTeamLoading } =
+    useCollection<any>(teamQuery);
+
+  const propertiesQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(firestore, "businesses", businessId, "properties")
+        : null,
+    [firestore, businessId]
+  );
   const { data: properties = [] } = useCollection<any>(propertiesQuery);
 
-  const leadsQuery = useMemoFirebase(() => 
-    businessId ? collection(firestore, 'businesses', businessId, 'realEstateLeads') : null
-  , [firestore, businessId]);
+  const leadsQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? collection(firestore, "businesses", businessId, "realEstateLeads")
+        : null,
+    [firestore, businessId]
+  );
   const { data: reLeads = [] } = useCollection<any>(leadsQuery);
 
   const leaderboard = useMemo(() => {
-    const agents = (teamMembers || []).filter((u: any) => (u.role || '').toLowerCase() === 'agent');
-    return agents.map(agent => {
-      const assignedAssets = (properties || []).filter((p: any) => p.assignedAgentId === agent.id).length;
-      const activeLeads = (reLeads || []).filter((l: any) => l.assignedAgentId === agent.id).length;
-      const totalSales = (agent.totalSales || 0);
-      return {
-        id: agent.id,
-        agentName: agent.name || agent.email,
-        totalSales,
-        assignedAssets,
-        activeLeads,
-        conversionRate: 15 // Mocked for UI
-      };
-    }).sort((a, b) => b.totalSales - a.totalSales);
+    const agents = (teamMembers || []).filter(
+      (u: any) => (u.role || "").toLowerCase() === "agent"
+    );
+    return agents
+      .map((agent) => {
+        const assignedAssets = (properties || []).filter(
+          (p: any) => p.assignedAgentId === agent.id
+        ).length;
+        const activeLeads = (reLeads || []).filter(
+          (l: any) => l.assignedAgentId === agent.id
+        ).length;
+        const totalSales = agent.totalSales || 0;
+        const closedDeals = (reLeads || []).filter(
+          (l: any) =>
+            l.assignedAgentId === agent.id && l.leadStage === "won"
+        ).length;
+        const conversionRate =
+          activeLeads > 0 ? Math.round((closedDeals / activeLeads) * 100) : 0;
+
+        return {
+          id: agent.id,
+          agentName: agent.name || agent.email,
+          totalSales,
+          assignedAssets,
+          activeLeads,
+          conversionRate,
+        };
+      })
+      .sort((a, b) => b.totalSales - a.totalSales);
   }, [teamMembers, properties, reLeads]);
 
-  const globalStats = useMemo(() => ({
-    totalAgents: leaderboard.length,
-    totalPlatformSales: leaderboard.reduce((sum: number, a: any) => sum + (a.totalSales || 0), 0),
-  }), [leaderboard]);
-
-  if (isProfileLoading || isTeamLoading) return (
-    <div className="flex flex-col items-center justify-center py-20 opacity-40">
-      <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-      <p className="text-xs font-bold uppercase tracking-widest text-primary">Establishing Performance Feed...</p>
-    </div>
+  const globalStats = useMemo(
+    () => ({
+      totalAgents: leaderboard.length,
+      totalPlatformSales: leaderboard.reduce(
+        (sum: number, a: any) => sum + (a.totalSales || 0),
+        0
+      ),
+      avgConversion:
+        leaderboard.length > 0
+          ? Math.round(
+              leaderboard.reduce(
+                (sum: number, a: any) => sum + a.conversionRate,
+                0
+              ) / leaderboard.length
+            )
+          : 0,
+    }),
+    [leaderboard]
   );
 
+  if (isProfileLoading || isTeamLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Loader2 className="mb-3 h-8 w-8 animate-spin text-slate-400" />
+        <p className="text-xs font-medium text-slate-500">
+          Loading team performance metrics...
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 md:space-y-8 pb-10 px-2 sm:px-0">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center shrink-0 border border-yellow-500/20 shadow-inner">
-            <Trophy className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
+    <div className="space-y-6 pb-16 text-left">
+      <PageHeader
+        breadcrumb="Real Estate CRM"
+        title="Performance & Rewards"
+        description="Agent leaderboard tracking active listings, customer leads, and closed deal volume."
+        actions={
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700">
+            <Users2 className="h-4 w-4 text-slate-500" />
+            <span className="font-mono">{globalStats.totalAgents}</span> Agents
           </div>
-          <div>
-            <h2 className="text-xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">Performance & Rewards</h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">Team Sales Index</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border shadow-sm w-fit">
-          <Users2 className="h-4 w-4 text-primary" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{globalStats.totalAgents} Specialists</span>
-        </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiStatCard
+          label="Total Sales Volume"
+          value={`${currencySymbol}${globalStats.totalPlatformSales.toLocaleString()}`}
+          icon={TrendingUp}
+          tone="positive"
+        />
+        <KpiStatCard
+          label="Average Conversion Rate"
+          value={`${globalStats.avgConversion}%`}
+          icon={Target}
+        />
+        <KpiStatCard
+          label="Active Property Agents"
+          value={globalStats.totalAgents}
+          icon={Users2}
+          tone="dark"
+        />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-border/50">
-          <div className="flex items-center justify-between opacity-60 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest">Volume</span>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900">{currencySymbol}{globalStats.totalPlatformSales.toLocaleString()}</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-white rounded-2xl p-6 border-l-4 border-l-primary">
-          <div className="flex items-center justify-between opacity-60 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest">Target</span>
-            <Target className="h-4 w-4 text-primary" />
-          </div>
-          <div className="text-2xl font-black text-slate-900">85% Hit</div>
-        </Card>
-      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-8">
+          {leaderboard.length === 0 ? (
+            <EmptyStatePanel
+              icon={Users2}
+              title="No agents registered yet"
+              description="Team members with the Agent role appear here with live property and lead counts."
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {leaderboard.slice(0, 3).map((agent: any, i: number) => (
+                  <Card
+                    key={agent.id}
+                    className={cn(
+                      "rounded-2xl border bg-white",
+                      i === 0 ? "border-amber-400" : "border-slate-200"
+                    )}
+                  >
+                    <CardContent className="flex flex-col items-center space-y-3 p-5 text-center">
+                      <div className="relative">
+                        <div
+                          className={cn(
+                            "flex h-12 w-12 items-center justify-center rounded-xl text-base font-bold",
+                            i === 0
+                              ? "bg-amber-500 text-white"
+                              : "bg-slate-100 text-slate-700"
+                          )}
+                        >
+                          {agent.agentName?.charAt(0)}
+                        </div>
+                        {i === 0 && (
+                          <Crown className="absolute -right-2 -top-2 h-5 w-5 text-amber-500" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-mono text-xs text-slate-500">
+                          Rank #{i + 1}
+                        </p>
+                        <h3 className="max-w-[160px] truncate text-sm font-semibold text-slate-900">
+                          {agent.agentName}
+                        </h3>
+                      </div>
+                      <p className="font-mono text-lg font-bold tabular-nums text-slate-900">
+                        {currencySymbol}
+                        {agent.totalSales?.toLocaleString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        <div className="lg:col-span-8 space-y-6 md:space-y-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            {leaderboard.slice(0, 3).map((agent: any, i: number) => (
-              <Card key={agent.id} className={cn("border-none shadow-md bg-white rounded-3xl overflow-hidden relative group transition-all", i === 0 ? "ring-2 ring-yellow-500" : "")}>
-                <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-                  <div className="relative">
-                    <div className={cn("h-16 w-16 rounded-[1.5rem] flex items-center justify-center font-black text-xl shadow-lg border-4 border-white", i === 0 ? "bg-yellow-500 text-white" : "bg-slate-200 text-slate-600")}>
-                      {agent.agentName?.charAt(0)}
-                    </div>
-                    {i === 0 && <Crown className="absolute -top-3 -right-3 h-6 w-6 text-yellow-500" />}
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Rank #{i + 1}</p>
-                    <h3 className="font-bold text-slate-900 truncate max-w-[150px]">{agent.agentName}</h3>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xl font-black text-primary">{currencySymbol}{agent.totalSales?.toLocaleString()}</p>
-                  </div>
-                </CardContent>
+              <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-5 py-4">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <LayoutList className="h-4 w-4 text-slate-600" /> Agent Metrics Index
+                  </CardTitle>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-100 bg-slate-50/40">
+                        <TableHead className="h-11 pl-6 text-xs font-semibold text-slate-600">
+                          Agent
+                        </TableHead>
+                        <TableHead className="h-11 text-center text-xs font-semibold text-slate-600">
+                          Pipeline
+                        </TableHead>
+                        <TableHead className="h-11 text-center text-xs font-semibold text-slate-600">
+                          Conversion
+                        </TableHead>
+                        <TableHead className="h-11 pr-6 text-right text-xs font-semibold text-slate-600">
+                          Sales Volume
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {leaderboard.map((entry: any, idx: number) => (
+                        <TableRow
+                          key={entry.id}
+                          className="border-slate-100 hover:bg-slate-50/60"
+                        >
+                          <TableCell className="py-4 pl-6">
+                            <div className="flex items-center gap-3">
+                              <span className="w-6 font-mono text-xs text-slate-400">
+                                #{idx + 1}
+                              </span>
+                              <span className="text-sm font-semibold text-slate-900">
+                                {entry.agentName}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <Badge className="border-none bg-blue-50 text-xs font-medium text-blue-700">
+                                Listings: {entry.assignedAssets}
+                              </Badge>
+                              <Badge className="border-none bg-amber-50 text-xs font-medium text-amber-700">
+                                Leads: {entry.activeLeads}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="font-mono text-xs font-semibold text-slate-800">
+                                {entry.conversionRate}%
+                              </span>
+                              <Progress
+                                value={entry.conversionRate}
+                                className="h-1 w-14"
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="pr-6 text-right">
+                            <span className="font-mono text-sm font-semibold tabular-nums text-slate-900">
+                              {currencySymbol}
+                              {entry.totalSales?.toLocaleString()}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </Card>
-            ))}
-          </div>
-
-          <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border">
-            <CardHeader className="bg-muted/30 border-b py-5 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2"><LayoutList className="h-4 w-4" /> Agent Metrics Index</CardTitle></CardHeader>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/10">
-                    <TableHead className="pl-8 text-[10px] font-black uppercase h-12">Specialist</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-12">Pipeline</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-12">Success Rate</TableHead>
-                    <TableHead className="text-right pr-8 text-[10px] font-black uppercase h-12">Earnings</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaderboard.map((entry: any, idx: number) => (
-                    <TableRow key={entry.id} className="group hover:bg-muted/5 transition-colors">
-                      <TableCell className="pl-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[9px] font-black text-slate-400 w-4">#{idx + 1}</span>
-                          <span className="text-sm font-bold text-slate-900">{entry.agentName}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex gap-1 justify-center">
-                          <Badge className="bg-blue-50 text-blue-700 h-4 text-[7px] border-none uppercase">A: {entry.assignedAssets}</Badge>
-                          <Badge className="bg-orange-50 text-orange-700 h-4 text-[7px] border-none uppercase">C: {entry.activeLeads}</Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[9px] font-bold text-primary">{entry.conversionRate}%</span>
-                          <Progress value={entry.conversionRate} className="h-0.5 w-10" />
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-8">
-                        <span className="text-sm font-black text-primary">{currencySymbol}{entry.totalSales?.toLocaleString()}</span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+            </>
+          )}
         </div>
 
         <div className="lg:col-span-4">
-          <Card className="border-none shadow-md bg-slate-900 text-white rounded-[2rem] overflow-hidden border">
-            <CardHeader className="p-8 pb-4"><CardTitle className="text-sm font-black uppercase tracking-widest text-accent">Marketplace Rules</CardTitle></CardHeader>
-            <CardContent className="p-8 pt-0 space-y-6">
-              <p className="text-xs text-slate-400 leading-relaxed italic">"Performance index is calculated based on active listings in the Property Catalog and customers in the deal pipeline."</p>
+          <Card className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 text-white">
+            <CardHeader className="p-6 pb-3">
+              <CardTitle className="text-sm font-semibold text-white">
+                Scoring Rules
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-6 pt-0">
+              <p className="text-xs leading-relaxed text-slate-300">
+                Performance metrics are computed live from assigned property listings and closed deals in the real estate lead pipeline.
+              </p>
               <Separator className="bg-white/10" />
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 rounded bg-white/10 flex items-center justify-center"><Building className="h-3 w-3 text-accent" /></div>
-                  <span className="text-[10px] font-black uppercase tracking-tight">Catalog Sync: Active</span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
+                    <Building className="h-3.5 w-3.5 text-emerald-400" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-200">
+                    Catalog Sync: Live
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="h-6 w-6 rounded bg-white/10 flex items-center justify-center"><Target className="h-3 w-3 text-accent" /></div>
-                  <span className="text-[10px] font-black uppercase tracking-tight">Lead Match: Automatic</span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
+                    <Target className="h-3.5 w-3.5 text-emerald-400" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-200">
+                    Lead Conversion: Automated
+                  </span>
                 </div>
               </div>
             </CardContent>

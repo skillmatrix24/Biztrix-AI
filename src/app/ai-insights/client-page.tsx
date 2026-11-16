@@ -35,7 +35,7 @@ import {
   Loader2,
   Search
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { PageHeader, SectionCard } from "@/components/ui/editorial";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -273,65 +273,60 @@ export default function AIInsightsPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 opacity-40">
         <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-        <p className="text-xs font-bold uppercase tracking-widest text-primary">Synchronizing Advisor...</p>
+        <p className="text-xs font-medium text-slate-500">Synchronizing advisor...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-10">
-      {/* Header Section */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-            <Sparkles className="h-7 w-7 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-primary">Biztrix AI Advisor</h2>
-            <p className="text-xs md:text-sm text-muted-foreground">Personalized business growth engine based on your data.</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button 
+    <div className="space-y-6 pb-10 text-left">
+      <PageHeader
+        breadcrumb="Intelligence / Advisor"
+        title="Biztrix AI Advisor"
+        description="Personalized pricing, inventory reorder, and growth advice based on your business data."
+        icon={Sparkles}
+        actions={
+          <Button
             variant="outline"
             disabled={pricingLoading || stockLoading}
-            onClick={() => { getPricingInsights(); getStockInsights(); }} 
-            className="h-10 text-xs font-bold uppercase tracking-wider border-primary/20 text-primary"
+            onClick={() => { getPricingInsights(); getStockInsights(); }}
+            className="h-10 px-4 text-xs font-semibold rounded-xl border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
           >
-            {pricingLoading || stockLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+            {pricingLoading || stockLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4 text-primary" />}
             Run Deep Analysis
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Main AI Interaction Section */}
         <div className="lg:col-span-8 space-y-6">
-          <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden flex flex-col h-[650px] border">
-            <CardHeader className="bg-primary py-4 px-6 border-b shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
-                    <Bot className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-white">Advisor Engine</CardTitle>
-                    <p className="text-[9px] font-bold text-white/60 uppercase">Powered by Genkit • Live Context</p>
-                  </div>
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col h-[640px]">
+            <div className="bg-slate-900 py-4 px-6 border-b border-slate-800 shrink-0 flex items-center justify-between text-white">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+                  <Bot className="h-5 w-5 text-white" />
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-[9px] font-bold text-white uppercase">Data Live</span>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Advisor Engine</h3>
+                  <p className="text-xs text-slate-300">Live inventory, sales & lead context</p>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-hidden p-0 flex flex-col relative">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-emerald-300">Data Live</span>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden p-0 flex flex-col relative">
               <ScrollArea className="flex-1 p-6 h-full">
-                <div className="space-y-6 pb-4">
+                <div className="space-y-5 pb-4">
                   {savedMessages.length === 0 && !isHistoryLoading && (
-                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
-                      <Bot className="h-12 w-12 mb-4" />
-                      <p className="text-sm font-bold uppercase tracking-widest">Namaste! Main Biztrix AI Advisor hoon. Maine aapka sales, inventory aur leads data analyze kar liya hai. Aaj hum kis par focus karein?</p>
+                    <div className="flex flex-col items-center justify-center py-16 text-center max-w-md mx-auto">
+                      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 mb-3">
+                        <Bot className="h-6 w-6" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-700 leading-relaxed">
+                        Namaste! Main Biztrix AI Advisor hoon. Maine aapka sales, inventory aur leads data analyze kar liya hai. Aaj hum kis par focus karein?
+                      </p>
                     </div>
                   )}
                   
@@ -348,57 +343,57 @@ export default function AIInsightsPage() {
                       m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
                     )}>
                       <div className={cn(
-                        "h-8 w-8 rounded-lg shrink-0 flex items-center justify-center border shadow-sm",
-                        m.role === 'user' ? "bg-primary/5 border-primary/10" : "bg-white border-muted"
+                        "h-8 w-8 rounded-lg shrink-0 flex items-center justify-center border",
+                        m.role === 'user' ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-700"
                       )}>
-                        {m.role === 'user' ? <User className="h-4 w-4 text-primary" /> : <Bot className="h-4 w-4 text-primary" />}
+                        {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <div className={cn(
-                          "p-4 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-wrap",
+                          "p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap",
                           m.role === 'user' 
-                            ? "bg-primary text-primary-foreground rounded-tr-none" 
-                            : "bg-muted/30 border rounded-tl-none text-foreground"
+                            ? "bg-slate-900 text-white rounded-tr-none" 
+                            : "bg-slate-50 border border-slate-200 rounded-tl-none text-slate-800"
                         )}>
                           {m.content}
                           
                           {m.data && (
-                            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <div className={cn(
                                 "p-3 rounded-xl border flex flex-col gap-1",
-                                m.role === 'user' ? "bg-white/10 border-white/20" : "bg-white border-muted shadow-sm"
+                                m.role === 'user' ? "bg-white/10 border-white/20" : "bg-white border-slate-200"
                               )}>
-                                <p className="text-[9px] font-bold uppercase opacity-60">{m.data.label}</p>
+                                <p className="text-xs font-medium opacity-70">{m.data.label}</p>
                                 <div className="flex items-baseline justify-between">
-                                  <span className="text-lg font-bold">{m.data.metric}</span>
-                                  <span className="text-[10px] font-bold text-green-500">{m.data.change}</span>
+                                  <span className="text-lg font-mono tabular-nums font-bold">{m.data.metric}</span>
+                                  <span className="text-xs font-mono font-semibold text-emerald-600">{m.data.change}</span>
                                 </div>
                               </div>
                             </div>
                           )}
 
                           {m.actions && m.actions.length > 0 && (
-                            <div className="mt-4 flex flex-wrap gap-2">
+                            <div className="mt-3 flex flex-wrap gap-2">
                               {m.actions.map((action, i) => (
                                 <Button 
                                   key={i} 
-                                  variant="secondary" 
+                                  variant="outline" 
                                   size="sm" 
-                                  className="h-8 rounded-lg text-[10px] font-bold uppercase tracking-tight shadow-sm bg-white hover:bg-muted"
+                                  className="h-8 rounded-lg text-xs font-semibold bg-white border-slate-200 text-slate-800 hover:bg-slate-100"
                                   onClick={() => handleAction(action)}
                                 >
-                                  {action.type === 'reorder' && <PackageCheck className="mr-1.5 h-3 w-3" />}
-                                  {action.type === 'whatsapp' && <MessageSquare className="mr-1.5 h-3 w-3" />}
-                                  {action.type === 'discount' && <Percent className="mr-1.5 h-3 w-3" />}
-                                  {action.type === 'plan' && <ListChecks className="mr-1.5 h-3 w-3" />}
-                                  {action.type === 'report' && <BarChart3 className="mr-1.5 h-3 w-3" />}
+                                  {action.type === 'reorder' && <PackageCheck className="mr-1.5 h-3.5 w-3.5" />}
+                                  {action.type === 'whatsapp' && <MessageSquare className="mr-1.5 h-3.5 w-3.5" />}
+                                  {action.type === 'discount' && <Percent className="mr-1.5 h-3.5 w-3.5" />}
+                                  {action.type === 'plan' && <ListChecks className="mr-1.5 h-3.5 w-3.5" />}
+                                  {action.type === 'report' && <BarChart3 className="mr-1.5 h-3.5 w-3.5" />}
                                   {action.label}
                                 </Button>
                               ))}
                             </div>
                           )}
                         </div>
-                        <p className={cn("text-[9px] font-bold text-muted-foreground uppercase", m.role === 'user' ? "text-right" : "text-left")}>
+                        <p className={cn("text-xs font-mono tabular-nums text-slate-400", m.role === 'user' ? "text-right" : "text-left")}>
                           {m.createdAt?.toDate ? m.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                         </p>
                       </div>
@@ -406,13 +401,13 @@ export default function AIInsightsPage() {
                   ))}
                   {isTyping && (
                     <div className="flex gap-3 mr-auto">
-                      <div className="h-8 w-8 rounded-lg shrink-0 flex items-center justify-center border shadow-sm bg-white border-muted">
-                        <Bot className="h-4 w-4 text-primary" />
+                      <div className="h-8 w-8 rounded-lg shrink-0 flex items-center justify-center border bg-white border-slate-200">
+                        <Bot className="h-4 w-4 text-slate-700" />
                       </div>
-                      <div className="bg-muted/30 border p-3 rounded-2xl rounded-tl-none flex items-center gap-1">
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:0.2s]" />
-                        <div className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:0.4s]" />
+                      <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl rounded-tl-none flex items-center gap-1">
+                        <div className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" />
+                        <div className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.4s]" />
                       </div>
                     </div>
                   )}
@@ -420,7 +415,7 @@ export default function AIInsightsPage() {
                 </div>
               </ScrollArea>
 
-              <div className="px-6 py-3 bg-muted/5 border-t flex gap-2 overflow-x-auto scrollbar-hide shrink-0 backdrop-blur-sm">
+              <div className="px-5 py-2.5 bg-slate-50/70 border-t border-slate-100 flex gap-2 overflow-x-auto scrollbar-hide shrink-0">
                 {[
                   { label: "Kaunsa stock khatam ho raha hai?", icon: AlertTriangle },
                   { label: "Sales kaise badhayein?", icon: TrendingUp },
@@ -432,133 +427,113 @@ export default function AIInsightsPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={() => handleSendMessage(chip.label)}
-                    className="h-8 rounded-full text-[10px] font-bold uppercase tracking-tight whitespace-nowrap bg-white hover:bg-primary/5 border-primary/10 text-primary"
+                    className="h-8 rounded-lg text-xs font-medium whitespace-nowrap bg-white hover:bg-slate-100 border-slate-200 text-slate-700"
                   >
-                    <chip.icon className="mr-1.5 h-3 w-3" /> {chip.label}
+                    <chip.icon className="mr-1.5 h-3.5 w-3.5 text-slate-500" /> {chip.label}
                   </Button>
                 ))}
               </div>
 
-              <div className="p-4 border-t bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+              <div className="p-4 border-t border-slate-200 bg-white shrink-0">
                 <div className="relative flex items-center">
                   <Input 
-                    placeholder="Specific data puchiye (e.g. 'Wireless Mouse ka stock?' ya 'Sanjay se baat karni hai?')..." 
-                    className="pr-12 h-14 rounded-2xl bg-muted/20 border-none shadow-inner text-sm pl-5 focus-visible:ring-primary"
+                    placeholder="Ask about stock, margins, or hot leads..." 
+                    className="pr-12 h-11 rounded-xl bg-white border-slate-200 text-sm pl-4"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   />
                   <Button 
                     size="icon" 
-                    className="absolute right-2 h-10 w-10 rounded-xl bg-primary hover:bg-primary/90 shadow-lg"
+                    aria-label="Send question"
+                    className="absolute right-1.5 h-8 w-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-white"
                     onClick={() => handleSendMessage()}
                   >
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
-        {/* Sidebar: Growth Recommendations & Stats */}
         <div className="lg:col-span-4 space-y-6">
-          <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden border">
-            <CardHeader className="bg-muted/10 border-b py-4 px-6">
-              <div>
-                <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                  <BrainCircuit className="h-4 w-4" /> Real-time Pulse
-                </CardTitle>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Based on Live Firestore Data</p>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 space-y-4">
-              <div className="p-4 bg-green-50 rounded-2xl border border-green-100 flex flex-col gap-3 group hover:shadow-md transition-all">
-                <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-green-600/10 flex items-center justify-center shrink-0 border border-green-600/20">
-                    <Zap className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-green-800">Conversion Mode</p>
-                    <p className="text-[10px] text-green-700 leading-relaxed italic">
-                      Analysis complete. Aapke paas {leadsList.filter(l => (l.intentScore || 0) >= 80).length} hot prospects hain conversion ke liye.
-                    </p>
-                  </div>
+          <SectionCard title="Real-time Pulse" description="Signals from your live business records" bodyClassName="space-y-4">
+            <div className="p-4 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-3">
+              <div className="flex gap-3">
+                <div className="h-9 w-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                  <Zap className="h-4 w-4 text-emerald-700" />
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={getPricingInsights}
-                  className="w-full h-8 text-[9px] font-bold uppercase border-green-200 text-green-700 hover:bg-green-100"
-                >
-                  Analyze Margins <ArrowRight className="ml-1.5 h-3 w-3" />
-                </Button>
-              </div>
-
-              <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex flex-col gap-3">
-                <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-primary">CRM Pulse</p>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                      Total {leadsList.length} active leads monitored. High intent scoring active.
-                    </p>
-                  </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-emerald-900">Conversion Mode</p>
+                  <p className="text-xs text-emerald-800 leading-relaxed">
+                    Aapke paas <span className="font-mono font-semibold">{leadsList.filter(l => (l.intentScore || 0) >= 80).length}</span> high-intent leads hain follow-up ke liye.
+                  </p>
                 </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={getPricingInsights}
+                className="w-full h-8 text-xs font-semibold border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-100 rounded-lg"
+              >
+                Analyze Margins <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </div>
 
-              <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 flex flex-col gap-3">
-                <div className="flex gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-orange-600/10 flex items-center justify-center shrink-0 border border-orange-600/20">
-                    <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-orange-800">Procurement Alert</p>
-                    <p className="text-[10px] text-orange-700 leading-relaxed italic">
-                      {productList.filter(p => p.stock <= p.minThreshold).length} products critical level par hain. Turant reorder math run karein.
-                    </p>
-                  </div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex gap-3">
+              <div className="h-9 w-9 rounded-lg bg-slate-200/70 flex items-center justify-center shrink-0">
+                <Users className="h-4 w-4 text-slate-700" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-900">CRM Pulse</p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Total <span className="font-mono font-semibold">{leadsList.length}</span> active leads monitored across your funnel.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200 space-y-3">
+              <div className="flex gap-3">
+                <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-4 w-4 text-amber-700" />
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={getStockInsights}
-                  className="w-full h-8 text-[9px] font-bold uppercase border-orange-200 text-orange-700 hover:bg-orange-100"
-                >
-                  Run Reorder Math <ArrowRight className="ml-1.5 h-3 w-3" />
-                </Button>
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-amber-900">Procurement Alert</p>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    <span className="font-mono font-semibold">{productList.filter(p => p.stock <= p.minThreshold).length}</span> products low-stock threshold par hain.
+                  </p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={getStockInsights}
+                className="w-full h-8 text-xs font-semibold border-amber-200 bg-white text-amber-800 hover:bg-amber-100 rounded-lg"
+              >
+                Run Reorder Math <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </SectionCard>
 
-          {/* Market Velocity Chart */}
-          <Card className="border-none shadow-md bg-white rounded-2xl overflow-hidden h-[300px] border">
-            <CardHeader className="border-b py-4 px-6 bg-muted/5">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                <Target className="h-4 w-4" /> Growth Velocity
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[180px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={trendData}>
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} tick={{fill: '#888888'}} />
-                    <Tooltip 
-                      cursor={{fill: 'transparent'}} 
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '10px'}}
-                    />
-                    <Bar dataKey="sales" radius={[4, 4, 0, 0]}>
-                      {trendData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={index === 6 ? 'hsl(var(--accent))' : 'hsl(var(--primary))'} opacity={0.8} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <SectionCard title="Growth Velocity" description="Weekly sales momentum">
+            <div className="h-[180px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trendData}>
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} tick={{fill: '#64748b'}} />
+                  <Tooltip 
+                    cursor={{fill: 'transparent'}} 
+                    contentStyle={{borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: 'none', fontSize: '12px'}}
+                  />
+                  <Bar dataKey="sales" radius={[6, 6, 0, 0]}>
+                    {trendData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 6 ? '#0f172a' : '#64748b'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
         </div>
       </div>
     </div>

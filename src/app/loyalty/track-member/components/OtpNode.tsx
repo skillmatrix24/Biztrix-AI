@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Lock, Smartphone } from "lucide-react";
+import { Loader2, Smartphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,36 +16,75 @@ interface OtpNodeProps {
   phone: string;
 }
 
-export function OtpNode({ otp, setOtp, onVerify, onResend, onBack, isVerifying, phone }: OtpNodeProps) {
+export function OtpNode({
+  otp,
+  setOtp,
+  onVerify,
+  onResend,
+  onBack,
+  isVerifying,
+  phone,
+}: OtpNodeProps) {
   return (
-    <Card className="border-none shadow-2xl bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden border animate-in zoom-in-95 duration-500 mx-2 text-left">
-      <CardHeader className="p-8 sm:p-12 bg-slate-900 text-white text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12"><Lock className="h-40 w-40" /></div>
-        <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-6 border border-white/10 relative z-10">
-          <Smartphone className="h-8 w-8 md:h-10 md:w-10 text-accent" />
+    <Card className="border border-slate-200 bg-white rounded-2xl overflow-hidden text-left shadow-none">
+      <CardHeader className="p-6 sm:p-8 bg-slate-900 text-white text-center border-b border-slate-800">
+        <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/15">
+          <Smartphone className="h-7 w-7 text-white" />
         </div>
-        <CardTitle className="text-xl md:text-2xl font-black uppercase relative z-10">Identity Gate</CardTitle>
+        <CardTitle className="text-xl font-bold">Enter Verification Code</CardTitle>
+        {phone && (
+          <p className="text-xs text-slate-300 font-mono tabular-nums mt-1">
+            Sent to ...{phone.slice(-4)}
+          </p>
+        )}
       </CardHeader>
-      <CardContent className="p-8 sm:p-12 space-y-8">
-        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-          <div className="space-y-4 text-center">
-            <Label className="text-[10px] font-black uppercase text-center block tracking-[0.4em] text-muted-foreground">Enter 6-Digit OTP</Label>
-            <Input 
-              value={otp} 
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} 
-              maxLength={6} 
-              placeholder="000000" 
-              className="h-16 sm:h-20 text-center text-3xl sm:text-5xl font-black tracking-[0.5em] rounded-2xl bg-muted/20 border-none shadow-inner" 
-            />
-            <div className="flex justify-between px-1">
-              <button onClick={onBack} className="text-[9px] font-bold text-muted-foreground uppercase hover:underline">Change Identity</button>
-              <button onClick={onResend} className="text-[9px] font-bold text-primary uppercase hover:underline">Resend OTP</button>
-            </div>
+      <CardContent className="p-6 sm:p-8 space-y-6">
+        <div className="space-y-4 text-center">
+          <Label
+            htmlFor="track-otp-input"
+            className="text-xs font-semibold text-slate-600 block"
+          >
+            Enter 6-Digit OTP
+          </Label>
+          <Input
+            id="track-otp-input"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+            maxLength={6}
+            placeholder="000000"
+            className="h-16 text-center text-3xl sm:text-4xl font-bold font-mono tabular-nums tracking-[0.4em] rounded-xl bg-slate-50 border-slate-200"
+          />
+          <div className="flex justify-between px-1">
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-xs font-medium text-slate-600 hover:underline"
+            >
+              Change Member
+            </button>
+            <button
+              type="button"
+              onClick={onResend}
+              className="text-xs font-semibold text-primary hover:underline"
+            >
+              Resend OTP
+            </button>
           </div>
-          <Button onClick={onVerify} disabled={otp.length < 6 || isVerifying} className="w-full h-16 bg-green-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl shadow-xl">
-            {isVerifying ? <Loader2 className="h-6 w-6 animate-spin mr-2" /> : "Authorize & Enter"}
-          </Button>
         </div>
+        <Button
+          type="button"
+          onClick={onVerify}
+          disabled={otp.length < 6 || isVerifying}
+          className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl"
+        >
+          {isVerifying ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin mr-2" /> Verifying...
+            </>
+          ) : (
+            "Verify & Enter Portal"
+          )}
+        </Button>
       </CardContent>
     </Card>
   );

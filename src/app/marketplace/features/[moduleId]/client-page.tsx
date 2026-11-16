@@ -293,13 +293,15 @@ export default function ModuleFeaturePage(props: { params: { moduleId: string } 
               </div>
             </div>
             <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
-              {meta?.bestFor ? `${meta.bestFor}. ` : ""}
+              {meta?.bestFor && !detail.description.startsWith(meta.bestFor)
+                ? `${meta.bestFor}. `
+                : ""}
               {detail.description}
             </p>
           </div>
 
           {/* Core Modules Inside Suite */}
-          {detail.sections && (
+          {"sections" in detail && Array.isArray(detail.sections) && detail.sections.length > 0 && (
             <section className="space-y-4">
               <h3 className="text-lg font-bold text-slate-900">Tools Included in This Suite</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

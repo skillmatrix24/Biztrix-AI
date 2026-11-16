@@ -311,7 +311,7 @@ export default function PlatformBlueprintPage() {
       {filteredGroups.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
           <p className="text-sm font-semibold text-slate-900">
-            Koi matching sidebar module ya backend node nahi mila
+            Koi matching sidebar module ya route nahi mila
           </p>
           <p className="text-xs text-slate-500 mt-1">
             Search query clear karein ya dusra Sidebar group select karein.

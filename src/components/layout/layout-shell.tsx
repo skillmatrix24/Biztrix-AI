@@ -53,6 +53,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
            path.startsWith('/feedback/track') ||
            path.startsWith('/loyalty/track') ||
            path.startsWith('/loyalty/join') ||
+           path.startsWith('/loyalty/payment-failed') ||
+           path.startsWith('/loyalty/payment-cancelled') ||
+           path.startsWith('/loyalty/success') ||
+           path.startsWith('/portal/solar') ||
            path.startsWith('/complaints/track') ||
            path.startsWith('/complaints/form') ||
            path.startsWith('/staff/track');
@@ -162,11 +166,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   
   if (isUserLoading || (isActuallyLoggedIn && isProfileLoading) || (!isActuallyLoggedIn && !isFullPageRoute && !isAuthRoute && !isHybridRoute)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-        <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white animate-pulse shadow-lg mb-4">
-          <span className="text-xl font-black">B</span>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50/70">
+        <div className="h-11 w-11 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-white mb-3">
+          <span className="text-lg font-bold">B</span>
         </div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Synchronizing Session...</p>
+        <p className="text-xs font-medium text-slate-500">Loading workspace...</p>
       </div>
     );
   }
@@ -182,68 +186,72 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full overflow-x-hidden bg-background">
+      <div className="flex min-h-screen w-full overflow-x-hidden bg-slate-50/70">
         <SidebarNav />
-        <SidebarInset className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden relative text-slate-900">
-          <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center border-b bg-background/95 backdrop-blur px-4 md:px-6 lg:px-8">
-            <div className="flex items-center gap-2 md:gap-4 flex-1 text-left">
-              <SidebarTrigger className="md:hidden"><Menu className="h-5 w-5 text-muted-foreground" /></SidebarTrigger>
-              <div className="flex items-center gap-3 md:hidden">
-                <div className="h-8 w-8 bg-white border border-border shadow-sm rounded-xl flex items-center justify-center overflow-hidden">
-                  {activeLogo ? <img src={activeLogo} className="h-full w-full object-contain" alt="Logo" /> : <span className="text-[10px] font-black text-primary">B</span>}
+        <SidebarInset className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden relative bg-slate-50/70 text-slate-900">
+          <header className="sticky top-0 z-30 flex h-14 md:h-16 items-center border-b border-slate-200 bg-white/95 backdrop-blur px-4 md:px-6 lg:px-8">
+            <div className="flex items-center gap-2.5 md:gap-4 flex-1 text-left min-w-0">
+              <SidebarTrigger className="md:hidden"><Menu className="h-5 w-5 text-slate-600" /></SidebarTrigger>
+              <div className="flex items-center gap-2.5 md:hidden min-w-0">
+                <div className="h-8 w-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0">
+                  {activeLogo ? <img src={activeLogo} referrerPolicy="no-referrer" className="h-full w-full object-contain" alt="Workspace Logo" /> : <span className="text-xs font-bold text-slate-900">B</span>}
                 </div>
-                <h1 className="text-xs font-black text-primary uppercase tracking-tighter truncate max-w-[150px]">{business?.name || "Biztrix AI"}</h1>
+                <h1 className="text-sm font-bold text-slate-900 tracking-tight truncate max-w-[160px]">{business?.name || "Biztrix AI"}</h1>
               </div>
-              <div className="hidden md:flex items-center gap-2">
-                <h1 className="text-[10px] md:text-xs font-black text-slate-900 uppercase tracking-widest opacity-80">Biztrix Command Center</h1>
-                <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/20 text-primary uppercase">v2.5 Stable</Badge>
+              <div className="hidden md:flex items-center gap-2 min-w-0">
+                <span className="text-sm font-semibold text-slate-900 tracking-tight truncate">
+                  {business?.name || "Biztrix Workspace"}
+                </span>
+                <span aria-hidden="true" className="text-slate-300">/</span>
+                <span className="text-xs font-medium text-slate-500 whitespace-nowrap">Command Center</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
               <DropdownMenu onOpenChange={(open: boolean) => open && markAllAsRead()}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative h-8 w-8 md:h-9 md:w-9 rounded-full text-muted-foreground hover:text-primary transition-all">
+                  <Button variant="ghost" size="icon" aria-label="Notifications" className="relative h-9 w-9 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
                     <Bell className="h-4 w-4 md:h-5 md:w-5" />
-                    {unreadCount > 0 && <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-destructive text-white text-[8px] font-black flex items-center justify-center border-2 border-background animate-in zoom-in">{unreadCount}</span>}
+                    {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-destructive text-white text-[11px] font-bold flex items-center justify-center border-2 border-white tabular-nums">{unreadCount}</span>}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
-                  <DropdownMenuLabel className="font-bold text-[10px] uppercase tracking-widest p-4 bg-primary/5 text-primary flex justify-between items-center">Notifications {unreadCount > 0 && <Badge className="bg-primary text-white h-4 px-1">{unreadCount} NEW</Badge>}</DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-80 rounded-2xl border border-slate-200 bg-white shadow-none p-0 overflow-hidden">
+                  <DropdownMenuLabel className="font-semibold text-xs px-4 py-3 bg-slate-50 text-slate-900 border-b border-slate-100 flex justify-between items-center">
+                    <span>Notifications</span>
+                    {unreadCount > 0 && <span className="text-[11px] font-semibold text-primary tabular-nums">{unreadCount} new</span>}
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator className="m-0" />
                   <ScrollArea className="h-[350px]">
-                    {isNotifLoading ? <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary opacity-20" /></div> : (!notifications || notifications.length === 0) ? <div className="p-10 text-center space-y-2 opacity-30"><CheckCircle2 className="h-8 w-8 mx-auto" /><p className="text-[10px] font-bold uppercase tracking-widest">Inbox is clear</p></div> : notifications.map((n) => (
-                      <DropdownMenuItem key={n.id} onClick={() => handleNotificationClick(n)} className={cn("p-4 border-b last:border-0 cursor-pointer focus:bg-muted/50 text-left items-start", !n.isRead && "bg-primary/5")}>
+                    {isNotifLoading ? <div className="p-10 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary opacity-40" /></div> : (!notifications || notifications.length === 0) ? <div className="p-10 text-center space-y-2 text-slate-400"><CheckCircle2 className="h-7 w-7 mx-auto" /><p className="text-xs font-medium text-slate-500">Inbox is clear</p></div> : notifications.map((n) => (
+                      <DropdownMenuItem key={n.id} onClick={() => handleNotificationClick(n)} className={cn("p-4 border-b border-slate-100 last:border-0 cursor-pointer focus:bg-slate-50 text-left items-start", !n.isRead && "bg-primary/5")}>
                         <div className="flex gap-3 w-full text-left items-start">
-                          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", n.type === 'message' ? "bg-orange-100 text-orange-600" : n.type === 'task' ? "bg-blue-100 text-blue-600" : "bg-green-100 text-green-600")}>
+                          <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", n.type === 'message' ? "bg-orange-100 text-orange-600" : n.type === 'task' ? "bg-blue-100 text-blue-600" : "bg-emerald-100 text-emerald-700")}>
                             {n.type === 'message' ? <MessageSquare className="h-4 w-4" /> : n.type === 'task' ? <Clock className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                           </div>
-                          <div className="flex-1 space-y-1 text-left"><p className="text-[11px] font-bold text-primary leading-tight">{n.title}</p><p className="text-[10px] text-muted-foreground line-clamp-2">{n.message}</p><p className="text-[8px] font-bold uppercase opacity-40">{n.createdAt?.toDate ? n.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</p></div>
+                          <div className="flex-1 space-y-1 text-left"><p className="text-xs font-semibold text-slate-900 leading-snug">{n.title}</p><p className="text-xs text-slate-600 line-clamp-2">{n.message}</p><p className="text-[11px] text-slate-400 tabular-nums">{n.createdAt?.toDate ? n.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</p></div>
                         </div>
                       </DropdownMenuItem>
                     ))}
                   </ScrollArea>
-                  <DropdownMenuSeparator className="m-0" />
-                  <Button variant="ghost" className="w-full rounded-none h-10 text-[9px] font-bold uppercase tracking-widest text-primary hover:bg-primary/5">View All Activity</Button>
                 </DropdownMenuContent>
               </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 md:h-9 md:w-9 rounded-full bg-primary text-white flex items-center justify-center font-bold text-[10px] shrink-0 shadow-sm border border-primary/10">{user?.email?.charAt(0).toUpperCase() || 'U'}</Button>
+                  <Button variant="ghost" aria-label="Account menu" className="relative h-9 w-9 rounded-xl bg-slate-900 text-white hover:bg-slate-800 hover:text-white flex items-center justify-center font-semibold text-xs shrink-0">{user?.email?.charAt(0).toUpperCase() || 'U'}</Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-                  <DropdownMenuLabel className="font-bold text-xs uppercase tracking-widest p-3">My Identity</DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-56 rounded-2xl border border-slate-200 bg-white shadow-none p-1.5">
+                  <DropdownMenuLabel className="font-semibold text-xs text-slate-500 px-3 py-2">Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="p-3 rounded-xl cursor-pointer">
-                    <Link href="/profile" className="flex items-center gap-2 text-xs font-bold uppercase"><User className="h-4 w-4 text-primary" /> Profile Overview</Link>
+                  <DropdownMenuItem asChild className="px-3 py-2.5 rounded-xl cursor-pointer">
+                    <Link href="/profile" className="flex items-center gap-2.5 text-xs font-semibold text-slate-800"><User className="h-4 w-4 text-primary" /> Profile Overview</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSignOut} className="p-3 rounded-xl cursor-pointer text-destructive focus:text-destructive"><div className="flex items-center gap-2 text-xs font-bold uppercase"><LogOut className="h-4 w-4" /> Sign Out</div></DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut} className="px-3 py-2.5 rounded-xl cursor-pointer text-destructive focus:text-destructive"><div className="flex items-center gap-2.5 text-xs font-semibold"><LogOut className="h-4 w-4" /> Sign Out</div></DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </header>
-          <main className="flex-1 p-4 md:p-6 lg:p-8 w-full max-w-[2000px] mx-auto overflow-x-hidden pb-24 md:pb-8">
+          <main className="flex-1 p-4 md:p-6 lg:p-8 w-full max-w-[1600px] mx-auto overflow-x-hidden pb-24 md:pb-8">
             {business?.bannerConfig && <DevelopmentBanner config={business.bannerConfig} />}
             {children}
           </main>

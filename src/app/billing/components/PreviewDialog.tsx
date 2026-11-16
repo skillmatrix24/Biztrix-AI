@@ -34,7 +34,7 @@ export function PreviewDialog({
 }: PreviewDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] h-[90vh] max-h-[90vh] p-0 overflow-hidden rounded-2xl border border-slate-200 shadow-2xl flex flex-col bg-white text-left">
+      <DialogContent className="sm:max-w-[900px] h-[90vh] max-h-[90vh] p-0 overflow-hidden rounded-2xl border border-slate-200 flex flex-col bg-white text-left">
         <DialogHeader className="px-6 py-4 bg-slate-900 text-white shrink-0 flex flex-row items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Eye className="h-4 w-4 text-sky-300 shrink-0" />

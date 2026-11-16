@@ -1,32 +1,31 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Printer, 
-  ScanLine, 
-  Smartphone, 
-  Volume2, 
-  Usb, 
-  CheckCircle2, 
+import {
+  Printer,
+  ScanLine,
+  Smartphone,
+  Volume2,
+  Usb,
+  CheckCircle2,
   ShieldCheck,
   Info,
   SmartphoneNfc,
-  ArrowRight
+  ArrowRight,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { SectionCard } from "@/components/ui/editorial";
+import Link from "next/link";
 
 interface HardwareTabProps {
   business: any;
@@ -35,7 +34,12 @@ interface HardwareTabProps {
   onUpdate: (data: any) => void;
 }
 
-export function HardwareTab({ business, isAdmin, isTrialExpired, onUpdate }: HardwareTabProps) {
+export function HardwareTab({
+  business,
+  isAdmin,
+  isTrialExpired,
+  onUpdate,
+}: HardwareTabProps) {
   const [localFooter, setLocalFooter] = useState("");
 
   useEffect(() => {
@@ -45,181 +49,219 @@ export function HardwareTab({ business, isAdmin, isTrialExpired, onUpdate }: Har
   }, [business?.receiptFooter]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="md:col-span-8 space-y-8">
-        <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border">
-          <CardHeader className="bg-muted/30 border-b py-6 px-8 flex flex-row items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-white border shadow-sm flex items-center justify-center">
-                <Printer className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary">Receipt Printer</CardTitle>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Thermal or Standard Laser Printing</p>
-              </div>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start text-left">
+      <div className="lg:col-span-8 space-y-6">
+        <SectionCard
+          title="Receipt Printer"
+          description="Thermal POS roll or standard A4 laser printing preferences."
+          headerRight={
+            <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
+              <Printer className="h-4 w-4" />
             </div>
-          </CardHeader>
-          <CardContent className="p-8 space-y-8">
-            <div className="flex items-center justify-between p-5 bg-primary/5 rounded-2xl border border-primary/10">
-              <div className="space-y-0.5 text-left">
-                <Label className="text-xs font-bold uppercase">Auto-Print Invoices</Label>
-                <p className="text-[9px] text-muted-foreground font-medium uppercase">Trigger print window automatically after every sale</p>
+          }
+        >
+          <div className="space-y-6">
+            <div className="flex items-center justify-between gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-print-switch" className="text-xs font-semibold text-slate-900">
+                  Auto-Print Invoices
+                </Label>
+                <p className="text-xs text-slate-500">
+                  Open print dialog automatically after completing a POS sale.
+                </p>
               </div>
-              <Switch 
-                checked={business?.autoPrintReceipt} 
-                onCheckedChange={(v) => onUpdate({ autoPrintReceipt: v })} 
-                className="scale-75 data-[state=checked]:bg-primary" 
+              <Switch
+                id="auto-print-switch"
+                disabled={!isAdmin || isTrialExpired}
+                checked={!!business?.autoPrintReceipt}
+                onCheckedChange={(v) => onUpdate({ autoPrintReceipt: v })}
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Printer Class</Label>
-                <Select value={business?.printerType || "Thermal"} onValueChange={(v) => onUpdate({ printerType: v })}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Printer Class</Label>
+                <Select
+                  disabled={!isAdmin || isTrialExpired}
+                  value={business?.printerType || "Thermal"}
+                  onValueChange={(v) => onUpdate({ printerType: v })}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-white border-slate-200 text-sm font-medium">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-2xl">
-                    <SelectItem value="Thermal" className="text-xs font-bold uppercase">Thermal POS Printer</SelectItem>
-                    <SelectItem value="Standard" className="text-xs font-bold uppercase">Standard A4 / Inkjet</SelectItem>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="Thermal" className="text-xs font-medium">
+                      Thermal POS Printer
+                    </SelectItem>
+                    <SelectItem value="Standard" className="text-xs font-medium">
+                      Standard A4 / Inkjet
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 text-left">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Paper Dimension</Label>
-                <Select value={business?.paperSize || "80mm"} onValueChange={(v) => onUpdate({ paperSize: v })}>
-                  <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold">
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Paper Dimension</Label>
+                <Select
+                  disabled={!isAdmin || isTrialExpired}
+                  value={business?.paperSize || "80mm"}
+                  onValueChange={(v) => onUpdate({ paperSize: v })}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-white border-slate-200 text-sm font-medium">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-2xl">
-                    <SelectItem value="58mm" className="text-xs font-bold uppercase">Thermal (2-inch / 58mm)</SelectItem>
-                    <SelectItem value="80mm" className="text-xs font-bold uppercase">Thermal (3-inch / 80mm)</SelectItem>
-                    <SelectItem value="A4" className="text-xs font-bold uppercase">A4 Page (Laser/Standard)</SelectItem>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="58mm" className="text-xs font-medium">
+                      Thermal (2-inch / 58mm)
+                    </SelectItem>
+                    <SelectItem value="80mm" className="text-xs font-medium">
+                      Thermal (3-inch / 80mm)
+                    </SelectItem>
+                    <SelectItem value="A4" className="text-xs font-medium">
+                      A4 Page (Laser / Standard)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="space-y-2 text-left">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1 tracking-widest">Receipt Footer Branding</Label>
-              <Input 
-                placeholder="e.g. Visit us again! Thank you." 
+            <div className="space-y-1.5">
+              <Label htmlFor="receipt-footer" className="text-xs font-semibold text-slate-700">
+                Receipt Footer Branding
+              </Label>
+              <Input
+                id="receipt-footer"
+                disabled={!isAdmin || isTrialExpired}
+                placeholder="e.g. Visit us again! Thank you for shopping."
                 value={localFooter}
                 onChange={(e) => setLocalFooter(e.target.value)}
                 onBlur={(e) => onUpdate({ receiptFooter: e.target.value })}
-                className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-medium"
+                className="h-11 rounded-xl bg-white border-slate-200 text-sm"
               />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
 
-        <Card className="border-none shadow-md bg-white rounded-[2rem] overflow-hidden border">
-          <CardHeader className="bg-muted/30 border-b py-6 px-8">
-            <div className="flex items-center gap-4 text-left">
-              <div className="h-12 w-12 rounded-2xl bg-white border shadow-sm flex items-center justify-center">
-                <ScanLine className="h-6 w-6 text-primary" />
-              </div>
-              <div className="text-left">
-                <CardTitle className="text-sm font-bold uppercase tracking-widest text-primary">Scanning Protocol</CardTitle>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Inventory & Billing Input Methods</p>
-              </div>
+        <SectionCard
+          title="Barcode & QR Scanning"
+          description="Inventory lookup and POS billing scanner options."
+          headerRight={
+            <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
+              <ScanLine className="h-4 w-4" />
             </div>
-          </CardHeader>
-          <CardContent className="p-8 space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-colors">
-                <div className="flex items-center gap-3 text-left">
-                  <Smartphone className="h-5 w-5 text-primary opacity-60" />
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-black uppercase tracking-tight">Camera Scanning</Label>
-                    <p className="text-[8px] text-muted-foreground uppercase font-bold">Use Mobile Camera</p>
+          }
+        >
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Smartphone className="h-4 w-4 text-slate-500 shrink-0" />
+                  <div className="space-y-0.5 min-w-0">
+                    <Label htmlFor="camera-scan-switch" className="text-xs font-semibold text-slate-900">
+                      Camera Scanning
+                    </Label>
+                    <p className="text-xs text-slate-500">Use mobile camera</p>
                   </div>
                 </div>
-                <Switch 
-                  checked={business?.cameraScanEnabled} 
-                  onCheckedChange={(v) => onUpdate({ cameraScanEnabled: v })} 
-                  className="scale-75 data-[state=checked]:bg-primary" 
+                <Switch
+                  id="camera-scan-switch"
+                  disabled={!isAdmin || isTrialExpired}
+                  checked={!!business?.cameraScanEnabled}
+                  onCheckedChange={(v) => onUpdate({ cameraScanEnabled: v })}
                 />
               </div>
 
-              <div className="flex items-center justify-between p-5 bg-muted/20 rounded-2xl border border-transparent hover:border-primary/10 transition-colors">
-                <div className="flex items-center gap-3 text-left">
-                  <Volume2 className="h-5 w-5 text-primary opacity-60" />
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-black uppercase tracking-tight">Audio Feedback</Label>
-                    <p className="text-[8px] text-muted-foreground uppercase font-bold">Beep on successful scan</p>
+              <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Volume2 className="h-4 w-4 text-slate-500 shrink-0" />
+                  <div className="space-y-0.5 min-w-0">
+                    <Label htmlFor="beep-scan-switch" className="text-xs font-semibold text-slate-900">
+                      Audio Feedback
+                    </Label>
+                    <p className="text-xs text-slate-500">Beep on barcode match</p>
                   </div>
                 </div>
-                <Switch 
-                  checked={business?.beepOnScan} 
-                  onCheckedChange={(v) => onUpdate({ beepOnScan: v })} 
-                  className="scale-75 data-[state=checked]:bg-primary" 
+                <Switch
+                  id="beep-scan-switch"
+                  disabled={!isAdmin || isTrialExpired}
+                  checked={!!business?.beepOnScan}
+                  onCheckedChange={(v) => onUpdate({ beepOnScan: v })}
                 />
               </div>
             </div>
 
-            <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-4 shadow-inner text-left">
-              <div className="flex items-center gap-3">
-                <Usb className="h-4 w-4 text-primary" />
-                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">External USB/Bluetooth Mode</h4>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-900">
+                <Usb className="h-4 w-4 text-slate-600" />
+                External USB / Bluetooth Scanners
               </div>
-              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                Standard scanners work best in <strong>"Keyboard HID"</strong> mode. Ensure your scanner has the "Enter" suffix enabled to automatically trigger lookups in the POS billing screen.
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Standard barcode scanners work best in <strong>Keyboard HID</strong> mode with an automatic <strong>Enter</strong> suffix to trigger instant lookups during POS billing.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SectionCard>
       </div>
 
-      <div className="md:col-span-4 space-y-6 text-left">
-        <Card className="border-none shadow-md bg-white rounded-3xl overflow-hidden border">
-          <CardHeader className="bg-primary/5 border-b py-5 px-6">
-            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" /> Device Integrity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
-            <div className="p-4 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-4">
-              <ShieldCheck className="h-6 w-6 text-green-600" />
-              <div className="text-left">
-                <p className="text-xs font-bold uppercase text-green-800">Drivers Configured</p>
-                <p className="text-[9px] text-green-700 font-bold uppercase opacity-60">Ready for plug-and-play</p>
+      <div className="lg:col-span-4 space-y-6">
+        <SectionCard
+          title="Setup Checklist"
+          description="Recommended browser & hardware setup."
+          headerRight={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+        >
+          <div className="space-y-4">
+            <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-emerald-900">Plug-and-Play Ready</p>
+                <p className="text-xs text-emerald-700">No extra driver plugin required</p>
               </div>
             </div>
 
-            <div className="space-y-4 text-left">
-              <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-1">Implementation Logic</p>
-              <div className="flex gap-4">
-                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold shrink-0">1</div>
-                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">Use Google Chrome for best results with direct thermal printing.</p>
+            <div className="space-y-3 text-xs text-slate-600">
+              <div className="flex gap-3">
+                <span className="h-5 w-5 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-mono font-semibold text-slate-800 shrink-0">
+                  1
+                </span>
+                <p className="leading-relaxed">
+                  Use Google Chrome or Microsoft Edge for reliable direct thermal printing.
+                </p>
               </div>
-              <div className="flex gap-4">
-                <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold shrink-0">2</div>
-                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">For Bluetooth scanners, pair device first via OS Bluetooth settings before launching POS.</p>
+              <div className="flex gap-3">
+                <span className="h-5 w-5 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-mono font-semibold text-slate-800 shrink-0">
+                  2
+                </span>
+                <p className="leading-relaxed">
+                  Pair Bluetooth scanners via device settings before opening the POS billing screen.
+                </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-md bg-slate-900 text-white rounded-3xl overflow-hidden relative group cursor-pointer">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-            <SmartphoneNfc className="h-20 w-20" />
           </div>
-          <CardContent className="p-6 space-y-4 relative z-10 text-left">
-            <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
-              <Info className="h-5 w-5 text-accent" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-bold text-white uppercase tracking-tight">Need POS Peripherals?</p>
-              <p className="text-[10px] text-slate-400 font-medium leading-relaxed uppercase">
-                Contact support for recommended 80mm printers and QR scanners certified for Bill Matrix.
-              </p>
-            </div>
-            <Button variant="ghost" size="sm" className="w-full text-[9px] font-black uppercase text-accent hover:bg-white/10 border-white/10">
-              Inquire Now <ArrowRight className="ml-2 h-3.5 w-3.5" />
-            </Button>
-          </CardContent>
-        </Card>
+        </SectionCard>
+
+        <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-4">
+          <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+            <SmartphoneNfc className="h-5 w-5 text-white" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white">Need POS Peripherals?</h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Reach out to support for compatible 80mm thermal printers and wireless barcode scanners.
+            </p>
+          </div>
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="w-full h-9 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-semibold"
+          >
+            <Link href="/complaints">
+              <Info className="mr-1.5 h-3.5 w-3.5" />
+              Contact Support
+              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

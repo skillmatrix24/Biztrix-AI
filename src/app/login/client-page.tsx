@@ -231,81 +231,82 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50/70 flex flex-col items-center justify-center p-4">
       <div id="recaptcha-container"></div>
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110">
-              <Bot className="h-6 w-6" />
+          <Link href="/" className="inline-flex items-center gap-2.5 group">
+            <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white transition-transform group-hover:scale-105">
+              <Bot className="h-5 w-5" />
             </div>
-            <span className="text-2xl font-bold text-primary tracking-tight">Biztrix AI</span>
+            <span className="text-2xl font-bold text-slate-900 tracking-tight">Biztrix AI</span>
           </Link>
-          <h1 className="text-xl font-bold text-slate-900 mt-6 uppercase tracking-widest">Command Access</h1>
-          <p className="text-sm text-muted-foreground">Sign in to manage your business node.</p>
+          <h1 className="text-xl font-semibold text-slate-900 mt-4 tracking-tight">Workspace Sign In</h1>
+          <p className="text-sm text-slate-500">Sign in to access your business workspace.</p>
         </div>
 
-        <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
+        <Card className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-none">
           <Tabs defaultValue="email" className="w-full">
-            <CardHeader className="bg-primary/5 border-b py-2">
-              <TabsList className="grid w-full grid-cols-2 bg-transparent">
-                <TabsTrigger value="email" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl text-[10px] font-bold uppercase tracking-widest h-10">
+            <CardHeader className="bg-slate-50/80 border-b border-slate-200 p-3">
+              <TabsList className="grid w-full grid-cols-2 bg-slate-200/60 p-1 rounded-xl h-11">
+                <TabsTrigger value="email" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-lg text-xs font-semibold h-9">
                   <Mail className="w-3.5 h-3.5 mr-2" /> Email
                 </TabsTrigger>
-                <TabsTrigger value="phone" className="data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-xl text-[10px] font-bold uppercase tracking-widest h-10">
+                <TabsTrigger value="phone" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-lg text-xs font-semibold h-9">
                   <Smartphone className="w-3.5 h-3.5 mr-2" /> Phone
                 </TabsTrigger>
               </TabsList>
             </CardHeader>
             <CardContent className="p-6 sm:p-8">
               {error && (
-                <Alert variant="destructive" className="rounded-2xl border-destructive/20 bg-destructive/5 mb-6 animate-in fade-in slide-in-from-top-2">
+                <Alert variant="destructive" className="rounded-xl border-destructive/20 bg-destructive/5 mb-6 animate-in fade-in slide-in-from-top-2">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
                 </Alert>
               )}
 
               <TabsContent value="email" className="m-0">
-                <form onSubmit={handleLogin} className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Email Address</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email" className="text-xs font-semibold text-slate-700">Email Address</Label>
                       <div className="relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input 
                           id="email" 
                           type="email" 
                           placeholder="name@company.com" 
                           required 
-                          className="h-12 pl-11 rounded-xl bg-muted/20 border-none shadow-inner text-sm"
+                          className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between ml-1">
-                        <Label htmlFor="password" className="text-[10px] font-bold uppercase text-muted-foreground">Password</Label>
-                        <Link href="/forgot-password" className="text-[10px] font-bold uppercase text-primary hover:underline">
-                          Forgot?
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password" className="text-xs font-semibold text-slate-700">Password</Label>
+                        <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                          Forgot password?
                         </Link>
                       </div>
                       <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input 
                           id="password" 
                           type={showPassword ? "text" : "password"} 
                           placeholder="••••••••" 
                           required 
-                          className="h-12 pl-11 pr-12 rounded-xl bg-muted/20 border-none shadow-inner text-sm"
+                          className="h-11 pl-10 pr-11 rounded-xl bg-white border-slate-200 text-sm"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
                         <button 
                           type="button"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                         >
                           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -316,30 +317,30 @@ export default function LoginPage() {
                   <Button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all"
+                    className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-colors"
                   >
-                    {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
-                      <span className="flex items-center gap-2">Authorize Access <ArrowRight className="h-4 w-4" /></span>
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+                      <span className="flex items-center gap-2">Sign In <ArrowRight className="h-4 w-4" /></span>
                     )}
                   </Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="phone" className="m-0">
-                <div className="space-y-6">
+                <div className="space-y-5">
                   {!otpSent ? (
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Mobile Number</Label>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="phone" className="text-xs font-semibold text-slate-700">Mobile Number</Label>
                         <div className="relative">
-                          <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <span className="absolute left-11 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">+91</span>
+                          <Smartphone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <span className="absolute left-10 top-1/2 -translate-y-1/2 text-sm font-mono font-semibold text-slate-500">+91</span>
                           <Input 
                             id="phone" 
                             type="tel" 
                             placeholder="9876543210" 
                             maxLength={10}
-                            className="h-12 pl-20 rounded-xl bg-muted/20 border-none shadow-inner text-sm font-bold tracking-widest"
+                            className="h-11 pl-20 rounded-xl bg-white border-slate-200 text-sm font-mono tabular-nums tracking-wide"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                           />
@@ -348,30 +349,31 @@ export default function LoginPage() {
                       <Button 
                         onClick={handleRequestOtp}
                         disabled={loading || phone.length < 10}
-                        className="w-full h-14 bg-primary hover:bg-primary/90 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all"
+                        className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-sm transition-colors"
                       >
-                        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Request OTP"}
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Verification Code"}
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in fade-in zoom-in-95">
                       <div className="space-y-2 text-center">
-                        <Label htmlFor="otp" className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.3em]">Enter OTP Code</Label>
+                        <Label htmlFor="otp" className="text-xs font-semibold text-slate-700">Enter 6-Digit OTP</Label>
                         <Input 
                           id="otp" 
                           type="text" 
                           placeholder="000000" 
                           maxLength={6}
-                          className="h-14 rounded-xl bg-muted/20 border-none shadow-inner text-2xl font-black text-center tracking-[0.5em] focus:ring-primary"
+                          className="h-12 rounded-xl bg-white border-slate-200 text-xl font-mono font-bold text-center tracking-[0.4em] focus:ring-primary"
                           value={otp}
                           onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                         />
                         <div className="flex items-center justify-between px-1">
-                          <p className="text-[9px] font-bold text-muted-foreground">OTP sent to +91 {phone}</p>
+                          <p className="text-xs text-slate-500 font-mono tabular-nums">Sent to +91 {phone}</p>
                           <button 
+                            type="button"
                             disabled={timer > 0 || loading}
                             onClick={handleRequestOtp}
-                            className="text-[9px] font-bold text-primary uppercase tracking-widest hover:underline disabled:opacity-40"
+                            className="text-xs font-semibold text-primary hover:underline disabled:opacity-40"
                           >
                             {timer > 0 ? `Resend in ${timer}s` : "Resend Code"}
                           </button>
@@ -380,29 +382,30 @@ export default function LoginPage() {
                       <Button 
                         onClick={handleVerifyOtp}
                         disabled={loading || otp.length !== 6}
-                        className="w-full h-14 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl active:scale-95 transition-all"
+                        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-colors"
                       >
-                        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : (
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                           <span className="flex items-center gap-2">Verify & Sign In <CheckCircle2 className="h-4 w-4" /></span>
                         )}
                       </Button>
                       <button 
+                        type="button"
                         onClick={() => { setOtpSent(false); setOtp(""); }}
-                        className="w-full text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center justify-center gap-2 hover:text-primary transition-colors"
+                        className="w-full text-xs font-medium text-slate-500 flex items-center justify-center gap-1.5 hover:text-slate-900 transition-colors"
                       >
-                        <RefreshCcw className="w-3 h-3" /> Change Number
+                        <RefreshCcw className="w-3.5 h-3.5" /> Change Number
                       </button>
                     </div>
                   )}
                 </div>
               </TabsContent>
 
-              <div className="relative my-8">
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <Separator />
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold">
-                  <span className="bg-white px-4 text-muted-foreground">Or Continue With</span>
+                <div className="relative flex justify-center text-xs font-medium">
+                  <span className="bg-white px-3 text-slate-400">or continue with</span>
                 </div>
               </div>
 
@@ -411,31 +414,31 @@ export default function LoginPage() {
                 variant="outline" 
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full h-12 rounded-xl border-primary/10 hover:bg-primary/5 font-bold text-xs gap-3 shadow-sm"
+                className="w-full h-11 rounded-xl border-slate-200 hover:bg-slate-50 font-semibold text-xs gap-2.5 text-slate-800"
               >
                 <GoogleIcon />
-                Sign in with Gmail
+                Sign in with Google
               </Button>
             </CardContent>
           </Tabs>
-          <CardFooter className="p-6 sm:p-8 pt-0 flex flex-col gap-4">
-            <div className="flex items-center gap-4 w-full">
+          <CardFooter className="p-6 sm:p-8 pt-0 flex flex-col gap-3">
+            <div className="flex items-center gap-3 w-full">
               <Separator className="flex-1" />
-              <span className="text-[10px] font-bold text-muted-foreground uppercase">New here?</span>
+              <span className="text-xs font-medium text-slate-400">New here?</span>
               <Separator className="flex-1" />
             </div>
-            <Button asChild variant="outline" className="w-full h-12 rounded-2xl border-primary/20 text-primary font-bold uppercase text-[10px] tracking-widest">
+            <Button asChild variant="outline" className="w-full h-11 rounded-xl border-slate-200 text-slate-800 hover:bg-slate-50 font-semibold text-xs">
               <Link href="/signup">Create Business Account</Link>
             </Button>
 
-            <div className="grid grid-cols-2 gap-3 w-full">
-              <Button asChild variant="ghost" className="h-10 rounded-xl text-primary font-bold uppercase text-[9px] tracking-widest hover:bg-primary/5">
+            <div className={mounted && user ? "grid grid-cols-2 gap-3 w-full" : "flex justify-center w-full"}>
+              <Button asChild variant="ghost" className="h-9 rounded-xl text-slate-600 font-medium text-xs hover:bg-slate-100 hover:text-slate-900">
                 <Link href="/">
                   <Home className="mr-2 h-3.5 w-3.5" /> Back to Home
                 </Link>
               </Button>
               {mounted && user && (
-                <Button asChild variant="ghost" className="h-10 rounded-xl text-primary font-bold uppercase text-[9px] tracking-widest hover:bg-primary/5">
+                <Button asChild variant="ghost" className="h-9 rounded-xl text-primary font-medium text-xs hover:bg-primary/5">
                   <Link href="/dashboard">
                     <LayoutDashboard className="mr-2 h-3.5 w-3.5" /> Dashboard
                   </Link>
@@ -446,8 +449,8 @@ export default function LoginPage() {
         </Card>
 
         <div className="text-center">
-          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter flex items-center justify-center gap-2">
-            <ShieldCheck className="h-3 w-3" /> Bank-grade 256-bit SSL Encryption
+          <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" /> Bank-grade 256-bit SSL Encryption
           </p>
         </div>
       </div>

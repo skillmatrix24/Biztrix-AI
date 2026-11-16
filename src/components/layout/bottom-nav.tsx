@@ -248,20 +248,20 @@ export function BottomNav() {
                 <div 
                   style={fabStyles}
                   className={cn(
-                    "h-14 w-14 rounded-full flex items-center justify-center shadow-2xl absolute -top-8 border-4 transition-all duration-300",
+                    "h-14 w-14 rounded-full flex items-center justify-center absolute -top-8 border-4 transition-all duration-300",
                     isActive ? "text-white scale-110" : "text-white scale-100 opacity-95",
                   )}
                 >
-                  <Icon className="h-6 w-6 stroke-[2.5px]" />
+                  <Icon className="h-6 w-6 stroke-[2.25px]" />
                 </div>
-                <span className={cn("text-[9px] font-black uppercase tracking-tighter truncate w-full text-center", isActive ? "opacity-100" : "opacity-60")}>
+                <span className={cn("text-[11px] font-semibold leading-tight truncate w-full text-center", isActive ? "opacity-100" : "opacity-75")}>
                   {item.label}
                 </span>
               </div>
             ) : (
               <>
-                <Icon className={cn("h-5 w-5", isActive ? "stroke-[2.5px]" : "stroke-[1.5px]")} />
-                <span className={cn("text-[9px] font-bold uppercase tracking-tighter truncate w-full text-center px-1", isActive ? "opacity-100" : "opacity-60")}>
+                <Icon className={cn("h-5 w-5", isActive ? "stroke-[2.25px]" : "stroke-[1.75px]")} />
+                <span className={cn("text-[11px] font-medium leading-tight truncate w-full text-center px-1", isActive ? "opacity-100 font-semibold" : "opacity-75")}>
                   {item.label}
                 </span>
                 {isActive && (
@@ -276,12 +276,16 @@ export function BottomNav() {
       {showMoreButton && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className={cn(
-              "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all active:scale-90 relative min-w-0",
-              (footerStyle === 'solid' || footerStyle === 'glass') ? "text-muted-foreground" : "text-white opacity-40"
-            )}>
-              <MoreHorizontal className="h-5 w-5 stroke-[1.5px]" />
-              <span className="text-[9px] font-bold uppercase tracking-tighter">More</span>
+            <button
+              type="button"
+              aria-label="More navigation links"
+              className={cn(
+                "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all active:scale-95 relative min-w-0",
+                (footerStyle === 'solid' || footerStyle === 'glass') ? "text-muted-foreground" : "text-white opacity-70"
+              )}
+            >
+              <MoreHorizontal className="h-5 w-5 stroke-[1.75px]" />
+              <span className="text-[11px] font-medium leading-tight">More</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent 
@@ -289,12 +293,12 @@ export function BottomNav() {
             align="center" 
             style={customStyle}
             className={cn(
-              "w-56 mb-4 rounded-[2rem] border-none shadow-2xl p-2 animate-in slide-in-from-bottom-2 duration-300",
+              "w-56 mb-4 rounded-2xl border border-slate-200 shadow-none p-2 animate-in slide-in-from-bottom-2 duration-300",
               styleClasses
             )}
           >
-            <div className="p-3 border-b border-border/10 mb-2 text-left">
-               <p className="text-[8px] font-black uppercase tracking-widest opacity-40">System Node Explorer</p>
+            <div className="px-3 py-2 border-b border-border/15 mb-2 text-left">
+               <p className="text-xs font-semibold opacity-65">Quick Navigation</p>
             </div>
             <ScrollArea className="h-full max-h-[300px]">
               <div className="grid grid-cols-1 gap-1">
@@ -303,14 +307,14 @@ export function BottomNav() {
                     <Link 
                       href={item.href} 
                       className={cn(
-                        "flex items-center gap-4 p-3 rounded-xl transition-all active:scale-95",
+                        "flex items-center gap-3 p-2.5 rounded-xl transition-all active:scale-95",
                         (footerStyle === 'solid' || footerStyle === 'glass') ? "hover:bg-primary/5" : "hover:bg-white/10"
                       )}
                     >
-                       <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shadow-sm border", (footerStyle === 'solid' || footerStyle === 'glass') ? "bg-white text-primary border-border" : "bg-white/10 text-white border-white/10")}>
+                       <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center border", (footerStyle === 'solid' || footerStyle === 'glass') ? "bg-white text-primary border-slate-200" : "bg-white/10 text-white border-white/15")}>
                           <item.icon className="h-4 w-4" />
                        </div>
-                       <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
+                       <span className="text-xs font-semibold">{item.label}</span>
                     </Link>
                   </DropdownMenuItem>
                 ))}

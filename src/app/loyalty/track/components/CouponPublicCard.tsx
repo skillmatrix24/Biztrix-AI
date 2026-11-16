@@ -1,14 +1,7 @@
-
 "use client";
 
 import React, { useMemo } from "react";
-import { 
-  Ticket, 
-  Tag, 
-  Clock, 
-  BadgeCheck, 
-  Info 
-} from "lucide-react";
+import { Tag, Clock, BadgeCheck, Info } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +10,16 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 const THEME_STYLES: Record<string, string> = {
-  blue: 'bg-gradient-to-br from-blue-600 to-indigo-800',
-  purple: 'bg-gradient-to-br from-purple-600 to-pink-700',
-  orange: 'bg-gradient-to-br from-orange-500 to-red-600',
-  green: 'bg-gradient-to-br from-emerald-500 to-teal-700',
-  black: 'bg-gradient-to-br from-slate-800 to-black',
-  red: 'bg-gradient-to-br from-red-600 to-rose-900',
-  gold: 'bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-800',
-  cyan: 'bg-gradient-to-br from-cyan-500 to-blue-700',
-  rose: 'bg-gradient-to-br from-rose-400 to-pink-600',
-  indigo: 'bg-gradient-to-br from-indigo-900 to-slate-900',
+  blue: "bg-gradient-to-br from-blue-600 to-indigo-800",
+  purple: "bg-gradient-to-br from-purple-600 to-pink-700",
+  orange: "bg-gradient-to-br from-orange-500 to-red-600",
+  green: "bg-gradient-to-br from-emerald-600 to-teal-800",
+  black: "bg-gradient-to-br from-slate-800 to-slate-950",
+  red: "bg-gradient-to-br from-red-600 to-rose-900",
+  gold: "bg-gradient-to-br from-amber-500 to-amber-700",
+  cyan: "bg-gradient-to-br from-cyan-600 to-blue-800",
+  rose: "bg-gradient-to-br from-rose-500 to-pink-700",
+  indigo: "bg-gradient-to-br from-indigo-800 to-slate-900",
 };
 
 interface CouponPublicCardProps {
@@ -39,120 +32,150 @@ interface CouponPublicCardProps {
   hideInspectButton?: boolean;
 }
 
-export function CouponPublicCard({ 
-  data, 
-  business, 
-  currencySymbol, 
-  member, 
-  activities, 
-  onClick, 
-  hideInspectButton = false 
+export function CouponPublicCard({
+  data,
+  business,
+  currencySymbol,
+  member,
+  activities,
+  onClick,
+  hideInspectButton = false,
 }: CouponPublicCardProps) {
-  const themeClass = THEME_STYLES[data.theme || 'blue'] || THEME_STYLES.blue;
-  const redemptionCount = (activities || []).filter((a: any) => a.type === 'coupon_redeem' && a.couponId === data.id).length;
+  const themeClass = THEME_STYLES[data.theme || "blue"] || THEME_STYLES.blue;
+  const redemptionCount = (activities || []).filter(
+    (a: any) => a.type === "coupon_redeem" && a.couponId === data.id
+  ).length;
   const isUsed = redemptionCount >= (data.perUserLimit || 1);
 
   const displayExpiry = useMemo(() => {
-    // If the coupon itself has an expiry, use it. 
-    // Otherwise use the membership's expiry as bundled rewards are tied to membership duration.
     const rawDate = data.expiryDate || member?.expiryDate;
-    
-    if (!rawDate || rawDate === 'LIFETIME') return 'LIFETIME';
+    if (!rawDate || rawDate === "LIFETIME") return "Lifetime";
 
     try {
       const d = rawDate.toDate ? rawDate.toDate() : new Date(rawDate);
       if (d && !isNaN(d.getTime())) {
-        return format(d, 'dd MMM yyyy');
+        return format(d, "dd MMM yyyy");
       }
-    } catch (e) {
-    console.error(e);
-      console.warn("Date parsing error in Coupon Card");
+    } catch {
+      // Fallback to Lifetime if unparseable
     }
-    
-    return 'LIFETIME';
+
+    return "Lifetime";
   }, [data.expiryDate, member?.expiryDate]);
 
-  const renderTopContent = () => {
-    const usageLabel = `${data.usageCount || 0} / ${data.usageLimit || '∞'}`;
-    return (
-      <div className="flex justify-between relative z-10 h-full min-h-[110px] text-left">
-        <div className="flex-1 min-w-0 pr-4 flex flex-col justify-center text-left">
-          <div className="flex items-center gap-1.5 opacity-60 mb-2 sm:mb-3 text-left">
-            <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.25em] truncate text-left">
-              {business?.offerGroups?.find((g: any) => g.id === data.groupId)?.name || 'REWARD NODE'}
-            </span>
+  const usageLabel = `${data.usageCount || 0} / ${data.usageLimit || "∞"}`;
+  const groupName =
+    business?.offerGroups?.find((g: any) => g.id === data.groupId)?.name ||
+    "Member Offer";
+
+  return (
+    <Card
+      className={cn(
+        "border border-slate-200 bg-white rounded-2xl overflow-hidden flex flex-col h-full text-left shadow-none transition-colors",
+        isUsed ? "opacity-65" : "hover:border-slate-300"
+      )}
+    >
+      <div
+        className={cn(
+          "p-6 relative text-white min-h-[148px] flex justify-between items-stretch gap-3",
+          themeClass
+        )}
+      >
+        <div className="flex-1 min-w-0 pr-3 flex flex-col justify-center">
+          <div className="flex items-center gap-1.5 text-white/75 mb-2">
+            <Tag className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-xs font-medium truncate">{groupName}</span>
           </div>
-          <h3 className="text-xl sm:text-3xl font-black tracking-widest leading-none truncate drop-shadow-2xl text-left">{data.code || 'CODE'}</h3>
-          <p className="text-[9px] sm:text-[13px] font-bold text-accent italic uppercase mt-3 sm:mt-4 text-left">
-            {data.type === 'percentage' ? `${data.value}% OFF` : data.type === 'bogo' ? data.value : `${currencySymbol}${data.value} FLAT`}
+          <h3 className="text-xl sm:text-2xl font-bold tracking-wider leading-none truncate font-mono">
+            {data.code || "CODE"}
+          </h3>
+          <p className="text-sm font-semibold text-white/90 mt-2.5">
+            {data.type === "percentage"
+              ? `${data.value}% Off`
+              : data.type === "bogo"
+                ? data.value
+                : `${currencySymbol}${data.value} Flat Off`}
           </p>
         </div>
-        <div className="w-[34%] flex flex-col items-center justify-between py-1.5 sm:py-2 pl-2 sm:pl-3 border-l-2 border-dashed border-white/30 shrink-0 text-center">
-          <div className="text-center">
-            <p className="text-[6px] sm:text-[8px] font-black uppercase opacity-60 tracking-tighter text-center">GLOBAL LOG</p>
-            <p className="text-[10px] sm:text-[12px] font-black text-white text-center leading-none mt-0.5 sm:mt-1">
+
+        <div className="w-[34%] flex flex-col items-center justify-between py-1 pl-3 border-l border-dashed border-white/30 shrink-0 text-center">
+          <div>
+            <p className="text-[11px] font-medium text-white/70">Claims</p>
+            <p className="text-xs font-semibold text-white font-mono tabular-nums mt-0.5">
               {usageLabel}
             </p>
           </div>
-          <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-black/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-xs sm:text-[14px] font-black text-white shadow-inner shrink-0 mx-auto">
-            {business?.name?.charAt(0) || 'B'}
+          <div className="h-10 w-10 rounded-xl bg-black/20 border border-white/15 flex items-center justify-center text-sm font-bold text-white shrink-0">
+            {business?.name?.charAt(0) || "B"}
           </div>
         </div>
       </div>
-    );
-  };
 
-  return (
-    <Card className={cn(
-      "border-none shadow-2xl bg-white rounded-[2rem] sm:rounded-[3rem] overflow-hidden border group relative transition-all duration-700 flex flex-col h-full text-left",
-      isUsed ? "opacity-60 grayscale-[0.5]" : "hover:scale-[1.05] hover:shadow-primary/20"
-    )}>
-      <div className={cn("p-6 sm:p-10 relative text-white min-h-[160px] sm:min-h-[180px]", themeClass)}>
-        <div className="absolute inset-0 opacity-[0.15]" style={{ backgroundImage: `radial-gradient(#ffffff 1px, transparent 1px)`, backgroundSize: '15px 15px' }} />
-        <div className="absolute -top-4 right-[34%] -translate-x-1/2 h-8 w-8 bg-slate-50 rounded-full z-20 shadow-inner" />
-        <div className="absolute -bottom-4 right-[34%] -translate-x-1/2 h-8 w-8 bg-white rounded-full z-20 shadow-inner" />
-        {renderTopContent()}
-      </div>
-      <CardContent className="p-6 sm:p-10 space-y-6 sm:space-y-8 bg-white relative z-20 text-left flex-1">
-        <div className="flex justify-between items-center text-left">
-          <div className="space-y-1 text-left">
-            <p className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase tracking-widest text-left leading-none">MIN SPEND</p>
-            <p className="text-lg sm:text-2xl font-black text-slate-900 text-left leading-none">{currencySymbol}{data.minOrder || 0}</p>
+      <CardContent className="p-6 space-y-5 bg-white text-left flex-1 flex flex-col justify-between">
+        <div className="flex justify-between items-center gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-slate-500">Min Spend</p>
+            <p className="text-lg font-bold text-slate-900 font-mono tabular-nums leading-none">
+              {currencySymbol}
+              {data.minOrder || 0}
+            </p>
           </div>
           <div className="text-right space-y-1">
-            <p className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase tracking-widest text-right leading-none">MY USAGE</p>
-            <p className={cn("text-xs sm:text-lg font-black uppercase text-right leading-none", isUsed ? "text-green-600" : "text-primary")}>
+            <p className="text-xs font-medium text-slate-500">My Usage</p>
+            <p
+              className={cn(
+                "text-base font-bold font-mono tabular-nums leading-none",
+                isUsed ? "text-emerald-700" : "text-primary"
+              )}
+            >
               {redemptionCount} / {data.perUserLimit || 1}
             </p>
           </div>
         </div>
-        
+
         {!hideInspectButton && (
-          <Button 
+          <Button
+            type="button"
             disabled={isUsed}
             onClick={onClick}
-            variant="ghost" 
+            variant="outline"
             className={cn(
-              "w-full h-12 sm:h-14 rounded-xl sm:rounded-2xl font-black uppercase text-[9px] sm:text-[10px] tracking-[0.2em] border-2 border-dashed transition-all duration-300",
-              isUsed ? "bg-slate-50 border-slate-200 text-slate-400" : "border-primary/20 text-primary hover:bg-primary/5 shadow-sm"
+              "w-full h-11 rounded-xl font-semibold text-xs border transition-colors",
+              isUsed
+                ? "bg-slate-50 border-slate-200 text-slate-500"
+                : "border-slate-300 text-primary hover:bg-primary/5"
             )}
           >
-            {isUsed ? <BadgeCheck className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3 text-green-600" /> : <Info className="h-4 w-4 sm:h-5 sm:w-5 mr-2 sm:mr-3" />} 
-            {isUsed ? 'CLAIMED & USED' : 'INSPECT REWARD'}
+            {isUsed ? (
+              <BadgeCheck className="h-4 w-4 mr-2 text-emerald-600" />
+            ) : (
+              <Info className="h-4 w-4 mr-2" />
+            )}
+            {isUsed ? "Claimed & Used" : "Inspect Reward"}
           </Button>
         )}
 
-        <Separator className="opacity-40" />
-
-        <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 text-left">
-           <div className="flex items-center gap-2 sm:gap-3 text-left">
-             <Clock className="h-4 w-4 sm:h-5 sm:w-5 opacity-40" />
-             <span className="text-primary font-black text-left">{displayExpiry}</span>
-           </div>
-           <Badge variant="outline" className={cn("text-[7px] sm:text-[8px] h-4 sm:h-5 px-2 sm:px-3 border-primary/20 uppercase font-black tracking-widest rounded-full", isUsed ? "bg-green-100 text-green-700" : "bg-primary/5 text-primary")}>
-              {isUsed ? 'REDEEMED' : 'AUTHORIZED'}
-           </Badge>
+        <div className="space-y-4">
+          <Separator className="bg-slate-100" />
+          <div className="flex justify-between items-center text-xs text-slate-500">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-slate-400" />
+              <span className="font-medium text-slate-700 font-mono tabular-nums">
+                {displayExpiry}
+              </span>
+            </div>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs font-medium rounded-full px-2.5 py-0.5",
+                isUsed
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : "bg-slate-50 border-slate-200 text-primary"
+              )}
+            >
+              {isUsed ? "Redeemed" : "Active"}
+            </Badge>
+          </div>
         </div>
       </CardContent>
     </Card>

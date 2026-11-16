@@ -347,6 +347,52 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "type": "object",
+      "description": "Daily attendance, overtime, allowance, and same-day payment record for a team member.",
+      "properties": {
+        "staffId": { "type": "string" },
+        "businessId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["present", "half-day", "absent"] },
+        "overtimeHours": { "type": "number" },
+        "allowance": { "type": "number" },
+        "manualPayment": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "StaffPayment": {
+      "title": "Staff Payment",
+      "type": "object",
+      "description": "Standalone salary advance, settlement, or bonus payout record for a team member.",
+      "properties": {
+        "staffId": { "type": "string" },
+        "businessId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["advance", "settlement", "bonus"] },
+        "mode": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PublicStaffProfile": {
+      "title": "Public Staff Profile",
+      "type": "object",
+      "description": "Non-PII public tracking snapshot for a staff member when sharePublic is enabled.",
+      "properties": {
+        "id": { "type": "string" },
+        "businessId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "dailyRate": { "type": "number" },
+        "shiftHours": { "type": "number" },
+        "shiftTimings": { "type": "string" },
+        "sharePublic": { "type": "boolean" }
+      }
     }
   },
   "auth": {
@@ -432,6 +478,18 @@
     "/businesses/{businessId}/creditNotes/{creditNoteId}": {
       "schema": "#/backend/entities/CreditNote",
       "description": "Credit Notes / Sales Returns linked to Invoices for GSTR-1 CDNR and GSTR-3B tax reversal."
+    },
+    "/businesses/{businessId}/attendance/{recordId}": {
+      "schema": "#/backend/entities/AttendanceRecord",
+      "description": "Daily attendance and wage entries keyed by staffId_YYYY-MM-DD."
+    },
+    "/businesses/{businessId}/staffPayments/{paymentId}": {
+      "schema": "#/backend/entities/StaffPayment",
+      "description": "Standalone staff advance and monthly settlement payouts."
+    },
+    "/businesses/{businessId}/publicStaff/{staffId}": {
+      "schema": "#/backend/entities/PublicStaffProfile",
+      "description": "Sanitized non-PII public tracking profile for staff portal sharing."
     }
   }
 }

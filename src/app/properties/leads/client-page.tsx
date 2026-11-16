@@ -1,140 +1,158 @@
-
 "use client";
 
 import { useState, useMemo } from "react";
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  SmartphoneNfc, 
-  Loader2, 
-  Edit2, 
-  Trash2, 
-  LayoutList, 
-  LayoutGrid, 
-  Target, 
-  ChevronRight, 
-  ShieldCheck, 
-  Zap, 
-  Info, 
-  User, 
-  CheckCircle2, 
-  Building, 
-  Briefcase, 
-  DollarSign, 
-  Clock, 
-  X, 
-  Lock, 
-  MessageCircle, 
-  Bell, 
-  AlertTriangle, 
-  ArrowRight, 
-  Calculator, 
-  Tag, 
-  MapPin, 
-  Calendar, 
-  Save, 
-  Scale, 
-  Navigation, 
-  Smartphone, 
-  Phone, 
-  Mail, 
-  UserPlus, 
-  Columns, 
-  Share2 
+import {
+  Search,
+  SmartphoneNfc,
+  Edit2,
+  Trash2,
+  LayoutList,
+  LayoutGrid,
+  Target,
+  User,
+  Building,
+  Briefcase,
+  Lock,
+  AlertTriangle,
+  Calculator,
+  MapPin,
+  Smartphone,
+  Phone,
+  UserPlus,
+  Columns,
+  Share2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetDescription, 
+import {
+  Sheet,
+  SheetContent,
 } from "@/components/ui/sheet";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter, 
-  DialogDescription 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle, 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  PageHeader,
+  EmptyStatePanel,
+} from "@/components/ui/editorial";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { 
-  useFirestore, 
-  useCollection, 
-  useMemoFirebase, 
-  useUser, 
-  useDoc, 
-  updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking, 
-  addDocumentNonBlocking 
+import {
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+  useUser,
+  useDoc,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking,
 } from "@/firebase";
-import { collection, query, orderBy, doc, where, serverTimestamp, getDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  orderBy,
+  doc,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 import Link from "next/link";
-import { calculateGST, Product, Customer, Vendor, processNewInvoice } from "@/lib/mock-db";
 
 const STAGES = [
-  { id: 'new', label: 'Fresh Inquiry', color: 'bg-blue-500', bg: 'bg-blue-50/50', border: 'border-blue-100', text: 'text-blue-700' },
-  { id: 'contacted', label: 'Call Done', color: 'bg-orange-500', bg: 'bg-orange-50/50', border: 'border-orange-100', text: 'text-orange-700' },
-  { id: 'site-visit', label: 'Site Visit', color: 'bg-purple-500', bg: 'bg-purple-50/50', border: 'border-purple-100', text: 'text-purple-700' },
-  { id: 'negotiation', label: 'Negotiating', color: 'bg-yellow-500', bg: 'bg-yellow-50/50', border: 'border-yellow-100', text: 'text-yellow-700' },
-  { id: 'won', label: 'Deal Closed', color: 'bg-green-500', bg: 'bg-green-50/50', border: 'border-green-100', text: 'text-green-700' },
+  {
+    id: "new",
+    label: "Fresh Inquiry",
+    dot: "bg-blue-600",
+    bg: "bg-blue-50/40",
+    border: "border-blue-200",
+    badge: "bg-blue-50 text-blue-700",
+  },
+  {
+    id: "contacted",
+    label: "Call Done",
+    dot: "bg-amber-500",
+    bg: "bg-amber-50/40",
+    border: "border-amber-200",
+    badge: "bg-amber-50 text-amber-700",
+  },
+  {
+    id: "site-visit",
+    label: "Site Visit",
+    dot: "bg-purple-600",
+    bg: "bg-purple-50/40",
+    border: "border-purple-200",
+    badge: "bg-purple-50 text-purple-700",
+  },
+  {
+    id: "negotiation",
+    label: "Negotiating",
+    dot: "bg-orange-500",
+    bg: "bg-orange-50/40",
+    border: "border-orange-200",
+    badge: "bg-orange-50 text-orange-700",
+  },
+  {
+    id: "won",
+    label: "Deal Closed",
+    dot: "bg-emerald-600",
+    bg: "bg-emerald-50/40",
+    border: "border-emerald-200",
+    badge: "bg-emerald-50 text-emerald-700",
+  },
 ];
 
 const maskName = (name: string) => {
   if (!name) return "";
   if (name.length <= 2) return name;
-  const first = name[0];
-  const last = name[name.length - 1];
-  return `${first}***${last}`;
+  return `${name[0]}***${name[name.length - 1]}`;
 };
 
 const maskPhone = (phone: string) => {
   if (!phone) return "";
-  const clean = phone.replace(/\D/g, '');
+  const clean = phone.replace(/\D/g, "");
   if (clean.length < 5) return phone;
-  const first = clean.substring(0, 2);
-  const last = clean.substring(clean.length - 2);
-  return `${first}******${last}`;
+  return `${clean.substring(0, 2)}******${clean.substring(clean.length - 2)}`;
 };
 
-function SectionHeader({ icon: Icon, title }: any) {
+function ModalSectionHeader({ icon: Icon, title }: { icon: any; title: string }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <div className="h-8 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+    <div className="mb-4 flex items-center gap-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700">
         <Icon className="h-4 w-4" />
       </div>
-      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">{title}</h3>
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
     </div>
   );
 }
@@ -143,141 +161,173 @@ export default function RealEstateLeadsPage() {
   const firestore = useFirestore();
   const { user } = useUser();
 
-  const userProfileRef = useMemoFirebase(() => 
-    user?.uid ? doc(firestore, 'users', user.uid) : null
-  , [firestore, user?.uid]);
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid]
+  );
   const { data: userProfile } = useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
   const isAdmin = useMemo(() => {
-    const role = (userProfile?.role || '').toLowerCase();
-    return role === 'admin' || user?.email?.toLowerCase() === 'skillmatrix24@gmail.com';
+    const role = (userProfile?.role || "").toLowerCase();
+    return (
+      role === "admin" ||
+      user?.email?.toLowerCase() === "skillmatrix24@gmail.com"
+    );
   }, [userProfile, user]);
 
-  const businessRef = useMemoFirebase(() => 
-    businessId ? doc(firestore, 'businesses', businessId) : null
-  , [firestore, businessId]);
+  const businessRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
   const { data: business } = useDoc<any>(businessRef);
 
-  const teamQuery = useMemoFirebase(() => 
-    businessId ? query(collection(firestore, 'users'), where('businessId', '==', businessId)) : null
-  , [firestore, businessId]);
+  const teamQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(collection(firestore, "users"), where("businessId", "==", businessId))
+        : null,
+    [firestore, businessId]
+  );
   const { data: teamMembersRaw } = useCollection<any>(teamQuery);
-  
+
   const teamMembers = useMemo(() => {
     if (!teamMembersRaw) return [];
     const allowedRoles = business?.propertyMemberRoles || [];
     if (allowedRoles.length === 0) return teamMembersRaw;
     return teamMembersRaw.filter((m: any) => {
-      const role = (m.role || '').toLowerCase();
+      const role = (m.role || "").toLowerCase();
       return allowedRoles.some((ar: string) => ar.toLowerCase() === role);
     });
   }, [teamMembersRaw, business?.propertyMemberRoles]);
 
-  const leadsQuery = useMemoFirebase(() => 
-    businessId ? query(collection(firestore, 'businesses', businessId, 'realEstateLeads'), orderBy('createdAt', 'desc')) : null
-  , [firestore, businessId]);
-  const { data: leadsData, isLoading: isLeadsLoading } = useCollection<any>(leadsQuery);
+  const leadsQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(
+            collection(firestore, "businesses", businessId, "realEstateLeads"),
+            orderBy("createdAt", "desc")
+          )
+        : null,
+    [firestore, businessId]
+  );
+  const { data: leadsData } = useCollection<any>(leadsQuery);
   const leads = leadsData || [];
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeStage, setActiveStage] = useState("all");
-  const [activeView, setActiveView] = useState<"board" | "grid" | "list">("grid");
-  
+  const [activeView, setActiveView] = useState<"board" | "grid" | "list">(
+    "grid"
+  );
+
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<any>({});
-  
+
   const [isDeleteAlertOpen, setIsDeleteOpen] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<any>(null);
 
   const currencySymbol = getCurrencySymbol(business?.currency);
 
   const filteredLeads = useMemo(() => {
-    return leads.filter(l => {
+    return leads.filter((l) => {
       const name = l.name || "";
       const phone = l.phone || "";
-      const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) || phone.includes(searchTerm);
-      const matchesStage = activeStage === "all" || (l.leadStage || 'new') === activeStage;
+      const matchesSearch =
+        name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        phone.includes(searchTerm);
+      const matchesStage =
+        activeStage === "all" || (l.leadStage || "new") === activeStage;
       return matchesSearch && matchesStage;
     });
   }, [leads, searchTerm, activeStage]);
 
   const generateLeadMessage = (lead: any) => {
-    const config = business?.waMarketingConfigs?.['Lead/Customer Profile'];
+    const config = business?.waMarketingConfigs?.["Lead/Customer Profile"];
     if (config) {
       const toggles = config.toggles || {};
-      let msgParts = [];
+      const msgParts: string[] = [];
 
       if (config.header) msgParts.push(config.header);
-      
-      if (toggles.includeName) msgParts.push(`👤 Client: ${lead.name}`);
-      if (toggles.includePhone) msgParts.push(`📱 Phone: ${lead.phone}`);
-      if (toggles.includeSource) msgParts.push(`📢 Source: ${lead.source}`);
-      if (toggles.includeInterest) msgParts.push(`🏠 Interest: ${lead.propertyTypeInterest}`);
-      if (toggles.includeBudget) msgParts.push(`💰 Budget: ${currencySymbol}${parseFloat(lead.budgetMax || 0).toLocaleString()}`);
-      if (toggles.includeLocation) msgParts.push(`📍 Location: ${lead.location || lead.village || 'N/A'}`);
-      if (toggles.includeAgent) msgParts.push(`👤 Agent: ${lead.agentName || 'Owner'}`);
-      if (toggles.includeStatus) msgParts.push(`📊 Stage: ${STAGES.find(s => s.id === (lead.leadStage || 'new'))?.label}`);
-      
+      if (toggles.includeName) msgParts.push(`Client: ${lead.name}`);
+      if (toggles.includePhone) msgParts.push(`Phone: ${lead.phone}`);
+      if (toggles.includeSource) msgParts.push(`Source: ${lead.source}`);
+      if (toggles.includeInterest)
+        msgParts.push(`Interest: ${lead.propertyTypeInterest}`);
+      if (toggles.includeBudget)
+        msgParts.push(
+          `Budget: ${currencySymbol}${parseFloat(
+            lead.budgetMax || 0
+          ).toLocaleString()}`
+        );
+      if (toggles.includeLocation)
+        msgParts.push(`Location: ${lead.location || lead.village || "N/A"}`);
+      if (toggles.includeAgent)
+        msgParts.push(`Agent: ${lead.agentName || "Owner"}`);
+      if (toggles.includeStatus)
+        msgParts.push(
+          `Stage: ${
+            STAGES.find((s) => s.id === (lead.leadStage || "new"))?.label
+          }`
+        );
       if (toggles.includeNotes && lead.notes) {
-        msgParts.push(`\n📝 *Remarks:*\n${lead.notes}`);
+        msgParts.push(`\n*Remarks:*\n${lead.notes}`);
       }
-
       if (config.footer) msgParts.push(`\n${config.footer}`);
-
-      return msgParts.join('\n');
+      return msgParts.join("\n");
     }
 
-    return `🚀 *Inquiry Update*\nClient: ${lead.name}\nInterest: ${lead.propertyTypeInterest}\nBudget Max: ${currencySymbol}${parseFloat(lead.budgetMax || 0).toLocaleString()}\n📍 Location: ${lead.location || 'N/A'}`;
+    return `Inquiry Update\nClient: ${lead.name}\nInterest: ${
+      lead.propertyTypeInterest
+    }\nBudget Max: ${currencySymbol}${parseFloat(
+      lead.budgetMax || 0
+    ).toLocaleString()}\nLocation: ${lead.location || "N/A"}`;
   };
 
-  const handleWhatsAppAction = async (e: React.MouseEvent, lead: any) => {
-    e.stopPropagation();
-    if (!businessId || !user?.uid) return;
-
+  const getWhatsAppActionHref = (lead: any) => {
     const isOwner = lead.assignedAgentId === user?.uid;
     const shouldMask = !isAdmin && !isOwner;
 
     if (shouldMask) {
-      const ownerAgent = teamMembers.find(m => m.id === lead.assignedAgentId);
+      const ownerAgent = teamMembers.find((m) => m.id === lead.assignedAgentId);
       if (ownerAgent?.phone) {
-        const message = `Hi ${ownerAgent.name}, I noticed you are managing the lead *${maskName(lead.name)}*. I have some updates/queries regarding this customer. Can we discuss?`;
-        window.open(`https://wa.me/${ownerAgent.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
-      } else {
-        toast({ variant: "destructive", title: "Contact Failed", description: "Lead owner's contact info is not available." });
+        const message = `Hi ${ownerAgent.name}, I noticed you are managing the lead *${maskName(
+          lead.name
+        )}*. I have some updates/queries regarding this customer. Can we discuss?`;
+        return `https://wa.me/${ownerAgent.phone.replace(
+          /\D/g,
+          ""
+        )}?text=${encodeURIComponent(message)}`;
       }
-      return;
+      return null;
     }
 
     const finalMsg = generateLeadMessage(lead);
-    window.open(`https://wa.me/${lead.phone.replace(/\D/g, '')}?text=${encodeURIComponent(finalMsg)}`, '_blank');
+    return `https://wa.me/${(lead.phone || "").replace(
+      /\D/g,
+      ""
+    )}?text=${encodeURIComponent(finalMsg)}`;
   };
 
-  const handleUniversalShare = (e: React.MouseEvent, lead: any) => {
-    e.stopPropagation();
+  const getUniversalShareHref = (lead: any) => {
     const finalMsg = generateLeadMessage(lead);
-    window.open(`https://wa.me/?text=${encodeURIComponent(finalMsg)}`, '_blank');
-    toast({ title: "Forward Node", description: "Select contact to share full profile." });
+    return `https://wa.me/?text=${encodeURIComponent(finalMsg)}`;
   };
 
-  const handleCallAction = (e: React.MouseEvent, lead: any) => {
-    e.stopPropagation();
+  const getCallActionHref = (lead: any) => {
     const isOwner = lead.assignedAgentId === user?.uid;
     const shouldMask = !isAdmin && !isOwner;
 
     if (shouldMask) {
-      const ownerAgent = teamMembers.find(m => m.id === lead.assignedAgentId);
+      const ownerAgent = teamMembers.find((m) => m.id === lead.assignedAgentId);
       if (ownerAgent?.phone) {
-        window.open(`tel:${ownerAgent.phone.replace(/\D/g, '')}`, '_self');
-        toast({ title: "Routing Call", description: `Calling Owner Agent: ${ownerAgent.name}` });
-      } else {
-        toast({ variant: "destructive", title: "Contact Failed", description: "Lead owner's phone number is missing." });
+        return `tel:${ownerAgent.phone.replace(/\D/g, "")}`;
       }
-    } else {
-      window.open(`tel:${lead.phone.replace(/\D/g, '')}`, '_self');
+      return null;
     }
+
+    return lead.phone ? `tel:${lead.phone.replace(/\D/g, "")}` : null;
   };
 
   const handleOpenDetail = (lead: any) => {
@@ -289,7 +339,11 @@ export default function RealEstateLeadsPage() {
     e.stopPropagation();
     const shouldMask = !isAdmin && lead.assignedAgentId !== user?.uid;
     if (shouldMask) {
-      toast({ variant: "destructive", title: "Access Denied", description: "Only assigned agent or admin can edit this node." });
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "Only the assigned agent or an admin can edit this lead.",
+      });
       return;
     }
     setEditFormData({ ...lead });
@@ -298,10 +352,19 @@ export default function RealEstateLeadsPage() {
 
   const handleUpdateFullLead = () => {
     if (!businessId || !editFormData.id) return;
-    const leadRef = doc(firestore, 'businesses', businessId, 'realEstateLeads', editFormData.id);
-    updateDocumentNonBlocking(leadRef, { ...editFormData, updatedAt: serverTimestamp() });
+    const leadRef = doc(
+      firestore,
+      "businesses",
+      businessId,
+      "realEstateLeads",
+      editFormData.id
+    );
+    updateDocumentNonBlocking(leadRef, {
+      ...editFormData,
+      updatedAt: serverTimestamp(),
+    });
     setIsEditModalOpen(false);
-    toast({ title: "Profile Updated" });
+    toast({ title: "Lead Updated" });
   };
 
   const openDeleteAlert = (e: React.MouseEvent, lead: any) => {
@@ -313,81 +376,155 @@ export default function RealEstateLeadsPage() {
 
   const confirmDelete = () => {
     if (!businessId || !leadToDelete) return;
-    deleteDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'realEstateLeads', leadToDelete.id));
+    deleteDocumentNonBlocking(
+      doc(
+        firestore,
+        "businesses",
+        businessId,
+        "realEstateLeads",
+        leadToDelete.id
+      )
+    );
     setIsDeleteOpen(false);
-    toast({ title: "Lead Erased", variant: "destructive" });
+    toast({ title: "Lead Deleted", variant: "destructive" });
   };
 
-  const filteredLeadsList = filteredLeads;
-
   return (
-    <div className="space-y-6 md:space-y-10 pb-10">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-            <Target className="h-7 w-7 md:h-8 md:w-8 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">Customer Enquiries</h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">Lead Registry Node</p>
-          </div>
-        </div>
-        <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-[0.2em] rounded-xl text-white">
-          <Link href="/properties/leads/new"><UserPlus className="mr-2 h-4 w-4" /> Register Customer</Link>
-        </Button>
-      </div>
+    <div className="space-y-6 pb-16 text-left">
+      <PageHeader
+        breadcrumb="Real Estate CRM"
+        title="Customer Enquiries"
+        description="Track buyer inquiries, site visits, and agent ownership across deal stages."
+        actions={
+          <Button
+            asChild
+            className="h-9 rounded-xl bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            <Link href="/properties/leads/new">
+              <UserPlus className="mr-1.5 h-4 w-4" /> Register Customer
+            </Link>
+          </Button>
+        }
+      />
 
-      <div className="space-y-6">
-        <div className="flex flex-col xl:flex-row items-center justify-between gap-6 px-1">
-          <div className="flex items-stretch lg:items-center gap-4 w-full xl:w-auto">
-            <div className="bg-white border rounded-xl p-1 shadow-sm flex shrink-0">
-              <Button variant={activeView === 'grid' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveView('grid')} className="h-8 px-4 text-[10px] font-bold uppercase rounded-lg"><LayoutGrid className="mr-2 h-3.5 w-3.5" /> Grid</Button>
-              <Button variant={activeView === 'board' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveView('board')} className="h-8 px-4 text-[10px] font-bold uppercase rounded-lg"><Columns className="mr-2 h-3.5 w-3.5" /> Board</Button>
-              <Button variant={activeView === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setActiveView('list')} className="h-8 px-4 text-[10px] font-bold uppercase rounded-lg"><LayoutList className="mr-2 h-3.5 w-3.5" /> List</Button>
+      <div className="space-y-5">
+        <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center xl:w-auto">
+            <div className="flex shrink-0 rounded-xl border border-slate-200 bg-white p-1">
+              <Button
+                type="button"
+                variant={activeView === "grid" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setActiveView("grid")}
+                className="h-8 rounded-lg px-3 text-xs font-medium"
+              >
+                <LayoutGrid className="mr-1.5 h-3.5 w-3.5" /> Grid
+              </Button>
+              <Button
+                type="button"
+                variant={activeView === "board" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setActiveView("board")}
+                className="h-8 rounded-lg px-3 text-xs font-medium"
+              >
+                <Columns className="mr-1.5 h-3.5 w-3.5" /> Board
+              </Button>
+              <Button
+                type="button"
+                variant={activeView === "list" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setActiveView("list")}
+                className="h-8 rounded-lg px-3 text-xs font-medium"
+              >
+                <LayoutList className="mr-1.5 h-3.5 w-3.5" /> List
+              </Button>
             </div>
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 lg:flex-none">
-              <Button variant={activeStage === 'all' ? 'default' : 'outline'} size="sm" onClick={() => setActiveStage('all')} className="h-8 px-4 text-[10px] font-bold uppercase rounded-lg whitespace-nowrap">All Stages</Button>
-              {STAGES.map(s => (
-                <Button key={s.id} variant={activeStage === s.id ? 'default' : 'outline'} size="sm" onClick={() => setActiveStage(s.id)} className="h-8 px-4 text-[10px] font-bold uppercase rounded-lg whitespace-nowrap">{s.label}</Button>
+
+            <div className="flex flex-1 items-center gap-1.5 overflow-x-auto scrollbar-hide">
+              <Button
+                type="button"
+                variant={activeStage === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveStage("all")}
+                className="h-8 rounded-lg px-3 text-xs font-medium whitespace-nowrap"
+              >
+                All Stages
+              </Button>
+              {STAGES.map((s) => (
+                <Button
+                  type="button"
+                  key={s.id}
+                  variant={activeStage === s.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveStage(s.id)}
+                  className="h-8 rounded-lg px-3 text-xs font-medium whitespace-nowrap"
+                >
+                  {s.label}
+                </Button>
               ))}
             </div>
           </div>
-          <div className="relative w-full xl:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-            <Input placeholder="Search name or phone..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-11 pl-10 rounded-xl bg-white border-none shadow-inner text-xs font-bold" />
+
+          <div className="relative w-full xl:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="Search name or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-10 rounded-xl border-slate-200 bg-white pl-9 text-xs"
+            />
           </div>
         </div>
 
-        {activeView === 'board' && (
-          <div className="flex gap-6 overflow-x-auto pb-6 scrollbar-hide min-h-[600px] -mx-4 px-4 sm:mx-0 sm:px-0">
+        {activeView === "board" && (
+          <div className="flex min-h-[560px] gap-4 overflow-x-auto pb-4 scrollbar-hide">
             {STAGES.map((stage) => {
-              const stageLeads = filteredLeadsList.filter(l => (l.leadStage || 'new') === stage.id);
+              const stageLeads = filteredLeads.filter(
+                (l) => (l.leadStage || "new") === stage.id
+              );
               return (
-                <div key={stage.id} className="w-[300px] sm:w-[340px] shrink-0 space-y-4">
-                  <div className="flex items-center justify-between px-3">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("h-2.5 w-2.5 rounded-full shadow-sm", stage.color)} />
-                      <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-500">{stage.label}</h3>
-                      <Badge variant="secondary" className="text-[9px] h-4 py-0 font-bold px-1.5 border-none bg-white shadow-sm text-slate-400">{stageLeads.length}</Badge>
+                <div key={stage.id} className="w-[300px] shrink-0 space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn("h-2.5 w-2.5 rounded-full", stage.dot)}
+                      />
+                      <h3 className="text-xs font-semibold text-slate-700">
+                        {stage.label}
+                      </h3>
+                      <Badge
+                        variant="secondary"
+                        className="rounded-md font-mono text-[11px]"
+                      >
+                        {stageLeads.length}
+                      </Badge>
                     </div>
                   </div>
-                  <div className={cn("space-y-4 p-2.5 rounded-[2rem] min-h-[550px] transition-all border border-transparent shadow-inner", stage.bg, stage.border)}>
+                  <div
+                    className={cn(
+                      "min-h-[500px] space-y-3 rounded-2xl border p-2.5",
+                      stage.bg,
+                      stage.border
+                    )}
+                  >
                     {stageLeads.length === 0 ? (
-                      <div className="h-20 border-2 border-dashed border-slate-200/50 rounded-2xl flex items-center justify-center opacity-20 italic text-[10px] uppercase font-bold text-center">No Leads</div>
+                      <div className="flex h-20 items-center justify-center rounded-xl border border-dashed border-slate-300 text-xs text-slate-400">
+                        No leads
+                      </div>
                     ) : (
-                      stageLeads.map(lead => (
-                        <LeadCard 
-                          key={lead.id} 
-                          lead={lead} 
+                      stageLeads.map((lead) => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
                           currentUser={user}
                           isAdmin={isAdmin}
-                          teamMembers={teamMembers}
-                          currencySymbol={currencySymbol} 
-                          onWhatsApp={(e: any) => handleWhatsAppAction(e, lead)} 
-                          onUniversalShare={(e: any) => handleUniversalShare(e, lead)}
-                          onCall={(e: any) => handleCallAction(e, lead)}
-                          onEdit={(e: any) => handleOpenEdit(e, lead)} 
-                          onClick={() => handleOpenDetail(lead)} 
+                          currencySymbol={currencySymbol}
+                          waHref={getWhatsAppActionHref(lead)}
+                          shareHref={getUniversalShareHref(lead)}
+                          callHref={getCallActionHref(lead)}
+                          onEdit={(e: any) => handleOpenEdit(e, lead)}
+                          onDelete={(e: any) => openDeleteAlert(e, lead)}
+                          onClick={() => handleOpenDetail(lead)}
                         />
                       ))
                     )}
@@ -398,24 +535,35 @@ export default function RealEstateLeadsPage() {
           </div>
         )}
 
-        {activeView === 'grid' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
-            {filteredLeadsList.length === 0 ? (
-              <div className="col-span-full py-40 text-center opacity-30 italic text-sm font-black uppercase tracking-widest">No matching leads found.</div>
+        {activeView === "grid" && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredLeads.length === 0 ? (
+              <div className="col-span-full">
+                <EmptyStatePanel
+                  icon={Target}
+                  title="No matching customer leads"
+                  description="Register a new buyer inquiry or clear your stage filter."
+                  action={
+                    <Button asChild size="sm" className="rounded-xl">
+                      <Link href="/properties/leads/new">Register Customer</Link>
+                    </Button>
+                  }
+                />
+              </div>
             ) : (
-              filteredLeadsList.map(lead => (
-                <LeadCard 
-                  key={lead.id} 
-                  lead={lead} 
+              filteredLeads.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
                   currentUser={user}
                   isAdmin={isAdmin}
-                  teamMembers={teamMembers}
-                  currencySymbol={currencySymbol} 
-                  onWhatsApp={(e: any) => handleWhatsAppAction(e, lead)} 
-                  onUniversalShare={(e: any) => handleUniversalShare(e, lead)}
-                  onCall={(e: any) => handleCallAction(e, lead)}
-                  onEdit={(e: any) => handleOpenEdit(e, lead)} 
-                  onClick={() => handleOpenDetail(lead)} 
+                  currencySymbol={currencySymbol}
+                  waHref={getWhatsAppActionHref(lead)}
+                  shareHref={getUniversalShareHref(lead)}
+                  callHref={getCallActionHref(lead)}
+                  onEdit={(e: any) => handleOpenEdit(e, lead)}
+                  onDelete={(e: any) => openDeleteAlert(e, lead)}
+                  onClick={() => handleOpenDetail(lead)}
                   showStage
                 />
               ))
@@ -423,55 +571,163 @@ export default function RealEstateLeadsPage() {
           </div>
         )}
 
-        {activeView === 'list' && (
-          <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2rem] border border-border/50">
+        {activeView === "list" && (
+          <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[740px]">
                 <TableHeader>
-                  <TableRow className="bg-muted/10 border-b">
-                    <TableHead className="text-[10px] font-black uppercase pl-8 h-12">Customer Identity</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase h-12">Requirement Profile</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase h-12 text-center">Current Stage</TableHead>
-                    <TableHead className="text-right pr-8 h-12 w-48"></TableHead>
+                  <TableRow className="border-slate-100 bg-slate-50/70">
+                    <TableHead className="h-11 pl-6 text-xs font-semibold text-slate-600">
+                      Customer
+                    </TableHead>
+                    <TableHead className="h-11 text-xs font-semibold text-slate-600">
+                      Requirement
+                    </TableHead>
+                    <TableHead className="h-11 text-center text-xs font-semibold text-slate-600">
+                      Stage
+                    </TableHead>
+                    <TableHead className="h-11 w-40 pr-6 text-right text-xs font-semibold text-slate-600">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLeadsList.map((lead: any) => {
+                  {filteredLeads.map((lead: any) => {
                     const isOwner = lead.assignedAgentId === user?.uid;
                     const shouldMask = !isAdmin && !isOwner;
-                    const displayName = shouldMask ? maskName(lead.name) : lead.name;
-                    const displayPhone = shouldMask ? maskPhone(lead.phone) : lead.phone;
+                    const displayName = shouldMask
+                      ? maskName(lead.name)
+                      : lead.name;
+                    const displayPhone = shouldMask
+                      ? maskPhone(lead.phone)
+                      : lead.phone;
+                    const stageObj = STAGES.find(
+                      (s) => s.id === (lead.leadStage || "new")
+                    );
+                    const waHref = getWhatsAppActionHref(lead);
 
                     return (
-                      <TableRow key={lead.id} className="group hover:bg-muted/5 transition-colors cursor-pointer border-b" onClick={() => handleOpenDetail(lead)}>
-                        <TableCell className="pl-8 py-5">
-                          <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-black text-primary text-xs uppercase shadow-inner">
+                      <TableRow
+                        key={lead.id}
+                        className="cursor-pointer border-slate-100 transition-colors hover:bg-slate-50/60"
+                        onClick={() => handleOpenDetail(lead)}
+                      >
+                        <TableCell className="py-4 pl-6">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700">
                               {displayName?.charAt(0)}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-black text-slate-900 truncate group-hover:underline">{displayName}</p>
-                              <p className="text-[10px] text-muted-foreground font-bold">{displayPhone}</p>
+                              <p className="truncate text-sm font-semibold text-slate-900">
+                                {displayName}
+                              </p>
+                              <p className="font-mono text-xs text-slate-500">
+                                {displayPhone}
+                              </p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="text-xs font-bold text-primary flex items-center gap-1.5"><Building className="h-3 w-3 opacity-40" /> {lead.propertyTypeInterest}</span>
-                            <span className="text-[9px] font-black text-muted-foreground uppercase opacity-60 mt-0.5">Max Budget: {currencySymbol}{parseFloat(lead.budgetMax || 0).toLocaleString()}</span>
+                            <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
+                              <Building className="h-3.5 w-3.5 text-slate-400" />{" "}
+                              {lead.propertyTypeInterest}
+                            </span>
+                            <span className="mt-0.5 font-mono text-xs text-slate-500">
+                              Max: {currencySymbol}
+                              {parseFloat(lead.budgetMax || 0).toLocaleString()}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge className={cn("text-[8px] font-black uppercase h-4 px-1.5 border-none shadow-sm", STAGES.find(s => s.id === (lead.leadStage || 'new'))?.color || 'bg-slate-400')}>
-                            {STAGES.find(s => s.id === (lead.leadStage || 'new'))?.label || 'New'}
+                          <Badge
+                            className={cn(
+                              "rounded-md border-none text-xs font-medium",
+                              stageObj?.badge || "bg-slate-100 text-slate-700"
+                            )}
+                          >
+                            {stageObj?.label || "New"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="pr-8 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-green-600 hover:bg-green-50" onClick={(e) => handleWhatsAppAction(e, lead)}><SmartphoneNfc className="h-4 w-4" /></Button>
-                            {!shouldMask && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-blue-600 hover:bg-blue-50" onClick={(e) => handleUniversalShare(e, lead)}><Share2 className="h-4 w-4" /></Button>}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-primary hover:bg-primary/5" onClick={(e) => handleOpenEdit(e, lead)}><Edit2 className="h-4 w-4" /></Button>
-                            {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-destructive hover:bg-destructive/5" onClick={(e) => openDeleteAlert(e, lead)}><Trash2 className="h-4 w-4" /></Button>}
+                        <TableCell
+                          className="pr-6 text-right"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex justify-end gap-1">
+                            {waHref ? (
+                              <Button
+                                asChild
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`WhatsApp ${displayName}`}
+                                className="h-8 w-8 rounded-lg text-emerald-600"
+                              >
+                                <a
+                                  href={waHref}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <SmartphoneNfc className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`WhatsApp ${displayName}`}
+                                className="h-8 w-8 rounded-lg text-emerald-600"
+                                onClick={() =>
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Contact Missing",
+                                    description:
+                                      "Lead owner's phone info is unavailable.",
+                                  })
+                                }
+                              >
+                                <SmartphoneNfc className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {!shouldMask && (
+                              <Button
+                                asChild
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Share ${displayName}`}
+                                className="h-8 w-8 rounded-lg text-blue-600"
+                              >
+                                <a
+                                  href={getUniversalShareHref(lead)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Share2 className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Edit ${displayName}`}
+                              className="h-8 w-8 rounded-lg text-slate-600"
+                              onClick={(e) => handleOpenEdit(e, lead)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            {isAdmin && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Delete ${displayName}`}
+                                className="h-8 w-8 rounded-lg text-red-600"
+                                onClick={(e) => openDeleteAlert(e, lead)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -484,141 +740,312 @@ export default function RealEstateLeadsPage() {
         )}
       </div>
 
+      {/* Lead Detail Sheet */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-none shadow-2xl overflow-hidden bg-background">
-          {selectedLead && (
-            <>
-              {(() => {
-                const isOwner = selectedLead.assignedAgentId === user?.uid;
-                const shouldMask = !isAdmin && !isOwner;
-                const displayName = shouldMask ? maskName(selectedLead.name) : selectedLead.name;
-                const displayPhone = shouldMask ? maskPhone(selectedLead.phone) : selectedLead.phone;
+        <SheetContent className="flex w-full flex-col overflow-hidden p-0 sm:max-w-xl">
+          {selectedLead &&
+            (() => {
+              const isOwner = selectedLead.assignedAgentId === user?.uid;
+              const shouldMask = !isAdmin && !isOwner;
+              const displayName = shouldMask
+                ? maskName(selectedLead.name)
+                : selectedLead.name;
+              const displayPhone = shouldMask
+                ? maskPhone(selectedLead.phone)
+                : selectedLead.phone;
+              const stageObj = STAGES.find(
+                (s) => s.id === (selectedLead.leadStage || "new")
+              );
+              const waHref = getWhatsAppActionHref(selectedLead);
 
-                return (
-                  <>
-                    <div className="p-8 bg-primary text-white shrink-0 relative">
-                      <div className="absolute top-0 right-0 p-8 opacity-10"><Target className="h-40 w-40" /></div>
-                      <div className="text-left space-y-6 relative z-10">
-                        <div className="flex items-center justify-between">
-                          <Badge variant="outline" className="bg-white/10 text-white border-white/20 uppercase text-[9px] font-black px-3 py-1 tracking-widest">ENQUIRY: {selectedLead.id.slice(-8).toUpperCase()}</Badge>
-                          {!shouldMask && (
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/20" onClick={(e) => handleUniversalShare(e, selectedLead)}><Share2 className="h-4 w-4 text-white" /></Button>
-                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/20" onClick={(e) => handleOpenEdit(e, selectedLead)}><Edit2 className="h-4 w-4 text-white" /></Button>
+              return (
+                <>
+                  <div className="shrink-0 border-b border-slate-800 bg-slate-900 p-6 text-white">
+                    <div className="space-y-4 text-left">
+                      <div className="flex items-center justify-between">
+                        <Badge
+                          variant="outline"
+                          className="rounded-md border-white/20 bg-white/10 font-mono text-xs text-white"
+                        >
+                          ENQUIRY: {selectedLead.id.slice(-8).toUpperCase()}
+                        </Badge>
+                        {!shouldMask && (
+                          <div className="flex gap-2">
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Share lead"
+                              className="h-8 w-8 rounded-lg bg-white/10 text-white hover:bg-white/20"
+                            >
+                              <a
+                                href={getUniversalShareHref(selectedLead)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Edit lead"
+                              className="h-8 w-8 rounded-lg bg-white/10 text-white hover:bg-white/20"
+                              onClick={(e) => handleOpenEdit(e, selectedLead)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white text-xl font-bold text-slate-900">
+                          {displayName?.charAt(0)}
+                        </div>
+                        <div className="space-y-1">
+                          <h2 className="text-xl font-semibold text-white">
+                            {displayName}
+                          </h2>
+                          <div className="flex items-center gap-2">
+                            <Badge className="border-none bg-white/20 text-xs font-medium text-white">
+                              {stageObj?.label || "New"}
+                            </Badge>
+                            <span className="text-xs text-slate-300">
+                              Agent: {selectedLead.agentName || "Owner"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <ScrollArea className="flex-1 p-6">
+                    <div className="space-y-6">
+                      <section className="space-y-3">
+                        <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                          <Smartphone className="h-4 w-4 text-slate-600" /> Client Contact
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                            <p className="text-xs text-slate-500">WhatsApp Number</p>
+                            <p className="mt-0.5 font-mono text-sm font-semibold text-slate-900">
+                              {displayPhone}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                            <p className="text-xs text-slate-500">Category</p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-900">
+                              {selectedLead.category || "General"}
+                            </p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <Separator />
+
+                      <section className="space-y-3">
+                        <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                          <Calculator className="h-4 w-4 text-slate-600" /> Interest & Budget
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-xs text-slate-500">Property Type</p>
+                            <p className="mt-0.5 text-base font-semibold text-slate-900">
+                              {selectedLead.propertyTypeInterest}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {selectedLead.classification}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
+                            <p className="text-xs text-emerald-700">Max Budget</p>
+                            <p className="mt-0.5 font-mono text-base font-bold tabular-nums text-emerald-800">
+                              {currencySymbol}
+                              {parseFloat(
+                                selectedLead.budgetMax || 0
+                              ).toLocaleString()}
+                            </p>
+                            <p className="font-mono text-xs text-emerald-700">
+                              Min: {currencySymbol}
+                              {parseFloat(
+                                selectedLead.budgetMin || 0
+                              ).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="space-y-3">
+                        <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                          <LayoutList className="h-4 w-4 text-slate-600" /> Technical Preferences
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          {selectedLead.facing && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                              <p className="text-xs text-slate-500">Facing</p>
+                              <p className="mt-0.5 text-xs font-semibold text-slate-900">
+                                {selectedLead.facing}
+                              </p>
+                            </div>
+                          )}
+                          {selectedLead.roadType && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                              <p className="text-xs text-slate-500">Road</p>
+                              <p className="mt-0.5 text-xs font-semibold text-slate-900">
+                                {selectedLead.roadType}
+                              </p>
+                            </div>
+                          )}
+                          {selectedLead.area && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                              <p className="text-xs text-slate-500">Area</p>
+                              <p className="mt-0.5 font-mono text-xs font-semibold text-slate-900">
+                                {selectedLead.area} {selectedLead.areaUnit}
+                              </p>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-6">
-                          <div className="h-20 w-20 rounded-[1.5rem] bg-white flex items-center justify-center text-primary font-black text-3xl shrink-0 shadow-2xl">
-                            {displayName?.charAt(0)}
+                      </section>
+
+                      {!shouldMask && selectedLead.notes && (
+                        <section className="space-y-2">
+                          <p className="text-xs font-semibold text-slate-700">
+                            Remarks
+                          </p>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-xs leading-relaxed text-slate-700">
+                              &ldquo;{selectedLead.notes}&rdquo;
+                            </p>
                           </div>
-                          <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-white">{displayName}</h2>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-white/20 text-white border-none font-black text-[9px] uppercase h-5 px-2">{STAGES.find(s => s.id === (selectedLead.leadStage || 'new'))?.label}</Badge>
-                              <span className="text-white/60 text-[10px] font-bold uppercase tracking-widest">• Agent: {selectedLead.agentName || 'Owner'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                        </section>
+                      )}
                     </div>
+                  </ScrollArea>
 
-                    <ScrollArea className="flex-1 p-8 scrollbar-hide">
-                      <div className="space-y-10">
-                        <section className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Smartphone className="h-4 w-4" /> Client Contact</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-muted/20 rounded-2xl border border-border/30">
-                              <p className="text-[8px] font-bold text-muted-foreground uppercase">WhatsApp Number</p>
-                              <p className="text-xs font-black text-slate-900 mt-1">{displayPhone}</p>
-                            </div>
-                            <div className="p-4 bg-muted/20 rounded-2xl border border-border/30">
-                              <p className="text-[8px] font-bold text-muted-foreground uppercase">Social Profile</p>
-                              <p className="text-xs font-black text-slate-900 mt-1">{selectedLead.category || 'General'}</p>
-                            </div>
-                          </div>
-                        </section>
-
-                        <Separator />
-
-                        <section className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Calculator className="h-4 w-4" /> Interest Parameters</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="p-5 bg-primary/5 rounded-3xl border border-primary/20 space-y-1">
-                              <p className="text-[8px] font-bold text-muted-foreground uppercase">Interest Tier</p>
-                              <p className="text-lg font-black text-primary">{selectedLead.propertyTypeInterest}</p>
-                              <p className="text-[7px] font-black text-primary/60 uppercase">{selectedLead.classification}</p>
-                            </div>
-                            <div className="p-5 bg-green-50 rounded-3xl border border-green-200 space-y-1">
-                              <p className="text-[8px] font-bold text-muted-foreground uppercase">Max Budget</p>
-                              <p className="text-lg font-black text-green-700">{currencySymbol}{parseFloat(selectedLead.budgetMax || 0).toLocaleString()}</p>
-                              <p className="text-[7px] font-black text-green-600/60 uppercase">Min: {currencySymbol}{parseFloat(selectedLead.budgetMin || 0).toLocaleString()}</p>
-                            </div>
-                          </div>
-                        </section>
-
-                        <section className="space-y-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><LayoutList className="h-4 w-4" /> Technical Profile</h4>
-                          <div className="grid grid-cols-3 gap-3">
-                            {selectedLead.facing && <div className="p-3 bg-muted/10 rounded-xl text-center"><p className="text-[7px] font-bold text-muted-foreground uppercase mb-1">Facing</p><p className="text-[10px] font-black">{selectedLead.facing}</p></div>}
-                            {selectedLead.roadType && <div className="p-3 bg-muted/10 rounded-xl text-center"><p className="text-[7px] font-bold text-muted-foreground uppercase mb-1">Road</p><p className="text-[10px] font-black">{selectedLead.roadType}</p></div>}
-                            {selectedLead.area && <div className="p-3 bg-muted/10 rounded-xl text-center"><p className="text-[7px] font-bold text-muted-foreground uppercase mb-1">Area</p><p className="text-[10px] font-black">{selectedLead.area} {selectedLead.areaUnit}</p></div>}
-                          </div>
-                        </section>
-
-                        {!shouldMask && selectedLead.notes && (
-                          <section className="space-y-2">
-                            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Registry Remarks</p>
-                            <div className="p-4 bg-muted/20 rounded-2xl border border-transparent italic">
-                              <p className="text-sm text-slate-600 leading-relaxed">"{selectedLead.notes}"</p>
-                            </div>
-                          </section>
-                        )}
-                      </div>
-                    </ScrollArea>
-
-                    <div className="p-8 border-t bg-muted/20 flex gap-3 shrink-0">
-                      <Button variant="outline" className="flex-1 h-14 bg-white font-black uppercase text-[11px] tracking-widest rounded-2xl shadow-sm border-slate-200" onClick={() => setIsDrawerOpen(false)}>Close Registry</Button>
-                      <Button className="flex-1 h-14 bg-green-600 hover:bg-green-700 text-white font-black shadow-xl uppercase tracking-widest text-[11px] gap-2 rounded-2xl" onClick={(e) => handleWhatsAppAction(e, selectedLead)}>
-                        <SmartphoneNfc className="h-5 w-5" /> Execute Response
+                  <div className="flex shrink-0 gap-3 border-t border-slate-100 bg-slate-50/70 p-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 flex-1 rounded-xl bg-white text-xs font-semibold"
+                      onClick={() => setIsDrawerOpen(false)}
+                    >
+                      Close
+                    </Button>
+                    {waHref ? (
+                      <Button
+                        asChild
+                        className="h-10 flex-1 gap-2 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700"
+                      >
+                        <a
+                          href={waHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <SmartphoneNfc className="h-4 w-4" /> Message on WhatsApp
+                        </a>
                       </Button>
-                    </div>
-                  </>
-                );
-              })()}
-            </>
-          )}
+                    ) : (
+                      <Button
+                        type="button"
+                        className="h-10 flex-1 gap-2 rounded-xl bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700"
+                        onClick={() =>
+                          toast({
+                            variant: "destructive",
+                            title: "Contact Missing",
+                            description: "Owner phone number is unavailable.",
+                          })
+                        }
+                      >
+                        <SmartphoneNfc className="h-4 w-4" /> Message on WhatsApp
+                      </Button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
         </SheetContent>
       </Sheet>
 
-      {/* EDIT MODAL */}
+      {/* Edit Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[750px] p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl w-[95vw]">
-          <DialogHeader className="p-8 bg-primary text-white">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-white/10 flex items-center justify-center border border-white/20"><Edit2 className="h-6 w-6" /></div>
+        <DialogContent className="w-[95vw] overflow-hidden rounded-2xl border-slate-200 p-0 sm:max-w-[700px]">
+          <DialogHeader className="border-b border-slate-800 bg-slate-900 p-6 text-left text-white">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10">
+                <Edit2 className="h-5 w-5" />
+              </div>
               <div>
-                <DialogTitle className="text-xl font-black">Edit Customer Profile</DialogTitle>
-                <p className="text-white/60 text-[9px] font-bold uppercase mt-1">Lead node modification</p>
+                <DialogTitle className="text-lg font-semibold text-white">
+                  Edit Customer Profile
+                </DialogTitle>
+                <p className="text-xs text-slate-300">
+                  Update customer details, agent ownership, and stage
+                </p>
               </div>
             </div>
           </DialogHeader>
-          <ScrollArea className="max-h-[65vh] p-8">
-            <div className="space-y-12">
+
+          <ScrollArea className="max-h-[65vh] p-6">
+            <div className="space-y-6">
               <section>
-                <SectionHeader icon={User} title="1. Basic Customer Profile" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase opacity-60">Full Name *</Label><Input value={editFormData.name || ""} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} className="h-11 rounded-xl font-bold bg-muted/20 border-none shadow-inner" /></div>
-                  <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase opacity-60">WhatsApp *</Label><Input value={editFormData.phone || ""} onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})} className="h-11 rounded-xl bg-muted/20 border-none shadow-inner" /></div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-primary ml-1">Assigned Agent</Label>
-                    <Select value={editFormData.agentName || ""} onValueChange={(v) => { const agent = teamMembers.find(m => m.name === v); setEditFormData({...editFormData, agentName: v, assignedAgentId: agent?.id || editFormData.assignedAgentId}); }}>
-                      <SelectTrigger className="h-11 rounded-xl bg-white border-primary/20 shadow-sm font-black text-primary">
+                <ModalSectionHeader icon={User} title="1. Customer Profile" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      Full Name *
+                    </Label>
+                    <Input
+                      value={editFormData.name || ""}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="h-10 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      WhatsApp *
+                    </Label>
+                    <Input
+                      value={editFormData.phone || ""}
+                      onChange={(e) =>
+                        setEditFormData({
+                          ...editFormData,
+                          phone: e.target.value,
+                        })
+                      }
+                      className="h-10 rounded-xl font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      Assigned Agent
+                    </Label>
+                    <Select
+                      value={editFormData.agentName || ""}
+                      onValueChange={(v) => {
+                        const agent = teamMembers.find((m) => m.name === v);
+                        setEditFormData({
+                          ...editFormData,
+                          agentName: v,
+                          assignedAgentId:
+                            agent?.id || editFormData.assignedAgentId,
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl bg-white text-xs">
                         <SelectValue placeholder="Select Owner" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl">
+                      <SelectContent>
                         {teamMembers.map((m: any) => (
-                          <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>
+                          <SelectItem key={m.id} value={m.name}>
+                            {m.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -627,14 +1054,30 @@ export default function RealEstateLeadsPage() {
               </section>
 
               <section>
-                <SectionHeader icon={Briefcase} title="2. Lifecycle Management" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Lifecycle Stage</Label>
-                    <Select value={editFormData.leadStage || "new"} onValueChange={(v) => setEditFormData({...editFormData, leadStage: v})}>
-                      <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-black"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {STAGES.map(s => <SelectItem key={s.id} value={s.id} className="text-xs font-bold">{s.label}</SelectItem>)}
+                <ModalSectionHeader
+                  icon={Briefcase}
+                  title="2. Pipeline Stage"
+                />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      Lifecycle Stage
+                    </Label>
+                    <Select
+                      value={editFormData.leadStage || "new"}
+                      onValueChange={(v) =>
+                        setEditFormData({ ...editFormData, leadStage: v })
+                      }
+                    >
+                      <SelectTrigger className="h-10 rounded-xl bg-white text-xs font-medium">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STAGES.map((s) => (
+                          <SelectItem key={s.id} value={s.id} className="text-xs">
+                            {s.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -642,24 +1085,50 @@ export default function RealEstateLeadsPage() {
               </section>
             </div>
           </ScrollArea>
-          <DialogFooter className="p-8 bg-muted/10 border-t"><Button className="w-full h-14 bg-primary font-black uppercase text-xs tracking-widest rounded-2xl shadow-xl text-white" onClick={handleUpdateFullLead}>Commit Registry Updates</Button></DialogFooter>
+
+          <DialogFooter className="border-t border-slate-100 bg-slate-50/70 p-5">
+            <Button
+              type="button"
+              className="h-10 w-full rounded-xl bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800"
+              onClick={handleUpdateFullLead}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteOpen}>
-        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl p-8">
+        <AlertDialogContent className="rounded-2xl border-slate-200 p-6">
           <AlertDialogHeader>
-            <div className="h-12 w-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive mb-4">
-              <AlertTriangle className="h-6 w-6" />
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
             </div>
-            <AlertDialogTitle className="text-xl font-black">Erase Lead Registry?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-slate-500 leading-relaxed">
-              Are you sure you want to permanently remove <span className="font-bold text-slate-900">"{leadToDelete?.name}"</span>?
+            <AlertDialogTitle className="text-lg font-semibold text-slate-900">
+              Delete Lead?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-slate-600">
+              Are you sure you want to permanently remove{" "}
+              <span className="font-semibold text-slate-900">
+                &ldquo;{leadToDelete?.name}&rdquo;
+              </span>
+              ?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 flex gap-3">
-            <AlertDialogCancel asChild><Button variant="outline" className="flex-1 h-12 rounded-xl font-bold uppercase">Cancel</Button></AlertDialogCancel>
-            <AlertDialogAction asChild><Button onClick={confirmDelete} className="flex-1 h-12 rounded-xl font-black uppercase bg-destructive hover:bg-destructive/90 text-white border-none shadow-lg">Erase Now</Button></AlertDialogAction>
+          <AlertDialogFooter className="mt-4 flex gap-3">
+            <AlertDialogCancel asChild>
+              <Button variant="outline" className="h-10 flex-1 rounded-xl text-xs">
+                Cancel
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                onClick={confirmDelete}
+                className="h-10 flex-1 rounded-xl bg-red-600 text-xs text-white hover:bg-red-700"
+              >
+                Delete Lead
+              </Button>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -667,89 +1136,198 @@ export default function RealEstateLeadsPage() {
   );
 }
 
-function LeadCard({ lead, currentUser, isAdmin, teamMembers, currencySymbol, onWhatsApp, onUniversalShare, onCall, onEdit, onClick, showStage = false }: any) {
-  const stage = STAGES.find(s => s.id === (lead.leadStage || 'new'));
+function LeadCard({
+  lead,
+  currentUser,
+  isAdmin,
+  currencySymbol,
+  waHref,
+  shareHref,
+  callHref,
+  onEdit,
+  onDelete,
+  onClick,
+  showStage = false,
+}: any) {
+  const stage = STAGES.find((s) => s.id === (lead.leadStage || "new"));
   const isOwner = lead.assignedAgentId === currentUser?.uid;
   const shouldMask = !isAdmin && !isOwner;
 
   const displayName = shouldMask ? maskName(lead.name) : lead.name;
   const displayPhone = shouldMask ? maskPhone(lead.phone) : lead.phone;
-  
+
   return (
-    <Card 
-      className="border-none shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer bg-white group overflow-hidden rounded-[1.5rem] relative border-l-4 border-l-primary flex flex-col"
-      onClick={onClick}
-    >
-      <CardContent className="p-5 space-y-4 flex-1 pb-2">
-        <div className="flex justify-between items-start gap-4">
-          <div className="space-y-1 min-w-0 flex-1">
-            <h4 className="text-sm font-black text-slate-900 truncate tracking-tight leading-none mb-1">{displayName}</h4>
-            <div className="flex items-center gap-1.5 opacity-60">
-              <Phone className="h-2.5 w-2.5" />
-              <p className="text-[9px] font-bold text-muted-foreground truncate">{displayPhone}</p>
+    <Card className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors hover:border-slate-300">
+      <CardContent
+        className="flex-1 cursor-pointer space-y-3 p-4"
+        onClick={onClick}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <h4 className="truncate text-sm font-semibold text-slate-900">
+              {displayName}
+            </h4>
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Phone className="h-3 w-3 shrink-0" />
+              <p className="truncate font-mono text-xs">{displayPhone}</p>
             </div>
           </div>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+
+          <div
+            className="flex shrink-0 items-center gap-0.5"
+            onClick={(e) => e.stopPropagation()}
+          >
             {!shouldMask && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 rounded-lg text-blue-600 hover:bg-blue-50" 
-                onClick={onUniversalShare}
-                title="Universal Share Details"
+              <>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Share ${displayName}`}
+                  className="h-7 w-7 rounded-lg text-blue-600 hover:bg-blue-50"
+                >
+                  <a href={shareHref} target="_blank" rel="noopener noreferrer">
+                    <Share2 className="h-3.5 w-3.5" />
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Edit ${displayName}`}
+                  className="h-7 w-7 rounded-lg text-slate-600 hover:bg-slate-100"
+                  onClick={onEdit}
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Delete ${displayName}`}
+                className="h-7 w-7 rounded-lg text-red-600 hover:bg-red-50"
+                onClick={onDelete}
               >
-                <Share2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
-            {!shouldMask && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-primary hover:bg-primary/5" onClick={onEdit}><Edit2 className="h-3.5 w-3.5" /></Button>}
-            {isAdmin && <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/5" onClick={(e) => onEdit(e)}><Trash2 className="h-3.5 w-3.5" /></Button>}
-            {shouldMask && <Lock className="h-4 w-4 text-muted-foreground opacity-20 mr-1 mt-1" />}
+            {shouldMask && <Lock className="h-3.5 w-3.5 text-slate-400" />}
           </div>
         </div>
 
-        <div className="p-4 bg-muted/40 rounded-2xl space-y-3 shadow-inner border border-white/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 bg-white border-primary/10 text-primary">{lead.propertyTypeInterest}</Badge>
+        <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge
+                variant="outline"
+                className="rounded-md bg-white text-[11px] font-medium text-slate-700"
+              >
+                {lead.propertyTypeInterest}
+              </Badge>
               {showStage && (
-                <Badge className={cn("text-[7px] font-black uppercase h-4 px-1.5 border-none", stage?.color)}>
+                <Badge
+                  className={cn(
+                    "rounded-md border-none text-[11px] font-medium",
+                    stage?.badge || "bg-slate-100 text-slate-700"
+                  )}
+                >
                   {stage?.label}
                 </Badge>
               )}
             </div>
-            <span className="text-[10px] font-black text-slate-900">{currencySymbol}{parseFloat(lead.budgetMax || 0).toLocaleString()}</span>
+            <span className="font-mono text-xs font-bold tabular-nums text-slate-900">
+              {currencySymbol}
+              {parseFloat(lead.budgetMax || 0).toLocaleString()}
+            </span>
           </div>
-          <div className="flex items-center gap-1.5 text-[8px] font-bold text-muted-foreground uppercase truncate">
-            <MapPin className="h-2.5 w-2.5 text-primary opacity-40" /> {lead.village || lead.location || 'Location Pending'}
+          <div className="flex items-center gap-1.5 truncate text-xs text-slate-500">
+            <MapPin className="h-3 w-3 shrink-0 text-slate-400" />{" "}
+            {lead.village || lead.location || "Location pending"}
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-[8px] font-black uppercase shadow-sm border border-primary/5" title={`Agent: ${lead.agentName || 'Owner'}`}>
-              {(lead.agentName || 'O').charAt(0)}
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-[11px] font-semibold text-slate-700">
+              {(lead.agentName || "O").charAt(0)}
             </div>
-            <span className="text-[8px] font-black text-slate-500 uppercase truncate max-w-[80px]">{lead.agentName || 'Owner'}</span>
+            <span className="max-w-[90px] truncate text-xs text-slate-600">
+              {lead.agentName || "Owner"}
+            </span>
           </div>
-          <span className="text-[8px] font-black text-slate-300 uppercase">{new Date(lead.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
+          <span className="font-mono text-[11px] text-slate-400">
+            {new Date(lead.createdAt || Date.now()).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+            })}
+          </span>
         </div>
       </CardContent>
 
-      <div className="grid grid-cols-2 border-t border-muted/50 bg-white">
-        <Button 
-          variant="ghost" 
-          className="h-11 rounded-none border-r border-muted/50 text-[10px] font-black uppercase text-primary hover:bg-primary/5 gap-2"
-          onClick={onCall}
-        >
-          <Phone className="h-3.5 w-3.5" /> Call {shouldMask ? 'Owner' : ''}
-        </Button>
-        <Button 
-          variant="ghost" 
-          className="h-11 rounded-none text-[10px] font-black uppercase text-green-600 hover:bg-green-50 gap-2"
-          onClick={onWhatsApp}
-        >
-          <SmartphoneNfc className="h-3.5 w-3.5" /> WhatsApp {shouldMask ? 'Owner' : ''}
-        </Button>
+      <div
+        className="grid grid-cols-2 border-t border-slate-100 bg-slate-50/50"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {callHref ? (
+          <Button
+            asChild
+            variant="ghost"
+            className="h-10 gap-1.5 rounded-none border-r border-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            <a href={callHref}>
+              <Phone className="h-3.5 w-3.5" /> Call{" "}
+              {shouldMask ? "Owner" : ""}
+            </a>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 gap-1.5 rounded-none border-r border-slate-100 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+            onClick={() =>
+              toast({
+                variant: "destructive",
+                title: "Contact Missing",
+                description: "Phone number is not available.",
+              })
+            }
+          >
+            <Phone className="h-3.5 w-3.5" /> Call{" "}
+            {shouldMask ? "Owner" : ""}
+          </Button>
+        )}
+
+        {waHref ? (
+          <Button
+            asChild
+            variant="ghost"
+            className="h-10 gap-1.5 rounded-none text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+          >
+            <a href={waHref} target="_blank" rel="noopener noreferrer">
+              <SmartphoneNfc className="h-3.5 w-3.5" /> WhatsApp{" "}
+              {shouldMask ? "Owner" : ""}
+            </a>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 gap-1.5 rounded-none text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+            onClick={() =>
+              toast({
+                variant: "destructive",
+                title: "Contact Missing",
+                description: "Owner WhatsApp info is unavailable.",
+              })
+            }
+          >
+            <SmartphoneNfc className="h-3.5 w-3.5" /> WhatsApp{" "}
+            {shouldMask ? "Owner" : ""}
+          </Button>
+        )}
       </div>
     </Card>
   );

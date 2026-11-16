@@ -163,6 +163,7 @@ import {
 import { StoreSimulator } from "@/components/website/store-simulator";
 import { SectionEditDialog } from "@/components/website/section-edit-dialog";
 import { AddSectionDialog } from "@/components/website/add-section-dialog";
+import { PageHeader } from "@/components/ui/editorial";
 
 const ICON_MAP: Record<string, any> = {
   Globe,
@@ -683,7 +684,7 @@ export default function EcommerceManagerPage() {
       updatedAt: serverTimestamp()
     });
     
-    toast({ title: "Attribute Updated", description: "Product node synchronized." });
+    toast({ title: "Attribute Updated", description: "Product catalog attribute updated." });
   };
 
   const toggleSection = (id: string) => {
@@ -763,89 +764,85 @@ export default function EcommerceManagerPage() {
   return (
     <div className="space-y-6 md:space-y-8 pb-10 text-left">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-1 text-left">
-          <div className="flex items-center gap-4 text-left">
-            <div className="h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20 shadow-inner">
-              <MonitorSmartphone className="h-7 w-7 text-primary" />
-            </div>
-            <div className="text-left">
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-none uppercase">Storefront Manager</h2>
-              <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-widest mt-1 opacity-60">Storefront Control Node & Design Hub</p>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm" className="h-10 text-[10px] font-black uppercase tracking-widest shadow-sm bg-white">
-              <Link href={previewStoreUrl} target="_blank">
-                <ExternalLink className="mr-2 h-4 w-4" /> Live Preview
-              </Link>
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={() => handleSave('draft')}
-              disabled={isSaving || isPending}
-              className="h-10 text-[10px] font-black uppercase tracking-widest px-6 shadow-sm bg-white border-primary/20 text-primary"
-            >
-              {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />} 
-              Save Draft
-            </Button>
-            <Button 
-              onClick={() => handleSave('published')}
-              disabled={isSaving || isPending}
-              className="bg-primary hover:bg-primary/90 shadow-xl h-10 text-[10px] font-black uppercase tracking-widest px-8 text-white active:scale-95 transition-all"
-            >
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4 fill-current" />} 
-              Publish Store
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          icon={MonitorSmartphone}
+          title="Storefront Manager"
+          description="Storefront configuration, visual layout, catalog visibility, and domain settings."
+          actions={
+            <>
+              <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl border-slate-200 bg-white">
+                <Link href={previewStoreUrl} target="_blank">
+                  <ExternalLink className="mr-2 h-4 w-4" /> Live Preview
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleSave('draft')}
+                disabled={isSaving || isPending}
+                className="h-10 text-xs font-semibold px-5 rounded-xl bg-white border-slate-200 text-slate-800"
+              >
+                {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
+                Save Draft
+              </Button>
+              <Button
+                onClick={() => handleSave('published')}
+                disabled={isSaving || isPending}
+                className="bg-primary hover:bg-primary/90 h-10 text-xs font-semibold px-6 rounded-xl text-white transition-colors"
+              >
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4 fill-current" />}
+                Publish Store
+              </Button>
+            </>
+          }
+        />
 
         {/* Global Store Stats Top Bar */}
-        <Card className="border-none shadow-md bg-white overflow-hidden rounded-[2rem] border">
+        <Card className="bg-white overflow-hidden rounded-2xl border border-slate-200 shadow-none">
           <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
-              <div className="p-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center border border-green-100 shrink-0">
-                  <Globe className="h-5 w-5 text-green-600" />
+            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-200 shrink-0">
+                  <Globe className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Public Domain</p>
-                  <p className="text-sm font-black text-primary truncate uppercase">{websiteData?.customDomain || (slug ? `${slug}.biztrix.in` : 'mystore.biztrix.in')}</p>
+                  <p className="text-xs font-medium text-slate-500">Public Domain</p>
+                  <p className="text-sm font-bold font-mono text-primary truncate">{websiteData?.customDomain || (slug ? `${slug}.biztrix.in` : 'mystore.biztrix.in')}</p>
                 </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" onClick={handleCopyLink}>
-                  {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                <Button variant="ghost" size="icon" aria-label="Copy Store Link" className="h-8 w-8 rounded-xl" onClick={handleCopyLink}>
+                  {isCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
-              <div className="p-6 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center border border-primary/10 shrink-0">
+              <div className="p-5 sm:p-6 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0">
                   <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
                 <div className="text-left">
-                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Digital Visibility</p>
+                  <p className="text-xs font-medium text-slate-500">Digital Visibility</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-black text-slate-900">{onlineProductsCount} Items Online</span>
+                    <span className="text-lg font-bold font-mono tabular-nums text-slate-900">{onlineProductsCount} Items Online</span>
                     <span className={cn(
-                      "text-[9px] font-black uppercase tracking-widest",
-                      websiteData?.status === 'published' ? "text-green-600" : "text-orange-600"
+                      "text-xs font-semibold",
+                      websiteData?.status === 'published' ? "text-emerald-700" : "text-amber-700"
                     )}>
-                      {websiteData?.status === 'published' ? 'Live' : 'Draft'}
+                      · {websiteData?.status === 'published' ? 'Live' : 'Draft'}
                     </span>
                   </div>
                 </div>
               </div>
-              <Link href="/website/orders" className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
+              <Link href="/website/orders" className="p-5 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                 <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center border border-orange-100 shrink-0">
-                    <ShoppingBag className="h-5 w-5 text-orange-600" />
+                  <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-200 shrink-0">
+                    <ShoppingBag className="h-5 w-5 text-amber-700" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Active Orders</p>
+                    <p className="text-xs font-medium text-slate-500">Active Orders</p>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-black text-slate-900">{(orders || []).filter(o => o.status === 'paid' || o.status === 'payment_captured_unsettled').length}</span>
-                      <span className="text-[9px] text-muted-foreground font-bold uppercase">Ready</span>
+                      <span className="text-lg font-bold font-mono tabular-nums text-slate-900">{(orders || []).filter(o => o.status === 'paid' || o.status === 'payment_captured_unsettled').length}</span>
+                      <span className="text-xs text-slate-500 font-medium">Ready</span>
                     </div>
                   </div>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-all" />
+                <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
               </Link>
             </div>
           </CardContent>
@@ -853,70 +850,70 @@ export default function EcommerceManagerPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-white border h-14 p-1.5 rounded-2xl shadow-sm mb-10 flex overflow-x-auto scrollbar-hide">
-          <TabsTrigger value="overview" className="flex-1 text-[10px] font-black uppercase px-6 gap-2"><LineChart className="h-4 w-4" /> Overview</TabsTrigger>
-          <TabsTrigger value="design" className="flex-1 text-[10px] font-black uppercase px-6 gap-2"><Palette className="h-4 w-4" /> Design & Theme</TabsTrigger>
-          <TabsTrigger value="catalog" className="flex-1 text-[10px] font-black uppercase px-6 gap-2"><Layers className="h-4 w-4" /> Catalog Control</TabsTrigger>
-          <TabsTrigger value="seo" className="flex-1 text-[10px] font-black uppercase px-6 gap-2 text-primary font-black"><Sparkles className="h-4 w-4" /> SEO & Social</TabsTrigger>
-          <TabsTrigger value="settings" className="flex-1 text-[10px] font-black uppercase px-6 gap-2"><Settings className="h-4 w-4" /> Core Config</TabsTrigger>
+        <TabsList className="bg-white border border-slate-200 h-12 p-1 rounded-xl mb-8 flex overflow-x-auto scrollbar-hide">
+          <TabsTrigger value="overview" className="flex-1 text-xs font-semibold px-4 gap-2 whitespace-nowrap"><LineChart className="h-4 w-4" /> Overview</TabsTrigger>
+          <TabsTrigger value="design" className="flex-1 text-xs font-semibold px-4 gap-2 whitespace-nowrap"><Palette className="h-4 w-4" /> Design &amp; Theme</TabsTrigger>
+          <TabsTrigger value="catalog" className="flex-1 text-xs font-semibold px-4 gap-2 whitespace-nowrap"><Layers className="h-4 w-4" /> Catalog Control</TabsTrigger>
+          <TabsTrigger value="seo" className="flex-1 text-xs font-semibold px-4 gap-2 whitespace-nowrap text-primary"><Sparkles className="h-4 w-4" /> SEO &amp; Social</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-1 text-xs font-semibold px-4 gap-2 whitespace-nowrap"><Settings className="h-4 w-4" /> Core Config</TabsTrigger>
         </TabsList>
 
         {/* 1. OVERVIEW TAB: Store statistics, storefront information, save draft / publish store controls */}
-        <TabsContent value="overview" className="space-y-8 animate-in fade-in">
+        <TabsContent value="overview" className="space-y-8">
           {/* Storefront Control & Quick Publish Hub */}
-          <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-            <CardHeader className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-8 border-b">
+          <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+            <CardHeader className="bg-slate-900 text-white p-6 sm:p-8 border-b border-slate-800">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                 <div className="space-y-2 text-left">
-                  <div className="flex items-center gap-3">
-                    <Badge className={cn(
-                      "text-[9px] font-black uppercase px-3 py-1 border-none",
-                      websiteData?.status === 'published' ? "bg-green-500 text-white" : "bg-orange-500 text-white"
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className={cn(
+                      "font-semibold px-2.5 py-0.5 rounded-md",
+                      websiteData?.status === 'published' ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"
                     )}>
-                      {websiteData?.status === 'published' ? '● Live Storefront' : '● Draft Mode'}
-                    </Badge>
-                    <span className="text-[10px] font-mono text-slate-400">
+                      {websiteData?.status === 'published' ? 'Live Storefront' : 'Draft Mode'}
+                    </span>
+                    <span className="font-mono text-slate-300 tabular-nums">
                       ID: {businessId ? businessId.slice(-8).toUpperCase() : 'PENDING'}
                     </span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white">
+                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                     {storeName || business?.name || 'Storefront Hub'}
                   </h3>
                   <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <Globe className="h-3.5 w-3.5 text-accent" />
+                    <Globe className="h-3.5 w-3.5 text-sky-300" />
                     <span>Public URL:</span>
-                    <Link 
-                      href={previewStoreUrl} 
-                      target="_blank" 
-                      className="font-mono text-accent hover:underline font-bold"
+                    <Link
+                      href={previewStoreUrl}
+                      target="_blank"
+                      className="font-mono text-sky-300 hover:underline font-semibold"
                     >
                       {websiteData?.customDomain || (slug ? `${slug}.biztrix.in` : businessId ? `shop?bId=${businessId}` : 'mystore.biztrix.in')}
                     </Link>
                   </div>
                 </div>
-                
+
                 {/* Save Draft / Publish Store Controls */}
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <Button asChild variant="outline" size="sm" className="h-10 text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 text-white border-white/20">
+                  <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/20">
                     <Link href={previewStoreUrl} target="_blank">
                       <ExternalLink className="mr-2 h-3.5 w-3.5" /> Preview
                     </Link>
                   </Button>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => handleSave('draft')}
                     disabled={isSaving || isPending}
-                    className="h-10 text-[10px] font-black uppercase tracking-widest bg-white text-slate-900 hover:bg-slate-100 border-none shadow-sm px-5"
+                    className="h-10 text-xs font-semibold rounded-xl bg-white text-slate-900 hover:bg-slate-100 border-none px-5"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5 text-primary" />}
                     Save Draft
                   </Button>
-                  <Button 
+                  <Button
                     size="sm"
                     onClick={() => handleSave('published')}
                     disabled={isSaving || isPending}
-                    className="h-10 text-[10px] font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-white shadow-xl border-none px-6 active:scale-95 transition-all"
+                    className="h-10 text-xs font-semibold rounded-xl bg-primary hover:bg-primary/90 text-white border-none px-6 transition-colors"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-2 h-3.5 w-3.5 fill-current" />}
                     Publish Store
@@ -925,24 +922,24 @@ export default function EcommerceManagerPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="p-8">
+            <CardContent className="p-6 sm:p-8">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-                <div className="p-5 rounded-2xl bg-muted/20 border border-muted/30">
-                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Catalog Online</p>
-                  <p className="text-2xl font-black text-slate-900 mt-1">{onlineProductsCount} <span className="text-xs text-muted-foreground font-normal">/ {(dbProducts || []).length} items</span></p>
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
+                  <p className="text-xs font-medium text-slate-500">Catalog Online</p>
+                  <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{onlineProductsCount} <span className="text-xs text-slate-500 font-sans font-normal">/ {(dbProducts || []).length} items</span></p>
                 </div>
-                <div className="p-5 rounded-2xl bg-muted/20 border border-muted/30">
-                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Active Sections</p>
-                  <p className="text-2xl font-black text-slate-900 mt-1">{sections.filter(s => s.status === 'Active').length} <span className="text-xs text-muted-foreground font-normal">/ {sections.length}</span></p>
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
+                  <p className="text-xs font-medium text-slate-500">Active Sections</p>
+                  <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{sections.filter(s => s.status === 'Active').length} <span className="text-xs text-slate-500 font-sans font-normal">/ {sections.length}</span></p>
                 </div>
-                <div className="p-5 rounded-2xl bg-muted/20 border border-muted/30">
-                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Total Paid Orders</p>
-                  <p className="text-2xl font-black text-slate-900 mt-1">{paidOrders.length} <span className="text-xs text-muted-foreground font-normal">/ {orders.length} total</span></p>
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
+                  <p className="text-xs font-medium text-slate-500">Total Paid Orders</p>
+                  <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{paidOrders.length} <span className="text-xs text-slate-500 font-sans font-normal">/ {orders.length} total</span></p>
                 </div>
-                <div className="p-5 rounded-2xl bg-muted/20 border border-muted/30">
-                  <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Design Style</p>
-                  <p className="text-sm font-black text-primary uppercase mt-2 flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 rounded-full border shadow-sm shrink-0" style={{ backgroundColor: primaryColor }} />
+                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
+                  <p className="text-xs font-medium text-slate-500">Design Style</p>
+                  <p className="text-sm font-bold text-primary capitalize mt-2 flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 rounded-full border border-slate-200 shrink-0" style={{ backgroundColor: primaryColor }} />
                     <span className="truncate">{uiStyle}</span>
                   </p>
                 </div>
@@ -952,45 +949,45 @@ export default function EcommerceManagerPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-left">
             <div className="lg:col-span-8 space-y-8">
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border">
-                <CardHeader className="bg-primary/5 border-b py-6 px-8 flex flex-row justify-between items-center text-left gap-4">
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row justify-between items-center text-left gap-4">
                   <div className="space-y-1 text-left">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" /> Funnel & Merchandising Diagnostics
+                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-primary" /> Funnel &amp; Merchandising Diagnostics
                     </CardTitle>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                      Live telemetry & storefront configuration checks
+                    <p className="text-xs text-slate-500">
+                      Storefront traffic, conversion funnel metrics, and configuration checks
                     </p>
                   </div>
-                  <Button asChild variant="outline" size="sm" className="h-8 text-[9px] font-black uppercase bg-white">
+                  <Button asChild variant="outline" size="sm" className="h-8 text-xs font-semibold rounded-xl border-slate-200 bg-white">
                     <Link href="/website/visitors">
                       Visitor Funnel <ChevronRight className="ml-1 h-3 w-3" />
                     </Link>
                   </Button>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6">
+                <CardContent className="p-6 sm:p-8 space-y-6">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
-                    <div className="p-4 rounded-2xl bg-slate-50 border">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground">Sessions</p>
-                      <p className="text-xl font-black text-slate-900 mt-0.5 tabular-nums">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-xs font-medium text-slate-500">Sessions</p>
+                      <p className="text-xl font-bold font-mono tabular-nums text-slate-900 mt-0.5">
                         {funnelMetrics.uniqueSessions}
                       </p>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 border">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground">Add-to-Bag Rate</p>
-                      <p className="text-xl font-black text-slate-900 mt-0.5 tabular-nums">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-xs font-medium text-slate-500">Add-to-Bag Rate</p>
+                      <p className="text-xl font-bold font-mono tabular-nums text-slate-900 mt-0.5">
                         {funnelMetrics.viewToCartRate}%
                       </p>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 border">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground">Conversion Rate</p>
-                      <p className="text-xl font-black text-primary mt-0.5 tabular-nums">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-xs font-medium text-slate-500">Conversion Rate</p>
+                      <p className="text-xl font-bold font-mono tabular-nums text-primary mt-0.5">
                         {funnelMetrics.overallConversionRate}%
                       </p>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-50 border">
-                      <p className="text-[9px] font-black uppercase text-muted-foreground">Avg Order Value</p>
-                      <p className="text-xl font-black text-slate-900 mt-0.5 tabular-nums">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-xs font-medium text-slate-500">Avg Order Value</p>
+                      <p className="text-xl font-bold font-mono tabular-nums text-slate-900 mt-0.5">
                         {currencySymbol}{funnelMetrics.averageOrderValue.toLocaleString()}
                       </p>
                     </div>
@@ -1001,7 +998,7 @@ export default function EcommerceManagerPage() {
                       <div
                         key={insight.id}
                         className={cn(
-                          "p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left",
+                          "p-5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left",
                           insight.severity === "warning"
                             ? "bg-amber-50/70 border-amber-200"
                             : insight.severity === "healthy"
@@ -1027,11 +1024,12 @@ export default function EcommerceManagerPage() {
                             )}
                           </div>
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                            <div className="flex items-center gap-2 flex-wrap text-xs">
+                              <p className="font-bold text-slate-900">
                                 {insight.title}
                               </p>
-                              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-white border text-slate-600">
+                              <span aria-hidden="true" className="text-slate-400">·</span>
+                              <span className="font-mono font-semibold text-slate-600 tabular-nums">
                                 {insight.metricTag}
                               </span>
                             </div>
@@ -1046,7 +1044,7 @@ export default function EcommerceManagerPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => setActiveTab(insight.targetTab)}
-                            className="h-9 px-4 text-[10px] font-black uppercase rounded-xl shrink-0 bg-white"
+                            className="h-9 px-4 text-xs font-semibold rounded-xl border-slate-200 shrink-0 bg-white"
                           >
                             Configure <ChevronRight className="ml-1 h-3 w-3" />
                           </Button>
@@ -1057,23 +1055,23 @@ export default function EcommerceManagerPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2.5rem] border text-left">
-                <CardHeader className="bg-muted/30 border-b py-6 px-8 flex justify-between items-center">
-                   <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2"><Receipt className="h-4 w-4" /> Recent Order Nodes</CardTitle>
-                   <Button asChild variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase text-primary">
+              <Card className="overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row justify-between items-center">
+                   <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" /> Recent Storefront Orders</CardTitle>
+                   <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-semibold text-primary">
                       <Link href="/website/orders">View All Orders <ChevronRight className="ml-1 h-3 w-3" /></Link>
                    </Button>
                 </CardHeader>
                 <div className="overflow-x-auto">
                    <Table>
-                      <TableHeader><TableRow className="bg-muted/10"><TableHead className="pl-8 text-[9px] font-black uppercase h-10">Order ID</TableHead><TableHead className="text-[9px] font-black uppercase h-10">Customer</TableHead><TableHead className="text-center text-[9px] font-black uppercase h-10">Status</TableHead><TableHead className="text-right pr-8 text-[9px] font-black uppercase h-10">Amount</TableHead></TableRow></TableHeader>
+                      <TableHeader><TableRow className="bg-slate-50/70"><TableHead className="pl-6 sm:pl-8 text-xs font-semibold text-slate-600 h-10">Order ID</TableHead><TableHead className="text-xs font-semibold text-slate-600 h-10">Customer</TableHead><TableHead className="text-center text-xs font-semibold text-slate-600 h-10">Status</TableHead><TableHead className="text-right pr-6 sm:pr-8 text-xs font-semibold text-slate-600 h-10">Amount</TableHead></TableRow></TableHeader>
                       <TableBody>
-                        {(!orders || orders.length === 0) ? <TableRow><TableCell colSpan={4} className="h-40 text-center opacity-30 italic text-sm">No storefront orders yet.</TableCell></TableRow> : orders.slice(0, 5).map(o => (
-                          <TableRow key={o.id} className="hover:bg-muted/5 border-b last:border-0 cursor-pointer" onClick={() => router.push('/website/orders')}>
-                             <TableCell className="pl-8 py-4"><span className="text-[10px] font-mono font-black text-slate-900">{o.id.slice(-8).toUpperCase()}</span></TableCell>
-                             <TableCell><span className="text-xs font-bold text-slate-700">{o.customerData?.name || 'Client'}</span></TableCell>
-                             <TableCell className="text-center"><Badge variant="outline" className="text-[7px] h-4 border-none bg-primary/5 text-primary uppercase font-black">{o.status}</Badge></TableCell>
-                             <TableCell className="text-right pr-8 font-black text-xs">{currencySymbol}{o.amount?.toLocaleString()}</TableCell>
+                        {(!orders || orders.length === 0) ? <TableRow><TableCell colSpan={4} className="h-40 text-center text-slate-400 text-sm">No storefront orders yet.</TableCell></TableRow> : orders.slice(0, 5).map(o => (
+                          <TableRow key={o.id} className="hover:bg-slate-50 border-b border-slate-100 last:border-0 cursor-pointer" onClick={() => router.push('/website/orders')}>
+                             <TableCell className="pl-6 sm:pl-8 py-4"><span className="text-xs font-mono tabular-nums font-bold text-slate-900">{o.id.slice(-8).toUpperCase()}</span></TableCell>
+                             <TableCell><span className="text-xs font-semibold text-slate-700">{o.customerData?.name || 'Client'}</span></TableCell>
+                             <TableCell className="text-center"><span className="text-xs font-semibold capitalize text-primary">{o.status}</span></TableCell>
+                             <TableCell className="text-right pr-6 sm:pr-8 font-bold font-mono tabular-nums text-xs">{currencySymbol}{o.amount?.toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1083,46 +1081,45 @@ export default function EcommerceManagerPage() {
             </div>
 
             <div className="lg:col-span-4 space-y-8">
-              <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden group">
-                <CardHeader className="p-8 pb-4 border-b border-white/5 text-left">
+              <Card className="bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-none overflow-hidden">
+                <CardHeader className="p-6 sm:p-8 pb-4 border-b border-white/10 text-left">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-accent">Store Integrity</CardTitle>
-                    <ShieldCheck className="h-4 w-4 text-accent" />
+                    <CardTitle className="text-sm font-bold text-sky-300">Store Integrity</CardTitle>
+                    <ShieldCheck className="h-4 w-4 text-sky-300" />
                   </div>
                 </CardHeader>
-                <CardContent className="p-8 space-y-8 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-8 text-left">
                   <div className="flex flex-col items-center justify-center py-4">
-                    <div className="h-28 w-28 rounded-full border-8 border-accent/20 flex items-center justify-center shadow-2xl relative overflow-hidden">
-                       <div className="absolute inset-0 bg-accent/5 animate-pulse" />
-                       <span className="text-3xl font-black text-accent relative z-10">{integrityReport.score}%</span>
+                    <div className="h-28 w-28 rounded-full border-4 border-sky-400/30 bg-slate-800/60 flex items-center justify-center">
+                       <span className="text-3xl font-bold font-mono tabular-nums text-sky-300">{integrityReport.score}%</span>
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] mt-6 text-accent">Deployment Readiness</p>
+                    <p className="text-xs font-semibold mt-5 text-slate-200">Deployment Readiness</p>
                   </div>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-tight">
-                      <span className="opacity-60 text-slate-400">SEO Sync</span>
-                      <span className={integrityReport.seoScore >= 80 ? "text-green-400" : "text-amber-400"}>
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-300">SEO Sync</span>
+                      <span className={cn("font-mono tabular-nums", integrityReport.seoScore >= 80 ? "text-emerald-400" : "text-amber-400")}>
                         {integrityReport.seoScore}%
                       </span>
                     </div>
-                    <Progress value={integrityReport.seoScore} className="h-1 bg-white/10" />
-                    <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-tight">
-                      <span className="opacity-60 text-slate-400">Catalog Readiness</span>
-                      <span className={integrityReport.catalogScore >= 70 ? "text-green-400" : "text-amber-400"}>
+                    <Progress value={integrityReport.seoScore} className="h-1.5 bg-white/10" />
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-300">Catalog Readiness</span>
+                      <span className={cn("font-mono tabular-nums", integrityReport.catalogScore >= 70 ? "text-emerald-400" : "text-amber-400")}>
                         {integrityReport.catalogScore}%
                       </span>
                     </div>
-                    <Progress value={integrityReport.catalogScore} className="h-1 bg-white/10" />
+                    <Progress value={integrityReport.catalogScore} className="h-1.5 bg-white/10" />
                   </div>
                 </CardContent>
-                <CardFooter className="bg-white/5 p-6 border-t border-white/10">
+                <CardFooter className="bg-white/5 p-5 border-t border-white/10">
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => setAuditOpen(true)}
-                    className="w-full text-[10px] font-black uppercase tracking-widest text-accent hover:bg-white/10"
+                    className="w-full text-xs font-semibold text-sky-300 hover:bg-white/10"
                   >
-                    Run Registry Audit <ChevronRight className="ml-2 h-3.5 w-3.5" />
+                    Run Readiness Audit <ChevronRight className="ml-2 h-3.5 w-3.5" />
                   </Button>
                 </CardFooter>
               </Card>
@@ -1131,35 +1128,35 @@ export default function EcommerceManagerPage() {
         </TabsContent>
 
         {/* 2. DESIGN & THEME TAB: primary color control, UI style control, WhatsApp order toggle, showDiscount toggle, section/layout controls & theme persistence */}
-        <TabsContent value="design" className="space-y-8 animate-in fade-in">
+        <TabsContent value="design" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start text-left">
             <div className="lg:col-span-8 space-y-10 min-w-0">
-              {/* Brand & Theme Node */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-primary/5 border-b py-6 px-8 flex flex-row items-center justify-between text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-3">
-                    <Palette className="h-5 w-5" /> Brand Identity & Color Theme
+              {/* Brand & Theme Section */}
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row items-center justify-between text-left">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                    <Palette className="h-5 w-5 text-primary" /> Brand Identity &amp; Color Theme
                   </CardTitle>
-                  <Button 
+                  <Button
                     size="sm"
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-8 text-[9px] font-black uppercase bg-primary hover:bg-primary/90 text-white rounded-xl shadow-sm px-4"
+                    className="h-9 text-xs font-semibold bg-primary hover:bg-primary/90 text-white rounded-xl px-4"
                   >
                     {isSaving ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Save className="mr-1.5 h-3 w-3" />}
                     Save Theme
                   </Button>
                 </CardHeader>
-                <CardContent className="p-8 sm:p-10 space-y-10">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+                <CardContent className="p-6 sm:p-8 space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                     <div className="space-y-3 text-left">
                       <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Store Primary Logo</Label>
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">Store Primary Logo</Label>
                         {logoUrl && (
                           <button
                             type="button"
                             onClick={() => setLogoUrl("")}
-                            className="text-[9px] font-black uppercase text-rose-600 hover:underline"
+                            className="text-xs font-semibold text-rose-600 hover:underline"
                           >
                             Remove
                           </button>
@@ -1178,14 +1175,14 @@ export default function EcommerceManagerPage() {
                       <button
                         type="button"
                         onClick={() => logoInputRef.current?.click()}
-                        className="w-full h-36 border-4 border-dashed border-muted rounded-[2rem] flex flex-col items-center justify-center bg-muted/10 group hover:border-primary/40 transition-all cursor-pointer shadow-inner overflow-hidden relative"
+                        className="w-full h-36 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group hover:border-primary/50 transition-colors cursor-pointer overflow-hidden relative"
                       >
                         {logoUrl ? (
-                          <img src={logoUrl} alt="Store Logo" className="h-24 w-24 object-contain rounded-xl" />
+                          <img src={logoUrl} alt="Store Logo" referrerPolicy="no-referrer" className="h-24 w-24 object-contain rounded-xl" />
                         ) : (
                           <>
-                            <Upload className="h-7 w-7 text-muted-foreground group-hover:text-primary transition-colors" />
-                            <span className="text-[9px] font-black text-muted-foreground uppercase mt-3 tracking-widest">Upload PNG / SVG / WebP</span>
+                            <Upload className="h-7 w-7 text-slate-400 group-hover:text-primary transition-colors" />
+                            <span className="text-xs font-medium text-slate-500 mt-3">Upload PNG / SVG / WebP</span>
                           </>
                         )}
                       </button>
@@ -1193,17 +1190,17 @@ export default function EcommerceManagerPage() {
                         value={logoUrl}
                         onChange={(e) => setLogoUrl(e.target.value)}
                         placeholder="Or paste logo image URL..."
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                       />
                     </div>
                     <div className="space-y-3 text-left">
                       <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Browser Tab Node (Favicon)</Label>
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">Browser Tab Icon (Favicon)</Label>
                         {faviconUrl && (
                           <button
                             type="button"
                             onClick={() => setFaviconUrl("")}
-                            className="text-[9px] font-black uppercase text-rose-600 hover:underline"
+                            className="text-xs font-semibold text-rose-600 hover:underline"
                           >
                             Remove
                           </button>
@@ -1222,14 +1219,14 @@ export default function EcommerceManagerPage() {
                       <button
                         type="button"
                         onClick={() => faviconInputRef.current?.click()}
-                        className="w-full h-36 border-4 border-dashed border-muted rounded-[2rem] flex flex-col items-center justify-center bg-muted/10 group hover:border-primary/40 transition-all cursor-pointer shadow-inner overflow-hidden relative"
+                        className="w-full h-36 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group hover:border-primary/50 transition-colors cursor-pointer overflow-hidden relative"
                       >
                         {faviconUrl ? (
-                          <img src={faviconUrl} alt="Store Favicon" className="h-14 w-14 object-contain rounded-lg" />
+                          <img src={faviconUrl} alt="Store Favicon" referrerPolicy="no-referrer" className="h-14 w-14 object-contain rounded-lg" />
                         ) : (
                           <>
-                            <ImageIcon className="h-7 w-7 text-muted-foreground group-hover:text-primary transition-colors" />
-                            <span className="text-[9px] font-black text-muted-foreground uppercase mt-3 tracking-widest">Upload Square 64x64</span>
+                            <ImageIcon className="h-7 w-7 text-slate-400 group-hover:text-primary transition-colors" />
+                            <span className="text-xs font-medium text-slate-500 mt-3">Upload Square 64×64</span>
                           </>
                         )}
                       </button>
@@ -1237,30 +1234,30 @@ export default function EcommerceManagerPage() {
                         value={faviconUrl}
                         onChange={(e) => setFaviconUrl(e.target.value)}
                         placeholder="Or paste favicon URL..."
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                       />
                     </div>
                   </div>
-                  
+
                   <Separator className="opacity-40" />
 
                   {/* Primary Color & UI Style Controls */}
-                  <div className="space-y-8 text-left">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-1"><Layout className="h-4 w-4" /> Global Theme Logic</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+                  <div className="space-y-6 text-left">
+                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-2 px-1"><Layout className="h-4 w-4 text-primary" /> Global Theme Settings</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase text-muted-foreground ml-1">Primary Color Control</Label>
-                        <div className="flex gap-4 p-2 bg-muted/20 rounded-2xl border border-transparent shadow-inner">
-                          <Input 
-                            type="color" 
-                            value={primaryColor} 
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">Primary Color Control</Label>
+                        <div className="flex gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                          <Input
+                            type="color"
+                            value={primaryColor}
                             onChange={(e) => setPrimaryColor(e.target.value)}
-                            className="h-12 w-20 p-1.5 rounded-xl border-none cursor-pointer bg-white"
+                            className="h-11 w-16 p-1 rounded-lg border-slate-200 cursor-pointer bg-white"
                           />
-                          <Input 
-                            value={primaryColor} 
-                            onChange={(e) => setPrimaryColor(e.target.value)} 
-                            className="h-12 flex-1 rounded-xl font-mono font-black text-lg bg-white border-none shadow-sm uppercase" 
+                          <Input
+                            value={primaryColor}
+                            onChange={(e) => setPrimaryColor(e.target.value)}
+                            className="h-11 flex-1 rounded-lg font-mono font-bold text-base bg-white border-slate-200 uppercase"
                           />
                         </div>
 
@@ -1272,9 +1269,10 @@ export default function EcommerceManagerPage() {
                               type="button"
                               onClick={() => setPrimaryColor(palette.value)}
                               title={palette.name}
+                              aria-label={palette.name}
                               className={cn(
-                                "h-7 w-7 rounded-xl transition-all border-2 flex items-center justify-center shadow-sm",
-                                primaryColor.toLowerCase() === palette.value.toLowerCase() ? "border-slate-900 scale-110 shadow-md" : "border-transparent hover:scale-105"
+                                "h-7 w-7 rounded-xl transition-transform border-2 flex items-center justify-center",
+                                primaryColor.toLowerCase() === palette.value.toLowerCase() ? "border-slate-900 scale-110" : "border-transparent hover:scale-105"
                               )}
                               style={{ backgroundColor: palette.value }}
                             >
@@ -1287,16 +1285,16 @@ export default function EcommerceManagerPage() {
                       </div>
 
                       <div className="space-y-3">
-                        <Label className="text-[11px] font-black uppercase text-muted-foreground ml-1">UI Style Control</Label>
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">UI Style Control</Label>
                         <Select value={uiStyle} onValueChange={setUiStyle}>
-                          <SelectTrigger className="h-12 rounded-2xl font-black text-xs uppercase bg-muted/20 border-none shadow-inner text-left"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-none shadow-2xl">
-                            <SelectItem value="modern" className="text-xs font-bold uppercase">Modern Glass Node</SelectItem>
-                            <SelectItem value="minimal" className="text-xs font-bold uppercase">Minimal High-Contrast</SelectItem>
-                            <SelectItem value="classic" className="text-xs font-bold uppercase">Classic Retail</SelectItem>
+                          <SelectTrigger className="h-12 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200 text-left"><SelectValue /></SelectTrigger>
+                          <SelectContent className="rounded-xl border border-slate-200">
+                            <SelectItem value="modern" className="text-xs font-semibold">Modern Editorial</SelectItem>
+                            <SelectItem value="minimal" className="text-xs font-semibold">Minimal High-Contrast</SelectItem>
+                            <SelectItem value="classic" className="text-xs font-semibold">Classic Retail</SelectItem>
                           </SelectContent>
                         </Select>
-                        <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-tight mt-1.5 ml-1">Controls card elevation, corners, and glassmorphism styling</p>
+                        <p className="text-xs text-slate-500 mt-1.5 ml-1">Controls card surfaces, corners, and section styling</p>
                       </div>
                     </div>
                   </div>
@@ -1305,14 +1303,14 @@ export default function EcommerceManagerPage() {
 
                   {/* Phase 2: Hero Layout, Banner Image & Typography Presets */}
                   <div className="space-y-6 text-left">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-1">
-                      <Type className="h-4 w-4" /> Hero Visuals, Surface & Typography
+                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-2 px-1">
+                      <Type className="h-4 w-4 text-primary" /> Hero Visuals, Surface &amp; Typography
                     </h4>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                          <Label className="text-xs font-semibold text-slate-600 ml-1">
                             Hero Banner Image
                           </Label>
                           {themeConfig.heroImageUrl && (
@@ -1321,7 +1319,7 @@ export default function EcommerceManagerPage() {
                               onClick={() =>
                                 setThemeConfig((prev) => ({ ...prev, heroImageUrl: "" }))
                               }
-                              className="text-[9px] font-black uppercase text-rose-600 hover:underline"
+                              className="text-xs font-semibold text-rose-600 hover:underline"
                             >
                               Remove
                             </button>
@@ -1340,18 +1338,19 @@ export default function EcommerceManagerPage() {
                         <button
                           type="button"
                           onClick={() => heroImageInputRef.current?.click()}
-                          className="w-full h-32 border-2 border-dashed border-muted rounded-2xl flex flex-col items-center justify-center bg-muted/10 group hover:border-primary/40 transition-all cursor-pointer overflow-hidden relative"
+                          className="w-full h-32 border border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group hover:border-primary/50 transition-colors cursor-pointer overflow-hidden relative"
                         >
                           {themeConfig.heroImageUrl ? (
                             <img
                               src={themeConfig.heroImageUrl}
                               alt="Hero Banner"
+                              referrerPolicy="no-referrer"
                               className="w-full h-full object-cover"
                             />
                           ) : (
                             <>
-                              <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                              <span className="text-[9px] font-black text-muted-foreground uppercase mt-2 tracking-widest">
+                              <Upload className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
+                              <span className="text-xs font-medium text-slate-500 mt-2">
                                 Upload 16:9 Banner (Optional)
                               </span>
                             </>
@@ -1366,13 +1365,13 @@ export default function EcommerceManagerPage() {
                             }))
                           }
                           placeholder="Or paste hero banner image URL..."
-                          className="h-9 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                          className="h-9 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                         />
                       </div>
 
                       <div className="space-y-4">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                          <Label className="text-xs font-semibold text-slate-600 ml-1">
                             Hero Layout Style
                           </Label>
                           <Select
@@ -1384,17 +1383,17 @@ export default function EcommerceManagerPage() {
                               }))
                             }
                           >
-                            <SelectTrigger className="h-11 rounded-xl font-bold text-xs uppercase bg-muted/20 border-none shadow-inner">
+                            <SelectTrigger className="h-11 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
-                              <SelectItem value="classic_banner" className="text-xs font-bold uppercase">
+                              <SelectItem value="classic_banner" className="text-xs font-semibold">
                                 Classic Centered Banner
                               </SelectItem>
-                              <SelectItem value="split_showcase" className="text-xs font-bold uppercase">
+                              <SelectItem value="split_showcase" className="text-xs font-semibold">
                                 Split Asymmetric Showcase
                               </SelectItem>
-                              <SelectItem value="editorial_cover" className="text-xs font-bold uppercase">
+                              <SelectItem value="editorial_cover" className="text-xs font-semibold">
                                 Editorial Image Cover
                               </SelectItem>
                             </SelectContent>
@@ -1402,7 +1401,7 @@ export default function EcommerceManagerPage() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                          <Label className="text-xs font-semibold text-slate-600 ml-1">
                             Typography Pairing
                           </Label>
                           <Select
@@ -1414,17 +1413,17 @@ export default function EcommerceManagerPage() {
                               }))
                             }
                           >
-                            <SelectTrigger className="h-11 rounded-xl font-bold text-xs uppercase bg-muted/20 border-none shadow-inner">
+                            <SelectTrigger className="h-11 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
-                              <SelectItem value="jakarta" className="text-xs font-bold uppercase">
+                              <SelectItem value="jakarta" className="text-xs font-semibold">
                                 Plus Jakarta + DM Sans (Modern)
                               </SelectItem>
-                              <SelectItem value="playfair" className="text-xs font-bold uppercase">
+                              <SelectItem value="playfair" className="text-xs font-semibold">
                                 Playfair Display + Jakarta (Boutique)
                               </SelectItem>
-                              <SelectItem value="outfit" className="text-xs font-bold uppercase">
+                              <SelectItem value="outfit" className="text-xs font-semibold">
                                 Outfit + Manrope (Bold Retail)
                               </SelectItem>
                             </SelectContent>
@@ -1435,7 +1434,7 @@ export default function EcommerceManagerPage() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Surface Mode
                         </Label>
                         <Select
@@ -1447,7 +1446,7 @@ export default function EcommerceManagerPage() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl font-bold text-xs uppercase bg-muted/20 border-none">
+                          <SelectTrigger className="h-10 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1459,7 +1458,7 @@ export default function EcommerceManagerPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Card Corners
                         </Label>
                         <Select
@@ -1471,7 +1470,7 @@ export default function EcommerceManagerPage() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl font-bold text-xs uppercase bg-muted/20 border-none">
+                          <SelectTrigger className="h-10 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1483,7 +1482,7 @@ export default function EcommerceManagerPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Button Shape
                         </Label>
                         <Select
@@ -1495,7 +1494,7 @@ export default function EcommerceManagerPage() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl font-bold text-xs uppercase bg-muted/20 border-none">
+                          <SelectTrigger className="h-10 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1507,7 +1506,7 @@ export default function EcommerceManagerPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                        <Label className="text-xs font-semibold text-slate-600 ml-1">
                           Desktop Grid
                         </Label>
                         <Select
@@ -1519,7 +1518,7 @@ export default function EcommerceManagerPage() {
                             }))
                           }
                         >
-                          <SelectTrigger className="h-10 rounded-xl font-bold text-xs uppercase bg-muted/20 border-none">
+                          <SelectTrigger className="h-10 rounded-xl font-semibold text-xs bg-slate-50 border-slate-200">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1534,57 +1533,57 @@ export default function EcommerceManagerPage() {
                   <Separator className="opacity-40" />
 
                   {/* WhatsApp Order & Show Discount Toggles */}
-                  <div className="space-y-6 text-left">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2 px-1">
-                      <SmartphoneNfc className="h-4 w-4" /> Ordering & Discount Logic
+                  <div className="space-y-5 text-left">
+                    <h4 className="text-xs font-bold text-slate-700 flex items-center gap-2 px-1">
+                      <SmartphoneNfc className="h-4 w-4 text-primary" /> Ordering &amp; Discount Controls
                     </h4>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                      <div className="flex items-center justify-between p-5 bg-green-50/70 rounded-[2rem] border border-green-100 shadow-sm transition-all group hover:bg-green-50">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="flex items-center justify-between p-5 bg-emerald-50/70 rounded-2xl border border-emerald-200 transition-colors hover:bg-emerald-50">
                         <div className="space-y-1 text-left pr-3">
-                          <Label className="text-xs font-black text-green-900 flex items-center gap-2 uppercase tracking-tight">
-                            <MessageSquare className="h-4 w-4 text-green-600 shrink-0" /> WhatsApp Order
+                          <Label className="text-xs font-bold text-emerald-950 flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-emerald-600 shrink-0" /> WhatsApp Order
                           </Label>
-                          <p className="text-[9px] text-green-700/80 font-bold uppercase tracking-wider">
+                          <p className="text-xs text-emerald-800/80">
                             Direct checkout on WhatsApp
                           </p>
                         </div>
-                        <Switch 
-                          checked={whatsappOrderEnabled} 
-                          onCheckedChange={setWhatsappOrderEnabled} 
-                          className="data-[state=checked]:bg-green-600 shadow-sm" 
+                        <Switch
+                          checked={whatsappOrderEnabled}
+                          onCheckedChange={setWhatsappOrderEnabled}
+                          className="data-[state=checked]:bg-emerald-600"
                         />
                       </div>
 
-                      <div className="flex items-center justify-between p-5 bg-amber-50/70 rounded-[2rem] border border-amber-100 shadow-sm transition-all group hover:bg-amber-50">
+                      <div className="flex items-center justify-between p-5 bg-amber-50/70 rounded-2xl border border-amber-200 transition-colors hover:bg-amber-50">
                         <div className="space-y-1 text-left pr-3">
-                          <Label className="text-xs font-black text-amber-900 flex items-center gap-2 uppercase tracking-tight">
+                          <Label className="text-xs font-bold text-amber-950 flex items-center gap-2">
                             <Banknote className="h-4 w-4 text-amber-600 shrink-0" /> Cash on Delivery
                           </Label>
-                          <p className="text-[9px] text-amber-700/80 font-bold uppercase tracking-wider">
+                          <p className="text-xs text-amber-800/80">
                             Allow doorstep COD orders
                           </p>
                         </div>
-                        <Switch 
-                          checked={codEnabled} 
-                          onCheckedChange={setCodEnabled} 
-                          className="data-[state=checked]:bg-amber-600 shadow-sm" 
+                        <Switch
+                          checked={codEnabled}
+                          onCheckedChange={setCodEnabled}
+                          className="data-[state=checked]:bg-amber-600"
                         />
                       </div>
 
-                      <div className="flex items-center justify-between p-5 bg-primary/5 rounded-[2rem] border border-primary/10 transition-all group hover:bg-primary/10">
+                      <div className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-200 transition-colors hover:bg-slate-100/70">
                         <div className="space-y-1 text-left pr-3">
-                          <Label className="text-xs font-black text-primary flex items-center gap-2 uppercase tracking-tight">
-                            <Percent className="h-4 w-4 shrink-0" /> Show Discounts
+                          <Label className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                            <Percent className="h-4 w-4 text-primary shrink-0" /> Show Discounts
                           </Label>
-                          <p className="text-[9px] font-bold text-primary/60 uppercase tracking-wider">
-                            Strike-through MRP & % off
+                          <p className="text-xs text-slate-600">
+                            Strike-through MRP &amp; % off
                           </p>
                         </div>
-                        <Switch 
-                          checked={showDiscount} 
-                          onCheckedChange={setShowDiscount} 
-                          className="data-[state=checked]:bg-primary shadow-sm" 
+                        <Switch
+                          checked={showDiscount}
+                          onCheckedChange={setShowDiscount}
+                          className="data-[state=checked]:bg-primary"
                         />
                       </div>
                     </div>
@@ -1593,13 +1592,13 @@ export default function EcommerceManagerPage() {
               </Card>
 
               {/* Top Announcement Bar Builder */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-amber-50/60 border-b py-5 px-8 flex flex-row items-center justify-between text-left">
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-amber-50/60 border-b border-amber-200 py-5 px-6 sm:px-8 flex flex-row items-center justify-between text-left">
                   <div className="space-y-0.5">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-amber-900 flex items-center gap-2.5">
-                      <Megaphone className="h-4 w-4 text-amber-600" /> Top Announcement Bar
+                    <CardTitle className="text-sm font-bold text-amber-950 flex items-center gap-2.5">
+                      <Megaphone className="h-4 w-4 text-amber-700" /> Top Announcement Bar
                     </CardTitle>
-                    <p className="text-[9px] font-bold text-amber-800/70 uppercase">
+                    <p className="text-xs text-amber-800">
                       Highlight festival offers, coupon codes, or free delivery notices above your navbar
                     </p>
                   </div>
@@ -1611,9 +1610,9 @@ export default function EcommerceManagerPage() {
                     className="data-[state=checked]:bg-amber-600"
                   />
                 </CardHeader>
-                <CardContent className="p-8 space-y-5">
+                <CardContent className="p-6 sm:p-8 space-y-5">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                    <Label className="text-xs font-semibold text-slate-600">
                       Banner Message
                     </Label>
                     <Input
@@ -1622,12 +1621,12 @@ export default function EcommerceManagerPage() {
                         setAnnouncementBar((prev) => ({ ...prev, text: e.target.value }))
                       }
                       placeholder="e.g. Use code WELCOME10 for 10% OFF your first order!"
-                      className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-sm"
+                      className="h-11 rounded-xl bg-slate-50 border-slate-200 font-medium text-sm"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div className="space-y-1.5 sm:col-span-1">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                      <Label className="text-xs font-semibold text-slate-600">
                         Link Text
                       </Label>
                       <Input
@@ -1636,11 +1635,11 @@ export default function EcommerceManagerPage() {
                           setAnnouncementBar((prev) => ({ ...prev, ctaLabel: e.target.value }))
                         }
                         placeholder="Shop Now"
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-bold"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-medium"
                       />
                     </div>
                     <div className="space-y-1.5 sm:col-span-1">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                      <Label className="text-xs font-semibold text-slate-600">
                         Link Target
                       </Label>
                       <Input
@@ -1649,11 +1648,11 @@ export default function EcommerceManagerPage() {
                           setAnnouncementBar((prev) => ({ ...prev, ctaUrl: e.target.value }))
                         }
                         placeholder="#store-catalog"
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                      <Label className="text-xs font-semibold text-slate-600">
                         Bar Fill
                       </Label>
                       <Input
@@ -1666,7 +1665,7 @@ export default function EcommerceManagerPage() {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                      <Label className="text-xs font-semibold text-slate-600">
                         Text Color
                       </Label>
                       <Input
@@ -1683,42 +1682,42 @@ export default function EcommerceManagerPage() {
               </Card>
 
               {/* 4. Section/Layout Controls: Reorder, Toggle, Inline Edit, Visual Editor */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-muted/30 border-b py-6 px-8 flex flex-row flex-wrap items-center justify-between gap-3 text-left">
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row flex-wrap items-center justify-between gap-3 text-left">
                   <div className="space-y-1">
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-3">
-                      <Layout className="h-4 w-4" /> Section & Layout Controls
+                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                      <Layout className="h-4 w-4 text-primary" /> Section &amp; Layout Controls
                     </CardTitle>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Add professional blocks, reorder, toggle visibility, or edit storefront section copy directly</p>
+                    <p className="text-xs text-slate-500">Add blocks, reorder, toggle visibility, or edit storefront section copy directly</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Button
                       type="button"
                       size="sm"
                       onClick={() => setAddSectionOpen(true)}
-                      className="h-8 text-[9px] font-black uppercase rounded-xl bg-primary text-white gap-1.5"
+                      className="h-9 text-xs font-semibold rounded-xl bg-primary text-white gap-1.5"
                     >
                       <Plus className="h-3.5 w-3.5" /> Add Section
                     </Button>
-                    <Button 
+                    <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleSave(websiteData?.status || 'draft')}
                       disabled={isSaving || isPending}
-                      className="h-8 text-[9px] font-black uppercase rounded-xl border-primary/20 text-primary"
+                      className="h-9 text-xs font-semibold rounded-xl border-slate-200 text-slate-800"
                     >
                       Save Layout
                     </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="divide-y">
+                  <div className="divide-y divide-slate-200">
                     {sections.map((section, idx) => {
                       const IconComp = ICON_MAP[section.iconName] || Globe;
                       const isSoleProducts =
                         section.type === "products" && productsSectionCount <= 1;
                       return (
-                        <div key={section.id} className="p-5 sm:px-6 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 hover:bg-muted/5 transition-all text-left">
+                        <div key={section.id} className="p-5 sm:px-6 flex flex-wrap sm:flex-nowrap items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors text-left">
                           <div className="flex items-center gap-4 min-w-0">
                             <div className="flex flex-col gap-1 shrink-0">
                               <Button
@@ -1744,33 +1743,33 @@ export default function EcommerceManagerPage() {
                                 <ArrowDown className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="h-11 w-11 rounded-2xl bg-muted/30 flex items-center justify-center shadow-inner shrink-0">
-                              <IconComp className="h-5 w-5 text-slate-500" />
+                            <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                              <IconComp className="h-5 w-5 text-slate-600" />
                             </div>
                             <div className="text-left min-w-0">
-                              <span className="text-sm font-black text-slate-900 uppercase tracking-tight block truncate">
+                              <span className="text-sm font-bold text-slate-900 block truncate">
                                 {section.content.title || section.label}
                               </span>
-                              <span className="text-[9px] font-mono text-muted-foreground uppercase">
+                              <span className="text-xs font-mono tabular-nums text-slate-500">
                                 {section.type} · #{idx + 1}
                               </span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2.5 shrink-0 ml-auto">
-                            <Badge variant={section.status === 'Active' ? 'secondary' : 'outline'} className={cn("text-[8px] uppercase font-black h-5 px-3 border-none shadow-sm", section.status === 'Active' ? "bg-green-100 text-green-700" : "bg-muted text-slate-400")}>
+                            <span className={cn("text-xs font-semibold", section.status === 'Active' ? "text-emerald-700" : "text-slate-400")}>
                               {section.status}
-                            </Badge>
-                            <Switch 
-                              checked={section.status === 'Active'} 
-                              onCheckedChange={() => toggleSection(section.id)} 
-                              className="scale-90 data-[state=checked]:bg-primary" 
+                            </span>
+                            <Switch
+                              checked={section.status === 'Active'}
+                              onCheckedChange={() => toggleSection(section.id)}
+                              className="scale-90 data-[state=checked]:bg-primary"
                             />
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={() => setEditingSectionId(section.id)}
-                              className="h-8 px-3 rounded-xl text-[10px] font-black uppercase gap-1.5"
+                              className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 border-slate-200"
                             >
                               <Edit2 className="h-3 w-3" /> Edit
                             </Button>
@@ -1791,9 +1790,9 @@ export default function EcommerceManagerPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-xl" title="Open Full Visual Editor">
+                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-xl" title="Open Full Visual Editor" aria-label="Open Full Visual Editor">
                               <Link href="/website/editor/main">
-                                <Settings className="h-4 w-4 text-muted-foreground opacity-60 hover:opacity-100" />
+                                <Settings className="h-4 w-4 text-slate-400 hover:text-slate-900" />
                               </Link>
                             </Button>
                           </div>
@@ -1805,18 +1804,18 @@ export default function EcommerceManagerPage() {
               </Card>
 
               {/* Social Links & Footer Trust Builder */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-slate-50 border-b py-5 px-8 flex flex-row items-center justify-between">
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-700 flex items-center gap-2.5">
-                      <Globe className="h-4 w-4 text-primary" /> Social Links & Footer Builder
+                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2.5">
+                      <Globe className="h-4 w-4 text-primary" /> Social Links &amp; Footer Builder
                     </CardTitle>
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Displayed in your public storefront footer with direct merchant links
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Label className="text-[9px] font-black uppercase text-slate-600">
+                    <Label className="text-xs font-semibold text-slate-600">
                       Trust Strip
                     </Label>
                     <Switch
@@ -1827,9 +1826,9 @@ export default function EcommerceManagerPage() {
                     />
                   </div>
                 </CardHeader>
-                <CardContent className="p-8 space-y-5">
+                <CardContent className="p-6 sm:p-8 space-y-5">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                    <Label className="text-xs font-semibold text-slate-600">
                       Footer Store Tagline
                     </Label>
                     <Input
@@ -1838,12 +1837,12 @@ export default function EcommerceManagerPage() {
                         setFooterConfig((prev) => ({ ...prev, tagline: e.target.value }))
                       }
                       placeholder="Genuine quality products delivered directly from our store desk."
-                      className="h-11 rounded-xl bg-muted/20 border-none text-xs font-semibold"
+                      className="h-11 rounded-xl bg-slate-50 border-slate-200 text-xs font-medium"
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                      <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                         <Instagram className="h-3.5 w-3.5 text-pink-600" /> Instagram URL
                       </Label>
                       <Input
@@ -1852,11 +1851,11 @@ export default function EcommerceManagerPage() {
                           setFooterConfig((prev) => ({ ...prev, instagramUrl: e.target.value }))
                         }
                         placeholder="https://instagram.com/..."
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                      <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                         <Facebook className="h-3.5 w-3.5 text-blue-600" /> Facebook URL
                       </Label>
                       <Input
@@ -1865,11 +1864,11 @@ export default function EcommerceManagerPage() {
                           setFooterConfig((prev) => ({ ...prev, facebookUrl: e.target.value }))
                         }
                         placeholder="https://facebook.com/..."
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                      <Label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                         <Youtube className="h-3.5 w-3.5 text-red-600" /> YouTube URL
                       </Label>
                       <Input
@@ -1878,27 +1877,27 @@ export default function EcommerceManagerPage() {
                           setFooterConfig((prev) => ({ ...prev, youtubeUrl: e.target.value }))
                         }
                         placeholder="https://youtube.com/..."
-                        className="h-10 rounded-xl bg-muted/20 border-none text-xs font-mono"
+                        className="h-10 rounded-xl bg-slate-50 border-slate-200 text-xs font-mono"
                       />
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="bg-muted/20 p-5 border-t flex justify-end">
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
                   <Button
                     type="button"
                     size="sm"
                     onClick={() => handleSave(websiteData?.status || "draft")}
                     disabled={isSaving || isPending}
-                    className="h-9 px-5 rounded-xl bg-primary text-white text-[10px] font-black uppercase"
+                    className="h-9 px-5 rounded-xl bg-primary text-white text-xs font-semibold"
                   >
                     {isSaving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
-                    Save Design & Layout
+                    Save Design &amp; Layout
                   </Button>
                 </CardFooter>
               </Card>
             </div>
 
-            {/* Live Simulator Node */}
+            {/* Live Storefront Simulator */}
             <div className="lg:col-span-4 space-y-8 lg:sticky lg:top-24 min-w-0">
               <StoreSimulator
                 storeName={storeName || business?.name || "My Brand"}
@@ -1933,23 +1932,23 @@ export default function EcommerceManagerPage() {
         </TabsContent>
 
         {/* 3. CATALOG CONTROL TAB: product attribute controls, showOnWebsite, price/discount controls, toggleProductAttr */}
-        <TabsContent value="catalog" className="space-y-8 animate-in fade-in">
-          <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2.5rem] border text-left">
-            <CardHeader className="bg-muted/30 border-b py-6 px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <TabsContent value="catalog" className="space-y-8">
+          <Card className="overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-none text-left">
+            <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="text-left">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-3"><Layers className="h-5 w-5" /> Online Catalog Node</CardTitle>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase mt-2 tracking-widest">
-                  Manage product visibility (showOnWebsite), online prices, discount indicators, and marketing attributes
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3"><Layers className="h-5 w-5 text-primary" /> Online Catalog</CardTitle>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage product visibility, online sale prices, discount indicators, and merchandising tags
                 </p>
               </div>
-              <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="flex items-center gap-3 w-full md:w-auto">
                 <div className="relative w-full md:w-80">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                  <Input 
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
                     value={searchCatalog}
                     onChange={(e) => setSearchCatalog(e.target.value)}
-                    placeholder="Search SKU or Name..." 
-                    className="pl-10 h-11 text-xs rounded-xl shadow-inner bg-white border-none" 
+                    placeholder="Search SKU or Name..."
+                    className="pl-10 h-11 text-xs rounded-xl bg-white border-slate-200"
                   />
                 </div>
                 {searchCatalog && (
@@ -1960,27 +1959,27 @@ export default function EcommerceManagerPage() {
               </div>
             </CardHeader>
 
-            <div className="p-4 px-8 bg-muted/10 border-b flex items-center justify-between text-xs font-bold text-muted-foreground uppercase">
+            <div className="p-4 px-6 sm:px-8 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between text-xs font-semibold text-slate-600 tabular-nums">
               <span>Showing {filteredCatalogProducts.length} of {(dbProducts || []).length} Inventory Items</span>
-              <span className="text-green-700 font-black">{onlineProductsCount} Products Online</span>
+              <span className="text-emerald-700 font-bold">{onlineProductsCount} Products Online</span>
             </div>
 
             <div className="overflow-x-auto scrollbar-hide">
               <Table className="min-w-[1100px]">
                 <TableHeader>
-                  <TableRow className="bg-muted/10 border-b">
-                    <TableHead className="text-[10px] font-black uppercase h-14 pl-10">Product Entity</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-14">Base / MRP Price</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-14">Online Price (Sale)</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-14">Store Status</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-14">Featured</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase text-center h-14">Best Seller</TableHead>
-                    <TableHead className="text-right pr-10 h-14 w-32"></TableHead>
+                  <TableRow className="bg-slate-50/70 border-b border-slate-200">
+                    <TableHead className="text-xs font-semibold text-slate-600 h-12 pl-8">Product</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-600 text-center h-12">Base / MRP Price</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-600 text-center h-12">Online Price (Sale)</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-600 text-center h-12">Store Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-600 text-center h-12">Featured</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-600 text-center h-12">Best Seller</TableHead>
+                    <TableHead className="text-right pr-8 h-12 w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredCatalogProducts.length === 0 ? (
-                    <TableRow><TableCell colSpan={7} className="h-60 text-center opacity-30 italic text-sm font-black uppercase">No inventory nodes found in registry.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="h-60 text-center text-slate-400 text-sm font-medium">No inventory items found in registry.</TableCell></TableRow>
                   ) : (
                     filteredCatalogProducts.map((p) => {
                       const basePrice = p.price || 0;
@@ -1989,18 +1988,21 @@ export default function EcommerceManagerPage() {
                       const discountPercent = hasDiscount && basePrice > 0 ? Math.round(((basePrice - onlinePrice) / basePrice) * 100) : 0;
 
                       return (
-                        <TableRow key={p.id} className="group hover:bg-muted/5 transition-colors border-b">
-                          <TableCell className="pl-10 py-6">
-                            <div className="flex items-center gap-5 text-left">
-                              <div className="h-12 w-12 rounded-2xl bg-muted/20 flex items-center justify-center font-black text-primary text-xl border shadow-inner shrink-0">
+                        <TableRow key={p.id} className="group hover:bg-slate-50/70 transition-colors border-b border-slate-100">
+                          <TableCell className="pl-8 py-5">
+                            <div className="flex items-center gap-4 text-left">
+                              <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-primary text-lg shrink-0">
                                  {p.name?.charAt(0)}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight leading-none mb-1.5">{p.name}</p>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-[7px] font-mono h-4 border-primary/20 text-primary uppercase">SKU: {p.sku || 'N/A'}</Badge>
+                                <p className="text-sm font-bold text-slate-900 truncate leading-none mb-1.5">{p.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                  <span className="font-mono">SKU: {p.sku || 'N/A'}</span>
                                   {p.category && (
-                                    <span className="text-[8px] font-bold text-muted-foreground uppercase">{p.category}</span>
+                                    <>
+                                      <span aria-hidden="true">·</span>
+                                      <span className="font-medium">{p.category}</span>
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -2008,60 +2010,61 @@ export default function EcommerceManagerPage() {
                           </TableCell>
 
                           {/* Base / MRP Price */}
-                          <TableCell className="text-center font-bold text-xs text-slate-600">
+                          <TableCell className="text-center font-semibold font-mono tabular-nums text-xs text-slate-600">
                             <span>{currencySymbol}{basePrice.toLocaleString()}</span>
                           </TableCell>
 
                           {/* Online Sale Price & Discount Controls */}
                           <TableCell className="text-center">
                             <div className="inline-flex flex-col items-center gap-1.5">
-                              <div className="inline-flex items-center gap-2 bg-primary/5 p-1 rounded-xl border border-primary/10">
-                                <span className="text-[9px] font-black text-primary ml-2">{currencySymbol}</span>
-                                <Input 
-                                  type="number" 
-                                  defaultValue={onlinePrice} 
+                              <div className="inline-flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                                <span className="text-xs font-bold text-primary">{currencySymbol}</span>
+                                <Input
+                                  type="number"
+                                  defaultValue={onlinePrice}
                                   onBlur={(e) => {
                                     const val = parseFloat(e.target.value);
                                     if (!isNaN(val) && businessId) {
-                                      updateDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'products', p.id), { 
+                                      updateDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'products', p.id), {
                                         onlinePrice: val,
-                                        updatedAt: serverTimestamp() 
+                                        updatedAt: serverTimestamp()
                                       });
                                       toast({ title: "Price Updated", description: `${p.name} online price set to ${currencySymbol}${val}` });
                                     }
                                   }}
-                                  className="h-8 w-24 text-center text-xs font-black border-none bg-transparent focus-visible:ring-0"
+                                  className="h-8 w-24 text-center text-xs font-mono tabular-nums font-bold border-none bg-transparent focus-visible:ring-0"
                                 />
                               </div>
                               {hasDiscount && (
-                                <Badge className="bg-red-50 text-red-600 border border-red-200 text-[8px] font-black px-2 py-0">
-                                  {discountPercent}% OFF
-                                </Badge>
+                                <span className="text-xs font-semibold font-mono tabular-nums text-rose-600">
+                                  {discountPercent}% off
+                                </span>
                               )}
                             </div>
                           </TableCell>
 
                           {/* Store Status (showOnWebsite toggle) */}
                           <TableCell className="text-center">
-                            <div className="flex flex-col items-center gap-2">
-                               <Switch 
-                                 checked={!!p.showOnWebsite} 
+                            <div className="flex flex-col items-center gap-1.5">
+                               <Switch
+                                 checked={!!p.showOnWebsite}
                                  onCheckedChange={() => toggleProductAttr(p.id, 'showOnWebsite')}
-                                 className="scale-90 data-[state=checked]:bg-green-600" 
+                                 className="scale-90 data-[state=checked]:bg-emerald-600"
                                />
-                               <span className={cn("text-[7px] font-black uppercase tracking-widest", p.showOnWebsite ? "text-green-600" : "text-slate-400")}>
-                                 {p.showOnWebsite ? 'VISIBLE' : 'HIDDEN'}
+                               <span className={cn("text-xs font-semibold", p.showOnWebsite ? "text-emerald-700" : "text-slate-400")}>
+                                 {p.showOnWebsite ? 'Visible' : 'Hidden'}
                                </span>
                             </div>
                           </TableCell>
 
                           {/* Featured Attribute */}
                           <TableCell className="text-center">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               title="Toggle Featured status"
-                              className={cn("h-10 w-10 rounded-2xl transition-all", p.isFeatured ? "text-primary bg-primary/10 shadow-inner" : "text-slate-200")}
+                              aria-label={`Toggle featured status for ${p.name}`}
+                              className={cn("h-10 w-10 rounded-xl transition-colors", p.isFeatured ? "text-primary bg-primary/10" : "text-slate-300")}
                               onClick={() => toggleProductAttr(p.id, 'isFeatured')}
                             >
                               <Star className={cn("h-5 w-5", p.isFeatured && "fill-current text-primary")} />
@@ -2070,19 +2073,20 @@ export default function EcommerceManagerPage() {
 
                           {/* Best Seller Attribute */}
                           <TableCell className="text-center">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               title="Toggle Best Seller status"
-                              className={cn("h-10 w-10 rounded-2xl transition-all", p.isBestSeller ? "text-orange-500 bg-orange-50 shadow-inner" : "text-slate-200")}
+                              aria-label={`Toggle best seller status for ${p.name}`}
+                              className={cn("h-10 w-10 rounded-xl transition-colors", p.isBestSeller ? "text-amber-600 bg-amber-50" : "text-slate-300")}
                               onClick={() => toggleProductAttr(p.id, 'isBestSeller')}
                             >
-                              <Flame className={cn("h-5 w-5", p.isBestSeller && "fill-current text-orange-500")} />
+                              <Flame className={cn("h-5 w-5", p.isBestSeller && "fill-current text-amber-600")} />
                             </Button>
                           </TableCell>
 
-                          <TableCell className="text-right pr-10">
-                             <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl opacity-0 group-hover:opacity-100 transition-all"><Link href={`/inventory?id=${p.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>
+                          <TableCell className="text-right pr-8">
+                             <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" aria-label={`Inspect ${p.name}`}><Link href={`/inventory?id=${p.id}`}><ChevronRight className="h-4 w-4" /></Link></Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -2095,114 +2099,114 @@ export default function EcommerceManagerPage() {
         </TabsContent>
 
         {/* 4. PHASE 8: STOREFRONT SEO & SOCIAL SHARING TAB */}
-        <TabsContent value="seo" className="space-y-8 animate-in fade-in text-left">
+        <TabsContent value="seo" className="space-y-8 text-left">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
             {/* Left Column: Metadata & OpenGraph Inputs */}
             <div className="space-y-8 text-left">
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-muted/30 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-3">
-                    <Sparkles className="h-5 w-5" /> 1. Search Engine Optimization (SEO)
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-primary" /> 1. Search Engine Optimization (SEO)
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-6 text-left">
                   <div className="space-y-2 text-left">
                     <div className="flex justify-between items-center">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Page Title Tag (Meta Title)</Label>
-                      <span className={cn("text-[9px] font-mono font-bold", seoTitle.length > 60 ? "text-amber-600" : "text-slate-400")}>
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">Page Title Tag (Meta Title)</Label>
+                      <span className={cn("text-xs font-mono tabular-nums font-semibold", seoTitle.length > 60 ? "text-amber-600" : "text-slate-500")}>
                         {seoTitle.length}/60 chars
                       </span>
                     </div>
-                    <Input 
-                      value={seoTitle} 
-                      onChange={(e) => setSeoTitle(e.target.value)} 
+                    <Input
+                      value={seoTitle}
+                      onChange={(e) => setSeoTitle(e.target.value)}
                       placeholder={storeName ? `${storeName} – Official Online Store` : "Brand Name – Online Store"}
-                      className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" 
+                      className="h-11 rounded-xl font-semibold bg-slate-50 border-slate-200"
                     />
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase px-1">Ideal length: 30-60 characters for maximum search visibility.</p>
+                    <p className="text-xs text-slate-500 px-1">Ideal length: 30–60 characters for maximum search visibility.</p>
                   </div>
 
                   <div className="space-y-2 text-left">
                     <div className="flex justify-between items-center">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Meta Description</Label>
-                      <span className={cn("text-[9px] font-mono font-bold", seoDescription.length > 160 ? "text-amber-600" : "text-slate-400")}>
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">Meta Description</Label>
+                      <span className={cn("text-xs font-mono tabular-nums font-semibold", seoDescription.length > 160 ? "text-amber-600" : "text-slate-500")}>
                         {seoDescription.length}/160 chars
                       </span>
                     </div>
-                    <Textarea 
-                      value={seoDescription} 
-                      onChange={(e) => setSeoDescription(e.target.value)} 
-                      placeholder="Browse our official product catalog and order online with fast, secure delivery..." 
-                      className="min-h-[90px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-xs font-medium leading-relaxed" 
+                    <Textarea
+                      value={seoDescription}
+                      onChange={(e) => setSeoDescription(e.target.value)}
+                      placeholder="Browse our official product catalog and order online with fast, secure delivery..."
+                      className="min-h-[90px] rounded-xl bg-slate-50 border-slate-200 p-3.5 text-xs font-medium leading-relaxed"
                     />
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase px-1">Ideal length: 120-160 characters. Appears directly in Google snippets.</p>
+                    <p className="text-xs text-slate-500 px-1">Ideal length: 120–160 characters. Appears directly in Google snippets.</p>
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Search Keywords (Comma Separated)</Label>
-                    <Input 
-                      value={seoKeywords} 
-                      onChange={(e) => setSeoKeywords(e.target.value)} 
-                      placeholder="e.g. organic groceries, pure ghee, online delivery Mumbai" 
-                      className="h-12 rounded-xl bg-muted/20 border-none shadow-inner text-xs font-medium" 
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Search Keywords (Comma Separated)</Label>
+                    <Input
+                      value={seoKeywords}
+                      onChange={(e) => setSeoKeywords(e.target.value)}
+                      placeholder="e.g. organic groceries, pure ghee, online delivery Mumbai"
+                      className="h-11 rounded-xl bg-slate-50 border-slate-200 text-xs font-medium"
                     />
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Store Favicon URL</Label>
-                    <Input 
-                      value={faviconUrl} 
-                      onChange={(e) => setFaviconUrl(e.target.value)} 
-                      placeholder="https://example.com/favicon.png" 
-                      className="h-12 rounded-xl font-mono text-xs bg-muted/20 border-none shadow-inner" 
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Store Favicon URL</Label>
+                    <Input
+                      value={faviconUrl}
+                      onChange={(e) => setFaviconUrl(e.target.value)}
+                      placeholder="https://example.com/favicon.png"
+                      className="h-11 rounded-xl font-mono text-xs bg-slate-50 border-slate-200"
                     />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-blue-50/50 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-3">
-                    <Globe className="h-5 w-5" /> 2. Social Sharing & Open Graph
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                    <Globe className="h-5 w-5 text-blue-700" /> 2. Social Sharing &amp; Open Graph
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-6 text-left">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Social Share Card Title (og:title)</Label>
-                    <Input 
-                      value={ogTitle} 
-                      onChange={(e) => setOgTitle(e.target.value)} 
-                      placeholder={seoTitle || storeName || "Brand Store"} 
-                      className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" 
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Social Share Card Title (og:title)</Label>
+                    <Input
+                      value={ogTitle}
+                      onChange={(e) => setOgTitle(e.target.value)}
+                      placeholder={seoTitle || storeName || "Brand Store"}
+                      className="h-11 rounded-xl font-semibold bg-slate-50 border-slate-200"
                     />
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Social Card Description (og:description)</Label>
-                    <Textarea 
-                      value={ogDescription} 
-                      onChange={(e) => setOgDescription(e.target.value)} 
-                      placeholder={seoDescription || "Check out our latest products and place orders online."} 
-                      className="min-h-[80px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 text-xs font-medium leading-relaxed" 
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Social Card Description (og:description)</Label>
+                    <Textarea
+                      value={ogDescription}
+                      onChange={(e) => setOgDescription(e.target.value)}
+                      placeholder={seoDescription || "Check out our latest products and place orders online."}
+                      className="min-h-[80px] rounded-xl bg-slate-50 border-slate-200 p-3.5 text-xs font-medium leading-relaxed"
                     />
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Social Share Image URL (1200x630 Recommended)</Label>
-                    <Input 
-                      value={ogImage} 
-                      onChange={(e) => { setOgImage(e.target.value); setSocialShareImage(e.target.value); }} 
-                      placeholder="https://example.com/images/store-banner.jpg" 
-                      className="h-12 rounded-xl font-mono text-xs bg-muted/20 border-none shadow-inner" 
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Social Share Image URL (1200×630 Recommended)</Label>
+                    <Input
+                      value={ogImage}
+                      onChange={(e) => { setOgImage(e.target.value); setSocialShareImage(e.target.value); }}
+                      placeholder="https://example.com/images/store-banner.jpg"
+                      className="h-11 rounded-xl font-mono text-xs bg-slate-50 border-slate-200"
                     />
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase px-1">Displayed when sharing on WhatsApp, Facebook, LinkedIn, X.</p>
+                    <p className="text-xs text-slate-500 px-1">Displayed when sharing on WhatsApp, Facebook, LinkedIn, X.</p>
                   </div>
                 </CardContent>
-                <CardFooter className="bg-muted/20 p-6 border-t flex justify-end">
-                  <Button 
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
+                  <Button
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-11 text-[10px] font-black uppercase tracking-widest px-8 bg-primary text-white rounded-xl shadow-lg"
+                    className="h-10 text-xs font-semibold px-6 bg-primary text-white rounded-xl"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     Save SEO Settings
@@ -2210,28 +2214,28 @@ export default function EcommerceManagerPage() {
                 </CardFooter>
               </Card>
 
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-slate-900 text-white border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-3">
-                    <Activity className="h-5 w-5 text-accent" /> 3. Analytics Pixels & Search Verification
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-900 text-white border-b border-slate-800 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-white flex items-center gap-3">
+                    <Activity className="h-5 w-5 text-sky-300" /> 3. Analytics Pixels &amp; Search Verification
                   </CardTitle>
-                  <p className="text-[10px] text-slate-300 mt-1">
+                  <p className="text-xs text-slate-300 mt-1">
                     Automatically inject Google Analytics 4 and Meta Pixel tags onto your live storefront.
                   </p>
                 </CardHeader>
-                <CardContent className="p-8 space-y-5 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-5 text-left">
                   <div className="space-y-2 text-left">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">
                         Google Analytics 4 Measurement ID
                       </Label>
                       {trackingConfig.ga4MeasurementId && (
                         <span
                           className={cn(
-                            "text-[10px] font-bold uppercase",
+                            "text-xs font-semibold",
                             isValidGa4MeasurementId(trackingConfig.ga4MeasurementId)
-                              ? "text-emerald-600"
-                              : "text-amber-600"
+                              ? "text-emerald-700"
+                              : "text-amber-700"
                           )}
                         >
                           {isValidGa4MeasurementId(trackingConfig.ga4MeasurementId)
@@ -2249,27 +2253,27 @@ export default function EcommerceManagerPage() {
                         }))
                       }
                       placeholder="G-XXXXXXXXXX"
-                      className="h-12 rounded-xl font-mono text-xs font-bold bg-muted/20 border-none shadow-inner uppercase"
+                      className="h-11 rounded-xl font-mono text-xs font-bold bg-slate-50 border-slate-200 uppercase"
                     />
                   </div>
 
                   <div className="space-y-2 text-left">
                     <div className="flex items-center justify-between">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">
                         Meta (Facebook) Pixel ID
                       </Label>
                       {trackingConfig.metaPixelId && (
                         <span
                           className={cn(
-                            "text-[10px] font-bold uppercase",
+                            "text-xs font-semibold",
                             isValidMetaPixelId(trackingConfig.metaPixelId)
-                              ? "text-emerald-600"
-                              : "text-amber-600"
+                              ? "text-emerald-700"
+                              : "text-amber-700"
                           )}
                         >
                           {isValidMetaPixelId(trackingConfig.metaPixelId)
                             ? "Valid Pixel"
-                            : "Enter 10-20 digits"}
+                            : "Enter 10–20 digits"}
                         </span>
                       )}
                     </div>
@@ -2282,12 +2286,12 @@ export default function EcommerceManagerPage() {
                         }))
                       }
                       placeholder="123456789012345"
-                      className="h-12 rounded-xl font-mono text-xs font-bold bg-muted/20 border-none shadow-inner"
+                      className="h-11 rounded-xl font-mono text-xs font-bold bg-slate-50 border-slate-200"
                     />
                   </div>
 
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       Google Search Console Verification Code
                     </Label>
                     <Input
@@ -2299,19 +2303,19 @@ export default function EcommerceManagerPage() {
                         }))
                       }
                       placeholder="Paste verification content token or full <meta> tag"
-                      className="h-12 rounded-xl font-mono text-xs bg-muted/20 border-none shadow-inner"
+                      className="h-11 rounded-xl font-mono text-xs bg-slate-50 border-slate-200"
                     />
                   </div>
                 </CardContent>
-                <CardFooter className="bg-muted/20 p-6 border-t flex justify-end">
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
                   <Button
                     type="button"
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-11 text-[10px] font-black uppercase tracking-widest px-8 bg-slate-900 text-white rounded-xl shadow-lg"
+                    className="h-10 text-xs font-semibold px-6 bg-slate-900 text-white rounded-xl"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    Save Tracking & Pixels
+                    Save Tracking &amp; Pixels
                   </Button>
                 </CardFooter>
               </Card>
@@ -2320,19 +2324,19 @@ export default function EcommerceManagerPage() {
             {/* Right Column: Live Real-time Search & Social Simulators */}
             <div className="space-y-8 text-left">
               {/* Google Search Result Preview */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-muted/30 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-3">
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
                     <Search className="h-5 w-5 text-primary" /> Live Google Search Result Preview
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-4 text-left">
-                  <div className="p-6 rounded-2xl bg-white border shadow-sm font-sans space-y-1.5 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-4 text-left">
+                  <div className="p-6 rounded-xl bg-white border border-slate-200 font-sans space-y-1.5 text-left">
                     <div className="flex items-center gap-2 text-xs text-slate-600">
-                      <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">
-                        {faviconUrl ? <img src={faviconUrl} alt="" className="h-4 w-4 rounded-full" /> : <Globe className="h-3 w-3 text-primary" />}
+                      <div className="h-5 w-5 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold shrink-0">
+                        {faviconUrl ? <img src={faviconUrl} alt="Store Favicon" referrerPolicy="no-referrer" className="h-4 w-4 rounded-full" /> : <Globe className="h-3 w-3 text-primary" />}
                       </div>
-                      <span className="font-mono text-[11px] text-slate-800 truncate">
+                      <span className="font-mono text-xs text-slate-800 truncate">
                         https://{customDomain || (slug ? `${slug}.biztrix.in` : "mystore.biztrix.in")}/shop
                       </span>
                     </div>
@@ -2343,34 +2347,34 @@ export default function EcommerceManagerPage() {
                       {seoDescription || "Browse our official product catalog and order online with fast, secure delivery and verified payment."}
                     </p>
                   </div>
-                  <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider text-center">
+                  <p className="text-xs text-slate-500 font-medium text-center">
                     Rendered dynamically for Google, Bing, and Search Engine Crawlers
                   </p>
                 </CardContent>
               </Card>
 
               {/* Social Media Share Preview (WhatsApp / Facebook Card) */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-emerald-50/50 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-emerald-800 flex items-center gap-3">
-                    <MessageCircle className="h-5 w-5 text-emerald-600" /> WhatsApp & Social Card Preview
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-emerald-50/50 border-b border-emerald-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-emerald-950 flex items-center gap-3">
+                    <MessageCircle className="h-5 w-5 text-emerald-700" /> WhatsApp &amp; Social Card Preview
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-4 text-left">
-                  <div className="rounded-2xl border overflow-hidden bg-slate-50 shadow-sm max-w-sm mx-auto text-left">
+                <CardContent className="p-6 sm:p-8 space-y-4 text-left">
+                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 max-w-sm mx-auto text-left">
                     <div className="aspect-[1.91/1] bg-slate-200 relative overflow-hidden flex items-center justify-center">
                       {ogImage ? (
-                        <img src={ogImage} alt="Social Preview" className="h-full w-full object-cover" />
+                        <img src={ogImage} alt="Social Preview" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                       ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-400 p-6 text-center">
-                          <ImageIcon className="h-10 w-10 opacity-30 mb-2" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">No Social Image Provided</span>
-                          <span className="text-[8px] opacity-60">Add a 1200x630 banner URL for best presentation</span>
+                        <div className="flex flex-col items-center justify-center text-slate-500 p-6 text-center">
+                          <ImageIcon className="h-10 w-10 opacity-40 mb-2" />
+                          <span className="text-xs font-semibold">No Social Image Provided</span>
+                          <span className="text-xs text-slate-400">Add a 1200×630 banner URL for best presentation</span>
                         </div>
                       )}
                     </div>
                     <div className="p-4 bg-white space-y-1 text-left">
-                      <p className="text-[9px] font-mono uppercase text-slate-400">
+                      <p className="text-xs font-mono text-slate-500">
                         {customDomain || (slug ? `${slug}.biztrix.in` : "biztrix.in")}
                       </p>
                       <h4 className="text-sm font-bold text-slate-900 line-clamp-1 leading-snug">
@@ -2381,7 +2385,7 @@ export default function EcommerceManagerPage() {
                       </p>
                     </div>
                   </div>
-                  <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-wider text-center">
+                  <p className="text-xs text-slate-500 font-medium text-center">
                     Accurate representation when shared on WhatsApp, Facebook, iMessage, and X
                   </p>
                 </CardContent>
@@ -2391,55 +2395,55 @@ export default function EcommerceManagerPage() {
         </TabsContent>
 
         {/* 5. SETTINGS / CORE CONFIG TAB: Preserves all Identity, Ordering Sync & Phase 4A Custom Domain Controls */}
-        <TabsContent value="settings" className="space-y-8 animate-in fade-in">
+        <TabsContent value="settings" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start text-left">
             <div className="space-y-10">
-               <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-muted/30 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-primary flex items-center gap-3">
-                    <Building2 className="h-5 w-5" /> 1. Store Public Identity
+               <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                    <Building2 className="h-5 w-5 text-primary" /> 1. Store Public Identity
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-8 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-6 text-left">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Store Front Display Name</Label>
-                    <Input value={storeName || ""} onChange={(e) => setStoreName(e.target.value)} className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner" />
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Storefront Display Name</Label>
+                    <Input value={storeName || ""} onChange={(e) => setStoreName(e.target.value)} className="h-11 rounded-xl font-semibold bg-slate-50 border-slate-200" />
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest flex items-center gap-2">
+                    <Label className="text-xs font-semibold text-primary ml-1 flex items-center gap-2">
                       <Globe className="h-4 w-4" /> Store Subdomain (Slug)
                     </Label>
                     <div className="flex gap-2">
-                      <Input 
-                        value={slug} 
-                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))} 
-                        placeholder="e.g. your-brand" 
-                        className="h-12 rounded-xl font-black bg-muted/20 border-none shadow-inner flex-1" 
+                      <Input
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                        placeholder="e.g. your-brand"
+                        className="h-11 rounded-xl font-mono font-bold bg-slate-50 border-slate-200 flex-1"
                       />
-                      <div className="h-12 px-4 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-[10px] text-slate-400">.biztrix.in</div>
+                      <div className="h-11 px-4 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-mono font-semibold text-xs text-slate-500">.biztrix.in</div>
                     </div>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase px-1">This defines your public URL: {slug || '...'}.biztrix.in</p>
+                    <p className="text-xs text-slate-500 px-1">Public URL: <span className="font-mono">{slug || '...'}.biztrix.in</span></p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Customer Support Email</Label>
-                      <Input value={contactEmail || ""} onChange={(e) => setContactEmail(e.target.value.toLowerCase())} placeholder="support@brand.com" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" />
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">Customer Support Email</Label>
+                      <Input value={contactEmail || ""} onChange={(e) => setContactEmail(e.target.value.toLowerCase())} placeholder="support@brand.com" className="h-11 rounded-xl bg-slate-50 border-slate-200" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Public Contact Node</Label>
-                      <Input value={contactPhone || ""} onChange={(e) => setContactPhone(e.target.value)} className="h-12 rounded-xl bg-muted/20 border-none shadow-inner" />
+                      <Label className="text-xs font-semibold text-slate-600 ml-1">Public Contact Phone</Label>
+                      <Input value={contactPhone || ""} onChange={(e) => setContactPhone(e.target.value)} className="h-11 rounded-xl font-mono bg-slate-50 border-slate-200" />
                     </div>
                   </div>
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Official Address Registry</Label>
-                    <Textarea value={storeAddress || ""} onChange={(e) => setStoreAddress(e.target.value)} className="min-h-[100px] rounded-2xl bg-muted/20 border-none shadow-inner p-5 text-sm" />
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Official Business Address</Label>
+                    <Textarea value={storeAddress || ""} onChange={(e) => setStoreAddress(e.target.value)} className="min-h-[100px] rounded-xl bg-slate-50 border-slate-200 p-4 text-sm" />
                   </div>
                 </CardContent>
-                <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">
-                  <Button 
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
+                  <Button
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-10 text-[10px] font-black uppercase tracking-widest px-6 bg-primary text-white"
+                    className="h-10 text-xs font-semibold px-6 rounded-xl bg-primary text-white"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
                     Save Identity
@@ -2448,60 +2452,60 @@ export default function EcommerceManagerPage() {
               </Card>
 
               {/* 3. Custom Domain (Phase 4A) */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-blue-50 border-b py-6 px-8 text-left flex flex-row items-center justify-between">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-blue-700 flex items-center gap-3">
-                    <Lock className="h-5 w-5" /> 3. Custom Domain (Phase 4A)
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 text-left flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                    <Lock className="h-5 w-5 text-blue-700" /> 3. Custom Domain
                   </CardTitle>
-                  <Button asChild variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase text-blue-700">
+                  <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-semibold text-blue-700">
                     <Link href="/website/domains">DNS Hub <ChevronRight className="ml-1 h-3 w-3" /></Link>
                   </Button>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-6 text-left">
                   <div className="space-y-2 text-left">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Enter your custom domain</Label>
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">Enter your custom domain</Label>
                     <div className="flex gap-2">
-                      <Input 
-                        value={customDomain} 
-                        onChange={(e) => setCustomDomain(e.target.value.toLowerCase())} 
-                        placeholder="e.g. yourbrand.com" 
-                        className="h-12 rounded-xl font-bold bg-muted/20 border-none shadow-inner flex-1"
+                      <Input
+                        value={customDomain}
+                        onChange={(e) => setCustomDomain(e.target.value.toLowerCase())}
+                        placeholder="e.g. yourbrand.com"
+                        className="h-11 rounded-xl font-mono font-semibold bg-slate-50 border-slate-200 flex-1"
                         disabled={isPending}
                       />
                     </div>
-                     <p className="text-[8px] font-bold text-muted-foreground uppercase px-1">Do not include http:// or https://</p>
+                     <p className="text-xs text-slate-500 px-1">Do not include http:// or https://</p>
                   </div>
 
                   {websiteData?.customDomain && (
-                    <div className="p-4 bg-muted/40 rounded-xl border border-dashed space-y-3">
+                    <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 space-y-3">
                       <div className="flex items-center justify-between">
-                         <p className="text-xs font-bold uppercase text-slate-600">Current Domain: <span className="text-primary">{websiteData.customDomain}</span></p>
-                         <Badge className={cn(
-                           "text-[8px] uppercase font-black",
-                           websiteData.customDomainStatus === 'pending' && "bg-orange-100 text-orange-700",
-                           websiteData.customDomainStatus === 'active' && "bg-green-100 text-green-700",
+                         <p className="text-xs font-semibold text-slate-700">Current Domain: <span className="text-primary font-mono">{websiteData.customDomain}</span></p>
+                         <span className={cn(
+                           "text-xs font-semibold capitalize px-2.5 py-0.5 rounded-md",
+                           websiteData.customDomainStatus === 'pending' && "bg-amber-100 text-amber-800",
+                           websiteData.customDomainStatus === 'active' && "bg-emerald-100 text-emerald-800",
                          )}>
                            {websiteData.customDomainStatus}
-                         </Badge>
+                         </span>
                       </div>
                       {websiteData.customDomainStatus === 'pending' && (
-                         <div className="text-xs text-slate-500 bg-white p-3 rounded-lg border">
+                         <div className="text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200">
                            <p className="font-bold mb-2 text-primary">Action Required:</p>
-                           <p>To verify your domain, create a CNAME record in your DNS provider settings pointing to <code className="text-xs bg-muted p-1 rounded-md font-mono">cname.biztrix.in</code>.</p>
-                           <p className="mt-2 text-[10px] italic">Verification is automatic but may take up to 24 hours. The real provisioning is pending and will be implemented in the next phase.</p>
+                           <p>To verify your domain, create a CNAME record in your DNS provider settings pointing to <code className="text-xs bg-slate-100 p-1 rounded-md font-mono">cname.biztrix.in</code>.</p>
+                           <p className="mt-2 text-xs text-slate-500">Verification is automatic but may take up to 24 hours.</p>
                          </div>
                       )}
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="bg-muted/30 p-4 border-t flex justify-end gap-2">
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end gap-2">
                    {websiteData?.customDomain && (
-                     <Button variant="destructive" onClick={handleRemoveCustomDomain} disabled={isPending} className="text-xs h-9">
+                     <Button variant="destructive" onClick={handleRemoveCustomDomain} disabled={isPending} className="text-xs h-9 rounded-xl">
                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                        Remove
                      </Button>
                    )}
-                   <Button onClick={handleSaveCustomDomain} disabled={isPending} className="text-xs h-9">
+                   <Button onClick={handleSaveCustomDomain} disabled={isPending} className="text-xs h-9 rounded-xl font-semibold">
                      {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                      Save Domain
                    </Button>
@@ -2509,18 +2513,18 @@ export default function EcommerceManagerPage() {
               </Card>
 
               {/* 4. Store Policies & Buyer Trust */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-slate-50 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-primary" /> 4. Store Policies & Support Hours
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-primary" /> 4. Store Policies &amp; Support Hours
                   </CardTitle>
-                  <p className="text-[10px] text-muted-foreground font-semibold mt-1">
-                    Shown in your storefront footer & buyer trust modal.
+                  <p className="text-xs text-slate-500 mt-1">
+                    Shown in your storefront footer &amp; buyer trust modal.
                   </p>
                 </CardHeader>
-                <CardContent className="p-8 space-y-5 text-left">
+                <CardContent className="p-6 sm:p-8 space-y-5 text-left">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
                       Customer Support Hours
                     </Label>
                     <Input
@@ -2529,52 +2533,52 @@ export default function EcommerceManagerPage() {
                         setPolicyConfig((prev) => ({ ...prev, supportHours: e.target.value }))
                       }
                       placeholder="Mon - Sat, 10:00 AM - 7:00 PM IST"
-                      className="h-11 rounded-xl font-bold text-xs bg-muted/20 border-none shadow-inner"
+                      className="h-11 rounded-xl font-medium text-xs bg-slate-50 border-slate-200"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                      Shipping & Dispatch Policy
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
+                      Shipping &amp; Dispatch Policy
                     </Label>
                     <Textarea
                       value={policyConfig.shippingPolicy}
                       onChange={(e) =>
                         setPolicyConfig((prev) => ({ ...prev, shippingPolicy: e.target.value }))
                       }
-                      className="min-h-[80px] rounded-2xl bg-muted/20 border-none shadow-inner p-3.5 text-xs leading-relaxed"
+                      className="min-h-[80px] rounded-xl bg-slate-50 border-slate-200 p-3.5 text-xs leading-relaxed"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                      Returns & Refund Policy
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
+                      Returns &amp; Refund Policy
                     </Label>
                     <Textarea
                       value={policyConfig.returnPolicy}
                       onChange={(e) =>
                         setPolicyConfig((prev) => ({ ...prev, returnPolicy: e.target.value }))
                       }
-                      className="min-h-[80px] rounded-2xl bg-muted/20 border-none shadow-inner p-3.5 text-xs leading-relaxed"
+                      className="min-h-[80px] rounded-xl bg-slate-50 border-slate-200 p-3.5 text-xs leading-relaxed"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                      Privacy & Terms Notice
+                    <Label className="text-xs font-semibold text-slate-600 ml-1">
+                      Privacy &amp; Terms Notice
                     </Label>
                     <Textarea
                       value={policyConfig.privacyPolicy}
                       onChange={(e) =>
                         setPolicyConfig((prev) => ({ ...prev, privacyPolicy: e.target.value }))
                       }
-                      className="min-h-[80px] rounded-2xl bg-muted/20 border-none shadow-inner p-3.5 text-xs leading-relaxed"
+                      className="min-h-[80px] rounded-xl bg-slate-50 border-slate-200 p-3.5 text-xs leading-relaxed"
                     />
                   </div>
                 </CardContent>
-                <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
                   <Button
                     type="button"
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-10 text-[10px] font-black uppercase tracking-widest px-6 bg-slate-900 text-white"
+                    className="h-10 text-xs font-semibold px-6 rounded-xl bg-slate-900 text-white"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
                     Save Store Policies
@@ -2584,41 +2588,41 @@ export default function EcommerceManagerPage() {
             </div>
 
             <div className="space-y-10">
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-green-50 border-b py-6 px-8 text-left">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-green-700 flex items-center gap-3">
-                    <SmartphoneNfc className="h-5 w-5" /> 2. Ordering & Logic Sync
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-emerald-50/70 border-b border-emerald-200 py-5 px-6 sm:px-8 text-left">
+                  <CardTitle className="text-sm font-bold text-emerald-950 flex items-center gap-3">
+                    <SmartphoneNfc className="h-5 w-5 text-emerald-700" /> 2. Ordering &amp; Checkout Channels
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-left">
-                  <div className="flex items-center justify-between p-6 bg-green-100/30 rounded-[2rem] border border-green-100 shadow-sm transition-all group hover:bg-green-100/50">
-                    <div className="space-y-1.5 text-left">
-                      <Label className="text-sm font-black text-green-900 flex items-center gap-2 uppercase tracking-tight">
-                        <MessageSquare className="h-4 w-4" /> WhatsApp Checkout Node
+                <CardContent className="p-6 sm:p-8 space-y-5 text-left">
+                  <div className="flex items-center justify-between p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 transition-colors hover:bg-emerald-50">
+                    <div className="space-y-1 text-left">
+                      <Label className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4 text-emerald-700" /> WhatsApp Checkout
                       </Label>
-                      <p className="text-[9px] text-green-700/70 font-bold uppercase tracking-widest">Orders are transmitted to your business WA</p>
+                      <p className="text-xs text-emerald-800">Orders are sent directly to your business WhatsApp</p>
                     </div>
-                    <Switch checked={whatsappOrderEnabled} onCheckedChange={setWhatsappOrderEnabled} className="scale-110 data-[state=checked]:bg-green-600 shadow-lg" />
+                    <Switch checked={whatsappOrderEnabled} onCheckedChange={setWhatsappOrderEnabled} className="data-[state=checked]:bg-emerald-600" />
                   </div>
 
-                  <div className="flex items-center justify-between p-6 bg-amber-50/60 rounded-[2rem] border border-amber-100 shadow-sm transition-all group hover:bg-amber-50">
-                    <div className="space-y-1.5 text-left">
-                      <Label className="text-sm font-black text-amber-900 flex items-center gap-2 uppercase tracking-tight">
-                        <Banknote className="h-4 w-4" /> Cash on Delivery (COD)
+                  <div className="flex items-center justify-between p-5 bg-amber-50/60 rounded-2xl border border-amber-200 transition-colors hover:bg-amber-50">
+                    <div className="space-y-1 text-left">
+                      <Label className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-amber-700" /> Cash on Delivery (COD)
                       </Label>
-                      <p className="text-[9px] text-amber-700/70 font-bold uppercase tracking-widest">Allow shoppers to place COD orders on storefront</p>
+                      <p className="text-xs text-amber-800">Allow shoppers to place COD orders on storefront</p>
                     </div>
-                    <Switch checked={codEnabled} onCheckedChange={setCodEnabled} className="scale-110 data-[state=checked]:bg-amber-600 shadow-lg" />
+                    <Switch checked={codEnabled} onCheckedChange={setCodEnabled} className="data-[state=checked]:bg-amber-600" />
                   </div>
 
-                  <div className="flex items-center justify-between p-6 bg-primary/5 rounded-[2rem] border border-primary/10 transition-all group hover:bg-primary/10">
-                    <div className="space-y-1.5 text-left">
-                      <Label className="text-sm font-black text-primary flex items-center gap-2 uppercase tracking-tight">
-                        <Percent className="h-4 w-4" /> Transparent Discounts
+                  <div className="flex items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-200 transition-colors hover:bg-slate-100/70">
+                    <div className="space-y-1 text-left">
+                      <Label className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Percent className="h-4 w-4 text-primary" /> Transparent Discounts
                       </Label>
-                      <p className="text-[9px] font-bold text-primary/40 uppercase tracking-widest">Show strike-through pricing and % saved</p>
+                      <p className="text-xs text-slate-600">Show strike-through pricing and % saved</p>
                     </div>
-                    <Switch checked={showDiscount} onCheckedChange={setShowDiscount} className="scale-110 data-[state=checked]:bg-primary shadow-lg" />
+                    <Switch checked={showDiscount} onCheckedChange={setShowDiscount} className="data-[state=checked]:bg-primary" />
                   </div>
 
                   <Separator className="opacity-50" />
@@ -2627,13 +2631,13 @@ export default function EcommerceManagerPage() {
                   <div className="space-y-4 text-left">
                     <div className="flex items-center gap-2">
                       <Truck className="h-4 w-4 text-primary" />
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">
-                        Shipping & COD Handling Rules
+                      <h4 className="text-xs font-bold text-slate-800">
+                        Shipping &amp; COD Handling Rules
                       </h4>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Shipping Fee ({currencySymbol})
                         </Label>
                         <Input
@@ -2646,11 +2650,11 @@ export default function EcommerceManagerPage() {
                               shippingFee: Math.max(0, Number(e.target.value) || 0),
                             }))
                           }
-                          className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner"
+                          className="h-11 rounded-xl font-mono tabular-nums font-bold bg-slate-50 border-slate-200"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Free Above ({currencySymbol})
                         </Label>
                         <Input
@@ -2663,11 +2667,11 @@ export default function EcommerceManagerPage() {
                               freeShippingThreshold: Math.max(0, Number(e.target.value) || 0),
                             }))
                           }
-                          className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner"
+                          className="h-11 rounded-xl font-mono tabular-nums font-bold bg-slate-50 border-slate-200"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           COD Extra Fee ({currencySymbol})
                         </Label>
                         <Input
@@ -2680,66 +2684,66 @@ export default function EcommerceManagerPage() {
                               codFee: Math.max(0, Number(e.target.value) || 0),
                             }))
                           }
-                          className="h-11 rounded-xl font-black bg-muted/20 border-none shadow-inner"
+                          className="h-11 rounded-xl font-mono tabular-nums font-bold bg-slate-50 border-slate-200"
                         />
                       </div>
                     </div>
-                    <p className="text-[9px] text-muted-foreground font-semibold">
+                    <p className="text-xs text-slate-500">
                       Set &ldquo;Free Above&rdquo; to show a live Free Delivery Progress Bar in the customer&apos;s shopping bag. Leave 0 for free shipping on all orders.
                     </p>
                   </div>
                 </CardContent>
-                <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
                   <Button
                     type="button"
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-10 text-[10px] font-black uppercase tracking-widest px-6 bg-primary text-white"
+                    className="h-10 text-xs font-semibold px-6 rounded-xl bg-primary text-white"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-                    Save Ordering & Shipping
+                    Save Ordering &amp; Shipping
                   </Button>
                 </CardFooter>
               </Card>
 
               {/* Promo Coupon Codes Manager */}
-              <Card className="border-none shadow-md bg-white rounded-[2.5rem] overflow-hidden border text-left">
-                <CardHeader className="bg-purple-50/70 border-b py-6 px-8 flex flex-row items-center justify-between text-left">
+              <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none text-left">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row items-center justify-between text-left">
                   <div>
-                    <CardTitle className="text-xs font-black uppercase tracking-widest text-purple-800 flex items-center gap-3">
-                      <Ticket className="h-5 w-5 text-purple-600" /> 4. Promo Coupons & Offers
+                    <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-3">
+                      <Ticket className="h-5 w-5 text-primary" /> 4. Promo Coupons &amp; Offers
                     </CardTitle>
-                    <p className="text-[9px] font-bold text-purple-700/70 uppercase mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                       Create checkout discount codes validated securely on the server
                     </p>
                   </div>
-                  <Badge variant="outline" className="bg-white border-purple-200 text-purple-700 font-black text-[9px] uppercase">
+                  <span className="text-xs font-mono tabular-nums font-semibold text-primary">
                     {coupons.filter((c) => c.active).length} Active
-                  </Badge>
+                  </span>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6 text-left">
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                <CardContent className="p-6 sm:p-8 space-y-6 text-left">
+                  <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Coupon Code *
                         </Label>
                         <Input
                           value={newCouponCode}
                           onChange={(e) => setNewCouponCode(sanitizeCouponCode(e.target.value))}
                           placeholder="e.g. WELCOME10"
-                          className="h-10 rounded-xl bg-white font-mono font-black uppercase"
+                          className="h-10 rounded-xl bg-white border-slate-200 font-mono font-bold uppercase"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Discount Type
                         </Label>
                         <Select
                           value={newCouponType}
                           onValueChange={(v) => setNewCouponType(v as StoreCouponDiscountType)}
                         >
-                          <SelectTrigger className="h-10 rounded-xl bg-white text-xs font-bold uppercase">
+                          <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-semibold">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2752,7 +2756,7 @@ export default function EcommerceManagerPage() {
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Value ({newCouponType === "percent" ? "%" : currencySymbol})
                         </Label>
                         <Input
@@ -2760,11 +2764,11 @@ export default function EcommerceManagerPage() {
                           min={1}
                           value={newCouponValue}
                           onChange={(e) => setNewCouponValue(e.target.value)}
-                          className="h-10 rounded-xl bg-white font-bold"
+                          className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums font-bold"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Min Order ({currencySymbol})
                         </Label>
                         <Input
@@ -2772,11 +2776,11 @@ export default function EcommerceManagerPage() {
                           min={0}
                           value={newCouponMinOrder}
                           onChange={(e) => setNewCouponMinOrder(e.target.value)}
-                          className="h-10 rounded-xl bg-white font-bold"
+                          className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums font-bold"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Max Cap ({currencySymbol})
                         </Label>
                         <Input
@@ -2786,18 +2790,18 @@ export default function EcommerceManagerPage() {
                           disabled={newCouponType === "flat"}
                           value={newCouponMaxDiscount}
                           onChange={(e) => setNewCouponMaxDiscount(e.target.value)}
-                          className="h-10 rounded-xl bg-white font-bold"
+                          className="h-10 rounded-xl bg-white border-slate-200 font-mono tabular-nums font-bold"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-600">
                           Expiry Date
                         </Label>
                         <Input
                           type="date"
                           value={newCouponExpiry}
                           onChange={(e) => setNewCouponExpiry(e.target.value)}
-                          className="h-10 rounded-xl bg-white text-xs font-bold"
+                          className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium"
                         />
                       </div>
                     </div>
@@ -2845,14 +2849,14 @@ export default function EcommerceManagerPage() {
                           description: `Click "Save Coupons" to push ${clean} live to your storefront.`,
                         });
                       }}
-                      className="w-full h-10 rounded-xl border-purple-200 bg-white text-purple-800 hover:bg-purple-50 text-[10px] font-black uppercase tracking-wider"
+                      className="w-full h-10 rounded-xl border-slate-200 bg-white text-slate-800 hover:bg-slate-100 text-xs font-semibold"
                     >
                       <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Coupon to Storefront
                     </Button>
                   </div>
 
                   {coupons.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-muted-foreground italic border border-dashed rounded-2xl">
+                    <div className="py-6 text-center text-xs text-slate-500 border border-dashed border-slate-200 rounded-xl">
                       No promo coupons configured yet. Add your first code above (e.g. WELCOME10).
                     </div>
                   ) : (
@@ -2860,32 +2864,41 @@ export default function EcommerceManagerPage() {
                       {coupons.map((cpn) => (
                         <div
                           key={cpn.id}
-                          className="p-4 rounded-2xl border bg-white flex items-center justify-between gap-3"
+                          className="p-4 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3"
                         >
                           <div className="space-y-0.5 text-left min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono font-black text-xs text-slate-900 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-lg">
+                            <div className="flex items-center gap-2 flex-wrap text-xs">
+                              <span className="font-mono font-bold text-slate-900 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
                                 {cpn.code}
                               </span>
-                              <Badge className="bg-emerald-50 text-emerald-700 border-none text-[9px] font-black">
+                              <span className="font-semibold font-mono tabular-nums text-emerald-700">
                                 {cpn.discountType === "percent"
-                                  ? `${cpn.discountValue}% OFF`
-                                  : `${currencySymbol}${cpn.discountValue} OFF`}
-                              </Badge>
+                                  ? `${cpn.discountValue}% off`
+                                  : `${currencySymbol}${cpn.discountValue} off`}
+                              </span>
                               {cpn.minOrderAmount > 0 && (
-                                <span className="text-[10px] text-muted-foreground font-bold">
-                                  Min {currencySymbol}{cpn.minOrderAmount}
-                                </span>
+                                <>
+                                  <span aria-hidden="true" className="text-slate-400">·</span>
+                                  <span className="text-slate-500 font-mono tabular-nums">
+                                    Min {currencySymbol}{cpn.minOrderAmount}
+                                  </span>
+                                </>
                               )}
                               {cpn.maxDiscount && (
-                                <span className="text-[10px] text-muted-foreground font-bold">
-                                  Cap {currencySymbol}{cpn.maxDiscount}
-                                </span>
+                                <>
+                                  <span aria-hidden="true" className="text-slate-400">·</span>
+                                  <span className="text-slate-500 font-mono tabular-nums">
+                                    Cap {currencySymbol}{cpn.maxDiscount}
+                                  </span>
+                                </>
                               )}
                               {cpn.expiresAt && (
-                                <span className="text-[10px] text-amber-700 font-bold">
-                                  Exp {cpn.expiresAt}
-                                </span>
+                                <>
+                                  <span aria-hidden="true" className="text-slate-400">·</span>
+                                  <span className="text-amber-700 font-mono tabular-nums">
+                                    Exp {cpn.expiresAt}
+                                  </span>
+                                </>
                               )}
                             </div>
                           </div>
@@ -2918,15 +2931,15 @@ export default function EcommerceManagerPage() {
                     </div>
                   )}
                 </CardContent>
-                <CardFooter className="bg-muted/30 p-6 border-t flex justify-end">
+                <CardFooter className="bg-slate-50 p-5 border-t border-slate-200 flex justify-end">
                   <Button
                     type="button"
                     onClick={() => handleSave(websiteData?.status || 'draft')}
                     disabled={isSaving || isPending}
-                    className="h-10 text-[10px] font-black uppercase tracking-widest px-6 bg-purple-700 hover:bg-purple-800 text-white"
+                    className="h-10 text-xs font-semibold px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white"
                   >
                     {isSaving ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-2 h-3.5 w-3.5" />}
-                    Save Coupons & Rules
+                    Save Coupons &amp; Rules
                   </Button>
                 </CardFooter>
               </Card>
@@ -2938,12 +2951,12 @@ export default function EcommerceManagerPage() {
 
       {/* Store Integrity & Deployment Readiness Audit Modal */}
       <Dialog open={auditOpen} onOpenChange={setAuditOpen}>
-        <DialogContent className="sm:max-w-lg rounded-3xl bg-white text-left">
+        <DialogContent className="sm:max-w-lg rounded-2xl border border-slate-200 bg-white text-left">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black uppercase text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" /> Store Readiness Audit ({integrityReport.score}%)
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" /> Store Readiness Audit (<span className="font-mono tabular-nums">{integrityReport.score}%</span>)
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-xs text-slate-500">
               Real-time verification of your storefront identity, catalog, checkout channels, and SEO metadata.
             </DialogDescription>
           </DialogHeader>
@@ -2953,7 +2966,7 @@ export default function EcommerceManagerPage() {
               <div
                 key={item.id}
                 className={cn(
-                  "p-3.5 rounded-2xl border flex items-start justify-between gap-3",
+                  "p-3.5 rounded-xl border flex items-start justify-between gap-3",
                   item.passed
                     ? "bg-emerald-50/50 border-emerald-200"
                     : "bg-amber-50/50 border-amber-200"
@@ -2966,10 +2979,10 @@ export default function EcommerceManagerPage() {
                     <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                   )}
                   <div className="space-y-0.5">
-                    <p className="text-xs font-black uppercase text-slate-900">
-                      {item.label} <span className="text-[10px] font-mono text-muted-foreground">({item.weight} pts)</span>
+                    <p className="text-xs font-bold text-slate-900">
+                      {item.label} <span className="text-xs font-mono tabular-nums text-slate-500">({item.weight} pts)</span>
                     </p>
-                    <p className="text-[11px] text-slate-600 leading-snug">{item.detail}</p>
+                    <p className="text-xs text-slate-600 leading-snug">{item.detail}</p>
                   </div>
                 </div>
                 {!item.passed && (
@@ -2981,7 +2994,7 @@ export default function EcommerceManagerPage() {
                       setActiveTab(item.targetTab);
                       setAuditOpen(false);
                     }}
-                    className="h-8 text-[9px] font-black uppercase rounded-xl shrink-0 border-amber-300 text-amber-900 hover:bg-amber-100"
+                    className="h-8 text-xs font-semibold rounded-xl shrink-0 border-amber-300 text-amber-900 hover:bg-amber-100"
                   >
                     Fix Now
                   </Button>
@@ -2995,11 +3008,11 @@ export default function EcommerceManagerPage() {
               type="button"
               variant="outline"
               onClick={() => setAuditOpen(false)}
-              className="rounded-xl text-xs font-black uppercase"
+              className="rounded-xl text-xs font-semibold"
             >
               Close
             </Button>
-            <Button asChild className="rounded-xl text-xs font-black uppercase bg-primary text-white">
+            <Button asChild className="rounded-xl text-xs font-semibold bg-primary text-white">
               <Link href={previewStoreUrl} target="_blank">
                 Open Live Preview <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
               </Link>

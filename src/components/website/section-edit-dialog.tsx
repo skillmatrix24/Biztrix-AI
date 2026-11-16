@@ -131,9 +131,9 @@ export function SectionEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl rounded-3xl p-0 overflow-hidden bg-white">
+      <DialogContent className="sm:max-w-xl rounded-2xl p-0 overflow-hidden bg-white border border-slate-200">
         <DialogHeader className="p-6 bg-slate-900 text-white text-left">
-          <DialogTitle className="text-base font-black uppercase tracking-tight text-white">
+          <DialogTitle className="text-base font-bold text-white">
             Edit Section: {section.label}
           </DialogTitle>
           <DialogDescription className="text-slate-300 text-xs">
@@ -143,7 +143,7 @@ export function SectionEditDialog({
 
         <div className="p-6 space-y-4 text-left max-h-[65vh] overflow-y-auto">
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold text-slate-700">
               Manager Label
             </Label>
             <Input
@@ -154,7 +154,7 @@ export function SectionEditDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] font-black uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold text-slate-700">
               Section Heading
             </Label>
             <Input
@@ -168,7 +168,7 @@ export function SectionEditDialog({
           {section.type === "hero" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Top Eyebrow Badge
                 </Label>
                 <Input
@@ -179,7 +179,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Hero Subtitle
                 </Label>
                 <Textarea
@@ -189,7 +189,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Primary Button Label
                 </Label>
                 <Input
@@ -205,7 +205,7 @@ export function SectionEditDialog({
           {section.type === "timer" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Offer Badge Text
                 </Label>
                 <Input
@@ -216,7 +216,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Offer Subtitle
                 </Label>
                 <Textarea
@@ -226,7 +226,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Button Label
                 </Label>
                 <Input
@@ -245,7 +245,7 @@ export function SectionEditDialog({
             <>
               {section.type === "new_arrivals" && (
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Section Subtitle
                   </Label>
                   <Input
@@ -258,7 +258,7 @@ export function SectionEditDialog({
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Max Items Displayed
                   </Label>
                   <Input
@@ -273,7 +273,7 @@ export function SectionEditDialog({
                   />
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50">
-                  <Label className="text-[10px] font-black uppercase text-slate-700">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Show Prices
                   </Label>
                   <Switch
@@ -284,7 +284,7 @@ export function SectionEditDialog({
               </div>
               {section.type === "new_arrivals" && (
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Action Button Label
                   </Label>
                   <Input
@@ -301,7 +301,7 @@ export function SectionEditDialog({
           {section.type === "categories" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Section Subtitle
                 </Label>
                 <Input
@@ -312,7 +312,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Max Categories Shown
                 </Label>
                 <Input
@@ -332,7 +332,7 @@ export function SectionEditDialog({
           {section.type === "trust_strip" && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Section Subtitle
                 </Label>
                 <Input
@@ -342,7 +342,7 @@ export function SectionEditDialog({
                   className="h-10 rounded-xl text-xs"
                 />
               </div>
-              <Label className="text-[10px] font-black uppercase text-muted-foreground block">
+              <Label className="text-xs font-semibold text-slate-700 block">
                 Trust & Value Pillars
               </Label>
               <div className="space-y-2.5">
@@ -400,7 +400,7 @@ export function SectionEditDialog({
           {section.type === "offers" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Offers Subtitle
                 </Label>
                 <Textarea
@@ -410,7 +410,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Apply Button Label
                 </Label>
                 <Input
@@ -426,7 +426,7 @@ export function SectionEditDialog({
           {section.type === "media_showcase" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Eyebrow Badge
                 </Label>
                 <Input
@@ -437,7 +437,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   YouTube Video URL or Showcase Image URL
                 </Label>
                 <Input
@@ -448,7 +448,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Walkthrough Story Copy
                 </Label>
                 <Textarea
@@ -458,7 +458,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Button Label
                 </Label>
                 <Input
@@ -474,7 +474,7 @@ export function SectionEditDialog({
           {section.type === "faq" && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   FAQ Subtitle
                 </Label>
                 <Input
@@ -484,7 +484,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Questions & Answers ({faqItems.length})
                 </Label>
                 <Button
@@ -500,7 +500,7 @@ export function SectionEditDialog({
                       },
                     ])
                   }
-                  className="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase gap-1"
+                  className="h-8 px-3 rounded-lg text-xs font-semibold gap-1"
                 >
                   <Plus className="h-3 w-3" /> Add Question
                 </Button>
@@ -558,7 +558,7 @@ export function SectionEditDialog({
           {section.type === "store_location" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Subtitle
                 </Label>
                 <Input
@@ -568,7 +568,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Delivery Zones & Dispatch Coverage
                 </Label>
                 <Input
@@ -579,7 +579,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Pickup / Storefront Landmark Note
                 </Label>
                 <Textarea
@@ -589,7 +589,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Google Maps Link (Optional)
                 </Label>
                 <Input
@@ -600,7 +600,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50">
-                <Label className="text-[10px] font-black uppercase text-slate-700">
+                <Label className="text-xs font-semibold text-slate-700">
                   Self-Pickup Available at Counter
                 </Label>
                 <Switch
@@ -614,7 +614,7 @@ export function SectionEditDialog({
           {section.type === "newsletter" && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Alert Badge Text
                 </Label>
                 <Input
@@ -625,7 +625,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Opt-in Subtitle
                 </Label>
                 <Textarea
@@ -635,7 +635,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Submit Button Label
                 </Label>
                 <Input
@@ -650,7 +650,7 @@ export function SectionEditDialog({
 
           {section.type === "about" && (
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-muted-foreground">
+              <Label className="text-xs font-semibold text-slate-700">
                 Brand Story Copy
               </Label>
               <Textarea
@@ -666,7 +666,7 @@ export function SectionEditDialog({
             section.type === "whatsapp") && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Subtitle / Support Copy
                 </Label>
                 <Textarea
@@ -677,7 +677,7 @@ export function SectionEditDialog({
               </div>
               {section.type === "whatsapp" && (
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Button Label
                   </Label>
                   <Input
@@ -694,7 +694,7 @@ export function SectionEditDialog({
           {section.type === "problem_solution" && (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Subtitle
                 </Label>
                 <Input
@@ -705,7 +705,7 @@ export function SectionEditDialog({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 rounded-xl border bg-rose-50/50 space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-rose-700">
+                  <Label className="text-xs font-semibold text-rose-700">
                     Pain Column Heading
                   </Label>
                   <Input
@@ -714,7 +714,7 @@ export function SectionEditDialog({
                     placeholder="Common Market Frustrations"
                     className="h-9 rounded-lg bg-white text-xs font-bold"
                   />
-                  <Label className="text-[9px] font-bold uppercase text-rose-600 block">
+                  <Label className="text-xs font-medium text-rose-700 block">
                     Pain Points (one per line)
                   </Label>
                   <Textarea
@@ -729,7 +729,7 @@ export function SectionEditDialog({
                   />
                 </div>
                 <div className="p-3 rounded-xl border bg-emerald-50/50 space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-emerald-700">
+                  <Label className="text-xs font-semibold text-emerald-700">
                     Solution Column Heading
                   </Label>
                   <Input
@@ -738,7 +738,7 @@ export function SectionEditDialog({
                     placeholder="Our Verified Advantage"
                     className="h-9 rounded-lg bg-white text-xs font-bold"
                   />
-                  <Label className="text-[9px] font-bold uppercase text-emerald-600 block">
+                  <Label className="text-xs font-medium text-emerald-700 block">
                     Solution Points (one per line)
                   </Label>
                   <Textarea
@@ -760,7 +760,7 @@ export function SectionEditDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Our Column Label
                   </Label>
                   <Input
@@ -771,7 +771,7 @@ export function SectionEditDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Others Column Label
                   </Label>
                   <Input
@@ -783,7 +783,7 @@ export function SectionEditDialog({
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Comparison Rows ({comparisonRows.length})
                 </Label>
                 <Button
@@ -796,7 +796,7 @@ export function SectionEditDialog({
                       { feature: "Direct Warranty & Priority Dispatch", us: true, others: false },
                     ])
                   }
-                  className="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase gap-1"
+                  className="h-8 px-3 rounded-lg text-xs font-semibold gap-1"
                 >
                   <Plus className="h-3 w-3" /> Add Row
                 </Button>
@@ -815,7 +815,7 @@ export function SectionEditDialog({
                       className="h-8 rounded-lg bg-white text-xs flex-1"
                     />
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[9px] font-bold uppercase text-emerald-700">Us</span>
+                      <span className="text-xs font-semibold text-emerald-700">Us</span>
                       <Switch
                         checked={row.us}
                         onCheckedChange={(v) => {
@@ -827,7 +827,7 @@ export function SectionEditDialog({
                       />
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[9px] font-bold uppercase text-slate-500">Others</span>
+                      <span className="text-xs font-semibold text-slate-600">Others</span>
                       <Switch
                         checked={row.others}
                         onCheckedChange={(v) => {
@@ -843,6 +843,7 @@ export function SectionEditDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
+                        aria-label={`Remove comparison row ${idx + 1}`}
                         onClick={() =>
                           updateField(
                             "comparisonRows",
@@ -863,7 +864,7 @@ export function SectionEditDialog({
           {section.type === "how_it_works" && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Subtitle
                 </Label>
                 <Input
@@ -872,7 +873,7 @@ export function SectionEditDialog({
                   className="h-10 rounded-xl text-xs"
                 />
               </div>
-              <Label className="text-[10px] font-black uppercase text-muted-foreground block">
+              <Label className="text-xs font-semibold text-slate-700 block">
                 Steps ({steps.length})
               </Label>
               <div className="space-y-2.5">
@@ -923,7 +924,7 @@ export function SectionEditDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Total Anchor Value (₹)
                   </Label>
                   <Input
@@ -937,7 +938,7 @@ export function SectionEditDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Today&apos;s Funnel Offer Price (₹)
                   </Label>
                   <Input
@@ -952,7 +953,7 @@ export function SectionEditDialog({
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Included Value Items ({stackItems.length})
                 </Label>
                 <Button
@@ -965,7 +966,7 @@ export function SectionEditDialog({
                       { title: "Bonus Accessory / Priority Warranty", value: 299 },
                     ])
                   }
-                  className="h-7 px-2.5 rounded-lg text-[10px] font-black uppercase gap-1"
+                  className="h-8 px-3 rounded-lg text-xs font-semibold gap-1"
                 >
                   <Plus className="h-3 w-3" /> Add Item
                 </Button>
@@ -1000,6 +1001,7 @@ export function SectionEditDialog({
                         type="button"
                         variant="ghost"
                         size="icon"
+                        aria-label={`Remove stack item ${idx + 1}`}
                         onClick={() =>
                           updateField(
                             "stackItems",
@@ -1015,7 +1017,7 @@ export function SectionEditDialog({
                 ))}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Action CTA Button Label
                 </Label>
                 <Input
@@ -1031,7 +1033,7 @@ export function SectionEditDialog({
           {section.type === "pricing_tiers" && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Subtitle
                 </Label>
                 <Input
@@ -1040,7 +1042,7 @@ export function SectionEditDialog({
                   className="h-9 rounded-xl text-xs"
                 />
               </div>
-              <Label className="text-[10px] font-black uppercase text-muted-foreground block">
+              <Label className="text-xs font-semibold text-slate-700 block">
                 Package Tiers ({pricingTiers.length})
               </Label>
               <div className="space-y-3">
@@ -1072,7 +1074,7 @@ export function SectionEditDialog({
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Price (₹)</Label>
+                        <Label className="text-xs font-semibold text-slate-700">Price (₹)</Label>
                         <Input
                           type="number"
                           min={0}
@@ -1087,7 +1089,7 @@ export function SectionEditDialog({
                         />
                       </div>
                       <div>
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">MRP (₹)</Label>
+                        <Label className="text-xs font-semibold text-slate-700">MRP (₹)</Label>
                         <Input
                           type="number"
                           min={0}
@@ -1102,7 +1104,7 @@ export function SectionEditDialog({
                         />
                       </div>
                       <div>
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Qty Multiplier</Label>
+                        <Label className="text-xs font-semibold text-slate-700">Qty Multiplier</Label>
                         <Input
                           type="number"
                           min={1}
@@ -1139,7 +1141,7 @@ export function SectionEditDialog({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Badge / Seal Label
                   </Label>
                   <Input
@@ -1150,7 +1152,7 @@ export function SectionEditDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                  <Label className="text-xs font-semibold text-slate-700">
                     Guarantee Days
                   </Label>
                   <Input
@@ -1166,7 +1168,7 @@ export function SectionEditDialog({
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Guarantee Promise Copy
                 </Label>
                 <Textarea
@@ -1181,7 +1183,7 @@ export function SectionEditDialog({
           {section.type === "express_checkout" && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Checkout Subtitle
                 </Label>
                 <Input
@@ -1191,7 +1193,7 @@ export function SectionEditDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-muted-foreground">
+                <Label className="text-xs font-semibold text-slate-700">
                   Confirm Order CTA Label
                 </Label>
                 <Input
@@ -1203,10 +1205,10 @@ export function SectionEditDialog({
               </div>
               <div className="flex items-center justify-between p-3 rounded-xl border bg-amber-50/70">
                 <div>
-                  <Label className="text-[10px] font-black uppercase text-amber-900">
+                  <Label className="text-xs font-semibold text-amber-900">
                     Enable 1-Click Order Bump
                   </Label>
-                  <p className="text-[10px] text-amber-800/80">
+                  <p className="text-xs text-amber-800/85">
                     Show an optional add-on checkbox inside checkout to boost Average Order Value
                   </p>
                 </div>
@@ -1218,7 +1220,7 @@ export function SectionEditDialog({
               {content.orderBumpEnabled !== false && (
                 <div className="p-3 rounded-xl border bg-slate-50 space-y-2.5">
                   <div className="space-y-1">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                    <Label className="text-xs font-semibold text-slate-700">
                       Order Bump Headline
                     </Label>
                     <Input
@@ -1230,7 +1232,7 @@ export function SectionEditDialog({
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                      <Label className="text-xs font-semibold text-slate-700">
                         Bump Add-On Price (₹)
                       </Label>
                       <Input
@@ -1245,7 +1247,7 @@ export function SectionEditDialog({
                     </div>
                     {products.length > 0 && (
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                        <Label className="text-xs font-semibold text-slate-700">
                           Linked Catalog Add-On Product
                         </Label>
                         <Select
@@ -1268,7 +1270,7 @@ export function SectionEditDialog({
                     )}
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[9px] font-black uppercase text-muted-foreground">
+                    <Label className="text-xs font-semibold text-slate-700">
                       Order Bump Short Pitch
                     </Label>
                     <Input
@@ -1284,10 +1286,10 @@ export function SectionEditDialog({
         </div>
 
         <DialogFooter className="p-5 bg-slate-50 border-t gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl text-xs font-bold">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl text-xs font-semibold">
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave} className="rounded-xl text-xs font-black uppercase bg-primary text-white">
+          <Button type="button" onClick={handleSave} className="rounded-xl text-xs font-semibold bg-primary text-white">
             Apply Section Changes
           </Button>
         </DialogFooter>

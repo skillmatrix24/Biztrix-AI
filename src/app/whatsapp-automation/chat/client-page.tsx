@@ -1,59 +1,47 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { 
-  MessageSquare, 
-  Search, 
-  Send, 
-  User, 
-  Bot, 
-  ShieldCheck, 
-  Clock, 
-  CheckCircle2, 
-  SmartphoneNfc, 
-  Loader2, 
-  Plus, 
-  ChevronRight, 
+import {
+  MessageSquare,
+  Search,
+  Send,
+  ShieldCheck,
+  Clock,
+  SmartphoneNfc,
+  Loader2,
   X,
-  Smartphone,
   Check,
-  History,
-  Info,
   BadgeCheck,
-  Zap,
-  MoreVertical,
   Paperclip,
-  Smile,
-  ImageIcon,
-  Video,
-  FileText,
   UserCircle,
-  Gem,
-  Wallet,
   Target,
-  PhoneCall,
   Layout,
   MapPin,
   ArrowRight,
-  CalendarDays,
-  Volume2,
-  CheckCheck
+  CheckCheck,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
-import { useFirestore, useUser, useDoc, useMemoFirebase, useCollection, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, query, orderBy, limit, serverTimestamp, where, getDocs } from "firebase/firestore";
+import {
+  useFirestore,
+  useUser,
+  useDoc,
+  useMemoFirebase,
+  useCollection,
+  addDocumentNonBlocking,
+  updateDocumentNonBlocking,
+} from "@/firebase";
+import { collection, doc, query, orderBy, limit, serverTimestamp, where } from "firebase/firestore";
 import { format, isToday, isYesterday } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { cn, getCurrencySymbol } from "@/lib/utils";
@@ -66,17 +54,26 @@ export default function WhatsAppChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const userProfileRef = useMemoFirebase(() => user?.uid ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
+  const userProfileRef = useMemoFirebase(
+    () => (user?.uid ? doc(firestore, "users", user.uid) : null),
+    [firestore, user?.uid]
+  );
   const { data: userProfile } = useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
-  const businessRef = useMemoFirebase(() => businessId ? doc(firestore, 'businesses', businessId) : null, [firestore, businessId]);
+  const businessRef = useMemoFirebase(
+    () => (businessId ? doc(firestore, "businesses", businessId) : null),
+    [firestore, businessId]
+  );
   const { data: business } = useDoc<any>(businessRef);
 
-  // 1. Chats List Query
-  const chatsQuery = useMemoFirebase(() => 
-    businessId ? query(collection(firestore, 'businesses', businessId, 'chats'), orderBy('lastMessageAt', 'desc')) : null
-  , [firestore, businessId]);
+  const chatsQuery = useMemoFirebase(
+    () =>
+      businessId
+        ? query(collection(firestore, "businesses", businessId, "chats"), orderBy("lastMessageAt", "desc"))
+        : null,
+    [firestore, businessId]
+  );
   const { data: chatsRaw, isLoading: isChatsLoading } = useCollection<any>(chatsQuery);
   const chats = chatsRaw || [];
 
@@ -88,34 +85,36 @@ export default function WhatsAppChatPage() {
   const [isTemplateLoading, setIsTemplateLoading] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
 
-  const activeChat = useMemo(() => chats.find(c => c.id === activeChatId), [chats, activeChatId]);
+  const activeChat = useMemo(() => chats.find((c) => c.id === activeChatId), [chats, activeChatId]);
 
-  // 2. Messages Query for active chat
-  const messagesQuery = useMemoFirebase(() => 
-    businessId && activeChatId ? query(collection(firestore, 'businesses', businessId, 'chats', activeChatId, 'messages'), orderBy('timestamp', 'asc')) : null
-  , [firestore, businessId, activeChatId]);
+  const messagesQuery = useMemoFirebase(
+    () =>
+      businessId && activeChatId
+        ? query(collection(firestore, "businesses", businessId, "chats", activeChatId, "messages"), orderBy("timestamp", "asc"))
+        : null,
+    [firestore, businessId, activeChatId]
+  );
   const { data: messagesRaw } = useCollection<any>(messagesQuery);
   const messages = messagesRaw || [];
 
-  // Audio Alert Logic
   useEffect(() => {
     if (!chats.length) return;
-    const hasUnread = chats.some(c => (c.unreadCount || 0) > 0);
+    const hasUnread = chats.some((c) => (c.unreadCount || 0) > 0);
     if (hasUnread) {
       if (!audioRef.current) {
         audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
       }
       audioRef.current.volume = 0.4;
       audioRef.current.play().catch((error) => {
-    console.error(error);});
+        console.error(error);
+      });
     }
   }, [chats]);
 
-  // 3. Customer Info for context
   const customerQuery = useMemoFirebase(() => {
     if (!businessId || !activeChatId) return null;
     const phone = activeChatId.slice(-10);
-    return query(collection(firestore, 'businesses', businessId, 'customers'), where('phone', '==', phone), limit(1));
+    return query(collection(firestore, "businesses", businessId, "customers"), where("phone", "==", phone), limit(1));
   }, [firestore, businessId, activeChatId]);
   const { data: customersData } = useCollection<any>(customerQuery);
   const activeCustomer = customersData?.[0] || null;
@@ -129,15 +128,15 @@ export default function WhatsAppChatPage() {
   const formatMessageTime = (ts: any) => {
     if (!ts) return "";
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    return format(date, 'hh:mm a');
+    return format(date, "hh:mm a");
   };
 
   const formatHeaderDate = (ts: any) => {
     if (!ts) return "";
     const date = ts.toDate ? ts.toDate() : new Date(ts);
-    if (isToday(date)) return "TODAY";
-    if (isYesterday(date)) return "YESTERDAY";
-    return format(date, 'dd MMMM yyyy').toUpperCase();
+    if (isToday(date)) return "Today";
+    if (isYesterday(date)) return "Yesterday";
+    return format(date, "dd MMMM yyyy");
   };
 
   const handleSendMessage = async () => {
@@ -159,22 +158,22 @@ export default function WhatsAppChatPage() {
       );
 
       if (res.success) {
-        const messagesRef = collection(firestore, 'businesses', businessId, 'chats', activeChatId, 'messages');
+        const messagesRef = collection(firestore, "businesses", businessId, "chats", activeChatId, "messages");
         const wam_id = res.data?.messages?.[0]?.id || `local_${Date.now()}`;
 
         await addDocumentNonBlocking(messagesRef, {
-          wam_id: wam_id,
+          wam_id,
           text: messageText,
-          direction: 'outbound',
-          type: 'text',
+          direction: "outbound",
+          type: "text",
           timestamp: serverTimestamp(),
-          status: 'sent'
+          status: "sent",
         });
 
-        updateDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'chats', activeChatId), {
+        updateDocumentNonBlocking(doc(firestore, "businesses", businessId, "chats", activeChatId), {
           lastMessage: messageText,
           lastMessageAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
         });
 
         setInputText("");
@@ -182,7 +181,7 @@ export default function WhatsAppChatPage() {
         toast({ variant: "destructive", title: "API Rejection", description: res.error });
       }
     } catch (e) {
-    console.error(e);
+      console.error(e);
       toast({ variant: "destructive", title: "Dispatch Failed" });
     } finally {
       setIsSending(false);
@@ -200,7 +199,7 @@ export default function WhatsAppChatPage() {
     try {
       const res = await listWhatsAppTemplates(businessId, { wabaId: waConfig.wabaId, accessToken: waConfig.accessToken });
       if (res.success) {
-        setTemplates(res.templates?.filter((t: any) => t.status === 'APPROVED') || []);
+        setTemplates(res.templates?.filter((t: any) => t.status === "APPROVED") || []);
       }
     } finally {
       setIsTemplateLoading(false);
@@ -210,14 +209,16 @@ export default function WhatsAppChatPage() {
   const handleSendTemplate = async (templateName: string) => {
     if (!businessId || !activeChatId) return;
     const waConfig = business?.whatsappApiConfig;
-    const template = templates.find(t => t.name === templateName);
-    
+    const template = templates.find((t) => t.name === templateName);
+
     setIsSending(true);
     try {
-      const components = [{
-        type: "body",
-        parameters: [{ type: "text", text: activeChat?.customerName || "Customer" }]
-      }];
+      const components = [
+        {
+          type: "body",
+          parameters: [{ type: "text", text: activeChat?.customerName || "Customer" }],
+        },
+      ];
 
       const res = await sendWhatsAppTemplate(
         businessId,
@@ -229,17 +230,17 @@ export default function WhatsAppChatPage() {
       );
 
       if (res.success) {
-        const messagesRef = collection(firestore, 'businesses', businessId, 'chats', activeChatId, 'messages');
+        const messagesRef = collection(firestore, "businesses", businessId, "chats", activeChatId, "messages");
         const wam_id = res.data?.messages?.[0]?.id || `local_${Date.now()}`;
 
         await addDocumentNonBlocking(messagesRef, {
-          wam_id: wam_id,
-          text: `[Template Node] ${templateName}`,
-          direction: 'outbound',
-          type: 'template',
-          templateName: templateName,
+          wam_id,
+          text: `[Template] ${templateName}`,
+          direction: "outbound",
+          type: "template",
+          templateName,
           timestamp: serverTimestamp(),
-          status: 'sent'
+          status: "sent",
         });
         setIsTemplatesOpen(false);
         toast({ title: "Template Dispatched" });
@@ -251,325 +252,397 @@ export default function WhatsAppChatPage() {
     }
   };
 
-  const filteredChats = chats.filter(c => 
-    (c.customerName || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.id.includes(searchTerm)
+  const filteredChats = chats.filter(
+    (c) =>
+      (c.customerName || "").toLowerCase().includes(searchTerm.toLowerCase()) || c.id.includes(searchTerm)
   );
 
   const currencySymbol = getCurrencySymbol(business?.currency);
 
   return (
-    <div className="h-[calc(100vh-140px)] -mt-4 flex flex-col md:flex-row gap-6 animate-in fade-in duration-500 text-left">
-      {/* Sidebar: Chats List */}
-      <Card className="w-full md:w-80 lg:w-96 border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden flex flex-col border shrink-0">
-        <CardHeader className="p-6 bg-muted/30 border-b shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" /> Message Nodes
-            </h3>
-            <Badge className="bg-primary text-white border-none text-[8px] font-black px-2 h-5 uppercase">
-              {chats.length} Active
+    <div className="h-[calc(100vh-140px)] -mt-2 flex flex-col md:flex-row gap-5 text-left">
+      {/* Sidebar: Conversations */}
+      <aside className="w-full md:w-80 lg:w-96 rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col shrink-0">
+        <div className="p-4 border-b border-slate-100 space-y-3 shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-slate-700" /> Conversations
+            </h2>
+            <Badge className="bg-slate-900 text-white border-none text-[11px] font-mono tabular-nums">
+              {chats.length} active
             </Badge>
           </div>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-            <Input 
-              placeholder="Search identity..." 
-              value={searchTerm} 
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search name or phone..."
+              value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-11 pl-10 rounded-xl bg-white border-none shadow-inner text-xs font-bold" 
+              className="h-9 pl-9 rounded-xl bg-slate-50 border-slate-200 text-xs"
             />
           </div>
-        </CardHeader>
+        </div>
         <ScrollArea className="flex-1">
-          <div className="divide-y">
+          <div className="divide-y divide-slate-100">
             {isChatsLoading ? (
-              <div className="p-20 flex justify-center"><Loader2 className="animate-spin text-primary opacity-20" /></div>
-            ) : filteredChats.length === 0 ? (
-              <div className="p-20 text-center space-y-4 opacity-30">
-                 <MessageSquare className="h-12 w-12 mx-auto" />
-                 <p className="text-[10px] font-black uppercase tracking-widest">No active communication nodes</p>
+              <div className="p-16 flex justify-center">
+                <Loader2 className="animate-spin text-slate-400 h-5 w-5" />
               </div>
-            ) : filteredChats.map(chat => {
-              const lastTime = chat.lastMessageAt && (chat.lastMessageAt.toDate ? chat.lastMessageAt.toDate() : new Date(chat.lastMessageAt));
-              return (
-                <div 
-                  key={chat.id} 
-                  onClick={() => { setActiveChatId(chat.id); if(businessId) updateDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'chats', chat.id), { unreadCount: 0 }); }}
-                  className={cn(
-                    "p-5 flex items-center gap-4 cursor-pointer transition-all hover:bg-primary/5 border-l-4",
-                    activeChatId === chat.id ? "bg-primary/5 border-l-primary shadow-inner" : "border-l-transparent",
-                    (chat.unreadCount || 0) > 0 && "bg-green-50/40"
-                  )}
-                >
-                  <div className="relative shrink-0">
-                    <div className="h-12 w-12 rounded-2xl bg-muted/30 flex items-center justify-center font-black text-primary shadow-inner text-lg uppercase">
-                      {chat.customerName?.charAt(0)}
+            ) : filteredChats.length === 0 ? (
+              <div className="p-12 text-center space-y-2 text-slate-500">
+                <MessageSquare className="h-8 w-8 mx-auto text-slate-300" />
+                <p className="text-xs font-medium">No active conversations</p>
+              </div>
+            ) : (
+              filteredChats.map((chat) => {
+                const lastTime =
+                  chat.lastMessageAt && (chat.lastMessageAt.toDate ? chat.lastMessageAt.toDate() : new Date(chat.lastMessageAt));
+                const isActive = activeChatId === chat.id;
+                return (
+                  <button
+                    type="button"
+                    key={chat.id}
+                    onClick={() => {
+                      setActiveChatId(chat.id);
+                      if (businessId)
+                        updateDocumentNonBlocking(doc(firestore, "businesses", businessId, "chats", chat.id), {
+                          unreadCount: 0,
+                        });
+                    }}
+                    className={cn(
+                      "w-full p-4 flex items-center gap-3.5 text-left transition-colors",
+                      isActive ? "bg-slate-100" : "hover:bg-slate-50",
+                      (chat.unreadCount || 0) > 0 && !isActive && "bg-emerald-50/50"
+                    )}
+                  >
+                    <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                      {chat.customerName?.charAt(0) || "?"}
                     </div>
-                    {(chat.unreadCount || 0) > 0 && <div className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white animate-pulse" />}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex justify-between items-baseline mb-0.5">
-                      <span className="text-sm font-black text-slate-900 truncate uppercase tracking-tight leading-none">{chat.customerName}</span>
-                      <span className={cn("text-[7px] font-black uppercase tracking-tighter", lastTime && isToday(lastTime) ? "text-primary" : "text-slate-400")}>
-                        {lastTime ? format(lastTime, 'HH:mm') : ""}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline gap-2 mb-0.5">
+                        <span className="text-sm font-semibold text-slate-900 truncate">{chat.customerName}</span>
+                        <span className="text-[11px] font-mono tabular-nums text-slate-500 shrink-0">
+                          {lastTime ? format(lastTime, "HH:mm") : ""}
+                        </span>
+                      </div>
+                      <p
+                        className={cn(
+                          "text-xs truncate",
+                          (chat.unreadCount || 0) > 0 ? "font-semibold text-slate-900" : "text-slate-500"
+                        )}
+                      >
+                        {chat.lastMessage}
+                      </p>
                     </div>
-                    <p className={cn("text-[10px] truncate leading-relaxed", (chat.unreadCount || 0) > 0 ? "font-bold text-slate-900" : "text-muted-foreground")}>
-                      {chat.lastMessage}
-                    </p>
-                  </div>
-                  {(chat.unreadCount || 0) > 0 && (
-                    <Badge className="bg-green-500 text-white border-none text-[8px] font-black h-4 min-w-[1rem] flex items-center justify-center rounded-full shadow-sm">
-                      {chat.unreadCount}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
+                    {(chat.unreadCount || 0) > 0 && (
+                      <Badge className="bg-emerald-600 text-white border-none text-[11px] font-mono tabular-nums h-5 min-w-[20px] flex items-center justify-center rounded-full">
+                        {chat.unreadCount}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })
+            )}
           </div>
         </ScrollArea>
-      </Card>
+      </aside>
 
       {/* Main Chat Pane */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {activeChatId ? (
-          <Card className="h-full border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden flex flex-col border relative">
-            <CardHeader className="bg-[#075E54] text-white p-6 shrink-0 flex flex-row items-center justify-between border-b border-white/10 relative z-30 shadow-md">
-               <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center font-black text-xl border border-white/10 shadow-inner">
-                    {activeChat?.customerName?.charAt(0)}
+          <div className="h-full rounded-2xl border border-slate-200 bg-white overflow-hidden flex flex-col">
+            <div className="bg-slate-900 text-white px-5 py-4 shrink-0 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center font-bold text-base shrink-0">
+                  {activeChat?.customerName?.charAt(0) || "?"}
+                </div>
+                <div className="min-w-0 text-left">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-sm font-bold text-white truncate">{activeChat?.customerName}</h3>
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium">
+                      Active
+                    </Badge>
                   </div>
-                  <div className="text-left">
-                    <div className="flex items-center gap-3">
-                       <h3 className="text-base font-black uppercase tracking-tight leading-none">{activeChat?.customerName}</h3>
-                       <Badge className="bg-green-400 text-green-900 border-none text-[7px] font-black h-4 px-1.5 shadow-sm">SESSION ACTIVE</Badge>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                       <div className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-                       <p className="text-white/60 text-[9px] font-bold uppercase tracking-widest leading-none">IDENTITY: {activeChatId}</p>
-                    </div>
-                  </div>
-               </div>
-               <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" className="h-10 w-10 text-white/40 hover:text-white" onClick={() => setActiveChatId(null)}><X className="h-5 w-5" /></Button>
-               </div>
-            </CardHeader>
+                  <p className="text-xs font-mono tabular-nums text-slate-300 mt-0.5">{activeChatId}</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close conversation"
+                className="h-9 w-9 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg"
+                onClick={() => setActiveChatId(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
 
-            <CardContent className="flex-1 overflow-hidden p-0 flex flex-col relative bg-[#E5DDD5] z-10">
-               <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/chat-bg/600/1200')] opacity-[0.07] grayscale pointer-events-none z-0" />
-               <ScrollArea className="flex-1 p-6 relative z-10">
-                  <div className="space-y-6">
-                    {messages.length === 0 && (
-                      <div className="p-20 text-center opacity-30 italic text-sm font-bold uppercase tracking-widest">
-                        Node Established. Say Namaste!
-                      </div>
-                    )}
-                    {messages.map((m, i) => {
-                      const showDateHeader = i === 0 || formatHeaderDate(messages[i-1].timestamp) !== formatHeaderDate(m.timestamp);
-                      return (
-                        <div key={i} className="flex flex-col w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
-                          {showDateHeader && (
-                            <div className="w-full flex justify-center my-8">
-                              <Badge variant="outline" className="bg-white/80 backdrop-blur-md border-none text-[8px] font-black uppercase text-slate-500 px-6 h-6 shadow-sm">{formatHeaderDate(m.timestamp)}</Badge>
-                            </div>
+            <div className="flex-1 overflow-hidden flex flex-col bg-[#EFEAE2]">
+              <ScrollArea className="flex-1 p-5">
+                <div className="space-y-4">
+                  {messages.length === 0 && (
+                    <div className="py-16 text-center text-xs font-medium text-slate-500">
+                      Conversation ready. Send a message or approved template below.
+                    </div>
+                  )}
+                  {messages.map((m, i) => {
+                    const showDateHeader =
+                      i === 0 || formatHeaderDate(messages[i - 1].timestamp) !== formatHeaderDate(m.timestamp);
+                    return (
+                      <div key={i} className="flex flex-col w-full">
+                        {showDateHeader && (
+                          <div className="w-full flex justify-center my-4">
+                            <span className="bg-white border border-slate-200 text-[11px] font-medium text-slate-600 px-3 py-1 rounded-lg">
+                              {formatHeaderDate(m.timestamp)}
+                            </span>
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "flex flex-col max-w-[85%]",
+                            m.direction === "outbound" ? "ml-auto items-end" : "mr-auto items-start"
                           )}
-                          <div className={cn(
-                            "flex flex-col max-w-[85%] relative",
-                            m.direction === 'outbound' ? "ml-auto items-end" : "mr-auto items-start"
-                          )}>
-                            <div className={cn(
-                              "p-4 rounded-[1.2rem] shadow-sm text-sm leading-relaxed whitespace-pre-wrap text-left relative transition-all",
-                              m.direction === 'outbound' 
-                                ? "bg-[#DCF8C6] text-slate-800 rounded-tr-none border-b border-green-200" 
-                                : "bg-white text-slate-800 rounded-tl-none border-b border-slate-200"
-                            )}>
-                              {m.type === 'template' && (
-                                <p className="text-[7px] font-black text-green-700 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                                  <BadgeCheck className="h-2.5 w-2.5" /> OFFICIAL TEMPLATE NODE
-                                </p>
+                        >
+                          <div
+                            className={cn(
+                              "px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap text-left border",
+                              m.direction === "outbound"
+                                ? "bg-[#D9FDD3] text-slate-900 rounded-tr-none border-emerald-200"
+                                : "bg-white text-slate-900 rounded-tl-none border-slate-200"
+                            )}
+                          >
+                            {m.type === "template" && (
+                              <p className="text-[11px] font-semibold text-emerald-800 mb-1 flex items-center gap-1">
+                                <BadgeCheck className="h-3.5 w-3.5" /> Official Template
+                              </p>
+                            )}
+                            <p className="text-[13.5px] leading-relaxed">{m.text}</p>
+                            <div
+                              className={cn(
+                                "flex items-center gap-1.5 mt-1.5 text-[11px] font-mono tabular-nums",
+                                m.direction === "outbound" ? "justify-end text-emerald-800" : "justify-start text-slate-400"
                               )}
-                              <p className="font-medium text-[13.5px] leading-[1.4]">{m.text}</p>
-                              <div className={cn(
-                                "flex items-center gap-1.5 mt-2 opacity-60 text-[7px] font-black uppercase",
-                                m.direction === 'outbound' ? "justify-end text-green-800" : "justify-start text-slate-400"
-                              )}>
-                                 <span>{formatMessageTime(m.timestamp)}</span>
-                                 {m.direction === 'outbound' && (
-                                   m.status === 'read' ? <CheckCheck className="h-3 w-3 text-blue-500" /> : 
-                                   m.status === 'delivered' ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />
-                                 )}
-                              </div>
+                            >
+                              <span>{formatMessageTime(m.timestamp)}</span>
+                              {m.direction === "outbound" &&
+                                (m.status === "read" ? (
+                                  <CheckCheck className="h-3.5 w-3.5 text-sky-600" />
+                                ) : m.status === "delivered" ? (
+                                  <CheckCheck className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Check className="h-3.5 w-3.5" />
+                                ))}
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                    <div ref={scrollRef} className="h-4" />
-                  </div>
-               </ScrollArea>
+                      </div>
+                    );
+                  })}
+                  <div ref={scrollRef} className="h-2" />
+                </div>
+              </ScrollArea>
 
-               <div className="p-4 bg-[#F0F2F5] border-t relative z-20 shadow-inner shrink-0">
-                  <div className="flex gap-3">
-                     <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full bg-white text-muted-foreground hover:text-primary transition-all border shadow-sm shrink-0"><Paperclip className="h-5 w-5" /></Button>
-                     <div className="relative flex-1">
-                        <Input 
-                          placeholder="Type your response..." 
-                          value={inputText}
-                          onChange={(e) => setInputText(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                          disabled={isSending}
-                          className="h-12 rounded-full bg-white border-none shadow-sm pr-12 text-sm font-bold pl-6 focus-visible:ring-primary placeholder:text-slate-400" 
-                        />
-                        <Button 
-                          size="icon" 
-                          onClick={handleSendMessage}
-                          disabled={!inputText.trim() || isSending}
-                          className="absolute right-1 top-1 h-10 w-10 rounded-full bg-[#075E54] hover:bg-[#128C7E] text-white shadow-lg active:scale-90 transition-transform"
-                        >
-                           {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 ml-0.5" />}
-                        </Button>
-                     </div>
-                     <Button 
-                       variant="outline"
-                       onClick={handleFetchTemplates}
-                       className="h-12 px-6 rounded-full font-black uppercase text-[10px] tracking-widest shadow-lg bg-white border-primary/20 text-primary transition-all shrink-0"
-                     >
-                       <Layout className="h-4 w-4 mr-2" /> Templates
-                     </Button>
+              <div className="p-3.5 bg-white border-t border-slate-200 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Attach file"
+                    className="h-10 w-10 rounded-xl border-slate-200 text-slate-600 shrink-0"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  <div className="relative flex-1 flex items-center gap-2">
+                    <Input
+                      placeholder="Type your response..."
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                      disabled={isSending}
+                      className="h-10 rounded-xl bg-slate-50 border-slate-200 text-sm"
+                    />
+                    <Button
+                      size="icon"
+                      aria-label="Send message"
+                      onClick={handleSendMessage}
+                      disabled={!inputText.trim() || isSending}
+                      className="h-10 w-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white shrink-0"
+                    >
+                      {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
                   </div>
-               </div>
-            </CardContent>
-          </Card>
+                  <Button
+                    variant="outline"
+                    onClick={handleFetchTemplates}
+                    className="h-10 px-4 rounded-xl font-semibold text-xs border-slate-200 text-slate-700 shrink-0"
+                  >
+                    <Layout className="h-4 w-4 mr-1.5" /> Templates
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
-          <Card className="flex-1 border-none shadow-sm bg-white rounded-[3rem] border flex flex-col items-center justify-center text-center p-12">
-             <div className="h-32 w-32 rounded-[3rem] bg-primary/5 flex items-center justify-center text-primary mb-8 animate-pulse border-2 border-dashed border-primary/10">
-               <SmartphoneNfc className="h-12 w-12 opacity-20" />
-             </div>
-             <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Communication Node Ready</h3>
-             <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-4 leading-relaxed font-medium">Select an active contact node from the registry to establish a secure real-time connection.</p>
-          </Card>
+          <div className="flex-1 rounded-2xl border border-slate-200 bg-white flex flex-col items-center justify-center text-center p-10">
+            <div className="h-14 w-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 mb-4">
+              <SmartphoneNfc className="h-7 w-7" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900">WhatsApp Inbox Ready</h3>
+            <p className="text-sm text-slate-500 max-w-sm mt-1.5 leading-relaxed">
+              Select a conversation from the left sidebar to view history or reply directly via Meta Cloud API.
+            </p>
+          </div>
         )}
       </div>
 
-      {/* Identity Context Sidebar */}
-      <div className="hidden xl:flex w-80 flex-col gap-6 text-left shrink-0 h-full overflow-hidden">
+      {/* Customer Context Sidebar */}
+      <aside className="hidden xl:flex w-80 flex-col text-left shrink-0 h-full overflow-hidden">
         {activeChatId ? (
-          <Card className="border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden border animate-in slide-in-from-right-4 duration-500 h-full flex flex-col">
-            <CardHeader className="bg-primary/5 border-b py-6 px-8 text-left">
-              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
-                <BadgeCheck className="h-4 w-4" /> Identity Node Verified
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 space-y-8 text-left flex-1 overflow-y-auto scrollbar-hide">
-               <div className="space-y-4">
-                  <div className="flex items-center gap-4 text-left">
-                     <div className="h-16 w-16 rounded-[1.5rem] bg-primary flex items-center justify-center text-white font-black shadow-xl text-2xl uppercase">{activeChat?.customerName?.charAt(0)}</div>
-                     <div className="min-w-0 text-left">
-                        <p className="text-lg font-black text-slate-900 truncate uppercase tracking-tight leading-none mb-1.5">{activeChat?.customerName}</p>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{activeChatId}</p>
-                     </div>
-                  </div>
-               </div>
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden h-full flex flex-col">
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-100">
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <BadgeCheck className="h-4 w-4 text-emerald-600" /> Customer Profile
+              </h3>
+            </div>
+            <div className="p-5 space-y-5 flex-1 overflow-y-auto scrollbar-hide">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0">
+                  {activeChat?.customerName?.charAt(0) || "?"}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">{activeChat?.customerName}</p>
+                  <p className="text-xs font-mono tabular-nums text-slate-500 truncate">{activeChatId}</p>
+                </div>
+              </div>
 
-               {activeCustomer ? (
-                 <div className="space-y-10 animate-in fade-in text-left">
-                    <Separator className="opacity-40" />
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="p-5 bg-muted/30 rounded-2xl space-y-1 text-left shadow-inner border border-transparent">
-                          <p className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter opacity-60">LTV Value</p>
-                          <p className="text-lg font-black text-primary">{currencySymbol}{activeCustomer.totalSpent?.toLocaleString() || 0}</p>
-                       </div>
-                       <div className="p-5 bg-muted/30 rounded-2xl space-y-1 text-left shadow-inner border border-transparent">
-                          <p className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter opacity-60">Wallet Node</p>
-                          <p className="text-lg font-black text-green-600">{activeCustomer.rewardPoints || 0} <span className="text-[8px] font-bold">PTS</span></p>
-                       </div>
+              {activeCustomer ? (
+                <div className="space-y-5">
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-[11px] font-medium text-slate-500">Lifetime Spend</p>
+                      <p className="text-base font-bold font-mono tabular-nums text-slate-900 mt-1">
+                        {currencySymbol}
+                        {activeCustomer.totalSpent?.toLocaleString() || 0}
+                      </p>
                     </div>
-                    <div className="space-y-6">
-                       <div className="space-y-1">
-                          <p className="text-[9px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-2"><MapPin className="h-3 w-3" /> State Registry</p>
-                          <Badge variant="outline" className="h-6 w-full justify-start bg-slate-50 text-slate-700 border-slate-200 text-[10px] font-bold uppercase">{activeCustomer.state || 'Maharashtra'}</Badge>
-                       </div>
-                       <div className="space-y-1">
-                          <p className="text-[9px] font-black uppercase text-muted-foreground ml-1 flex items-center gap-2"><Target className="h-3 w-3" /> Classification</p>
-                          <Badge className="h-6 w-full justify-start bg-primary text-white border-none text-[10px] font-black uppercase">{activeCustomer.customerType || 'REGULAR'}</Badge>
-                       </div>
+                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-[11px] font-medium text-slate-500">Reward Wallet</p>
+                      <p className="text-base font-bold font-mono tabular-nums text-emerald-700 mt-1">
+                        {activeCustomer.rewardPoints || 0} pts
+                      </p>
                     </div>
-                    <Button asChild variant="outline" className="w-full h-14 rounded-2xl text-[10px] font-black uppercase border-primary/20 text-primary shadow-sm hover:bg-primary/5 transition-all">
-                       <Link href={`/customers`}>Profile Audit Node <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                    </Button>
-                 </div>
-               ) : (
-                 <div className="py-20 text-center space-y-6 opacity-30 border-2 border-dashed rounded-[2.5rem] animate-in zoom-in-95">
-                    <UserCircle className="h-12 w-12 mx-auto" />
-                    <p className="text-[10px] font-black uppercase tracking-widest px-6 leading-relaxed">Identity metadata not available in registry.</p>
-                 </div>
-               )}
-            </CardContent>
-            <CardFooter className="p-8 bg-muted/20 border-t">
-               <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-green-600 opacity-60" />
-                  <p className="text-[8px] font-black uppercase text-slate-500">256-bit Encrypted Handshake</p>
-               </div>
-            </CardFooter>
-          </Card>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5" /> State
+                      </p>
+                      <p className="text-xs font-semibold text-slate-800 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                        {activeCustomer.state || "Maharashtra"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                        <Target className="h-3.5 w-3.5" /> Segment
+                      </p>
+                      <p className="text-xs font-semibold text-slate-800 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200">
+                        {activeCustomer.customerType || "Regular"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" className="w-full h-10 rounded-xl text-xs font-semibold border-slate-200">
+                    <Link href="/customers">
+                      View Customer Directory <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="py-12 text-center space-y-2 border border-dashed border-slate-200 rounded-xl p-4">
+                  <UserCircle className="h-8 w-8 mx-auto text-slate-300" />
+                  <p className="text-xs text-slate-500">Customer record not matched in CRM yet.</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+              <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>Meta Cloud encrypted session</span>
+            </div>
+          </div>
         ) : (
-          <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden border p-8 space-y-8 text-left h-full">
-            <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner"><ShieldCheck className="h-6 w-6 text-accent" /></div>
-            <div className="space-y-2">
-               <h3 className="text-xl font-bold uppercase tracking-tight leading-none text-white">System Protocol</h3>
-               <p className="text-xs text-slate-400 leading-relaxed font-medium">All communication nodes follow official Meta Cloud API v21.0 logic. Sessions are isolated per tenant ID.</p>
+          <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-5 h-full">
+            <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center">
+              <ShieldCheck className="h-5 w-5 text-white" />
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white">Messaging Protocol</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Conversations run over the official Meta Cloud API v21.0 and stay isolated per tenant workspace.
+              </p>
             </div>
             <Separator className="bg-white/10" />
-            <div className="space-y-6">
-               <div className="flex items-center gap-4">
-                 <div className="h-8 w-8 rounded-xl bg-white/5 flex items-center justify-center text-green-400 border border-white/5 shadow-inner"><BadgeCheck className="h-5 w-5" /></div>
-                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">PCI SECURED NODE</span>
-               </div>
-               <div className="flex items-center gap-4">
-                 <div className="h-8 w-8 rounded-xl bg-white/5 flex items-center justify-center text-green-400 border border-white/5 shadow-inner"><Clock className="h-5 w-5" /></div>
-                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">SESSION AUDIT ON</span>
-               </div>
+            <div className="space-y-3 text-xs text-slate-200">
+              <div className="flex items-center gap-2.5">
+                <BadgeCheck className="h-4 w-4 text-emerald-400" /> End-to-End Business Auth
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Clock className="h-4 w-4 text-emerald-400" /> 24h Session Window Aware
+              </div>
             </div>
-          </Card>
+          </div>
         )}
-      </div>
+      </aside>
 
-      {/* Templates Hub Dialog */}
+      {/* Templates Dialog */}
       <Dialog open={isTemplatesOpen} onOpenChange={setIsTemplatesOpen}>
-         <DialogContent className="sm:max-w-[500px] rounded-[3rem] border-none shadow-2xl p-0 overflow-hidden text-left w-[95vw]">
-            <DialogHeader className="p-8 bg-slate-900 text-white text-left shrink-0">
-               <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 shadow-inner"><Layout className="h-6 w-6 text-accent" /></div>
-                  <DialogTitle className="text-xl font-bold uppercase">Meta Approved Nodes</DialogTitle>
-               </div>
-            </DialogHeader>
-            <ScrollArea className="max-h-[60vh] p-8">
-               <div className="space-y-4 pb-10">
-                  {isTemplateLoading ? (
-                    <div className="py-20 flex flex-col items-center justify-center gap-4 opacity-40">
-                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Polling Meta Registry...</span>
+        <DialogContent className="sm:max-w-[500px] rounded-2xl border border-slate-200 p-0 overflow-hidden text-left w-[95vw]">
+          <DialogHeader className="p-6 bg-slate-900 text-white border-b border-slate-800 text-left shrink-0">
+            <div className="flex items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+                <Layout className="h-5 w-5 text-white" />
+              </div>
+              <DialogTitle className="text-base font-bold text-white">Approved Meta Templates</DialogTitle>
+            </div>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] p-5">
+            <div className="space-y-3">
+              {isTemplateLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-500">
+                  <Loader2 className="h-7 w-7 animate-spin" />
+                  <span className="text-xs font-medium">Loading approved templates...</span>
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">No approved templates found.</div>
+              ) : (
+                templates.map((t) => (
+                  <button
+                    type="button"
+                    key={t.name}
+                    onClick={() => handleSendTemplate(t.name)}
+                    className="w-full text-left p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex justify-between items-center gap-2 mb-1.5">
+                      <span className="text-sm font-semibold text-slate-900 truncate">
+                        {t.name?.replace(/_/g, " ")}
+                      </span>
+                      <Badge variant="outline" className="text-[11px] font-medium border-slate-200 text-slate-600">
+                        {t.category}
+                      </Badge>
                     </div>
-                  ) : templates.length === 0 ? (
-                    <div className="py-20 text-center opacity-30 italic text-xs uppercase font-black">No approved templates found.</div>
-                  ) : templates.map(t => (
-                    <div 
-                      key={t.name} 
-                      onClick={() => handleSendTemplate(t.name)}
-                      className="p-6 rounded-[2rem] border-2 border-border/40 bg-white hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group shadow-sm"
-                    >
-                       <div className="flex justify-between items-center mb-3">
-                          <span className="text-sm font-black text-slate-900 group-hover:text-primary uppercase tracking-tight truncate max-w-[200px]">{t.name?.replace(/_/g, ' ')}</span>
-                          <Badge variant="outline" className="text-[7px] font-black h-4 px-1.5 uppercase border-primary/20 text-primary">{t.category}</Badge>
-                       </div>
-                       <p className="text-[10.5px] text-muted-foreground line-clamp-2 leading-relaxed italic font-medium">"{t.components?.find((c:any)=>c.type==='BODY')?.text || ''}"</p>
-                    </div>
-                  ))}
-               </div>
-            </ScrollArea>
-            <DialogFooter className="p-8 bg-muted/10 border-t"><Button variant="ghost" onClick={() => setIsTemplatesOpen(false)} className="w-full h-12 rounded-xl text-[10px] font-black uppercase tracking-widest">Close Hub</Button></DialogFooter>
-         </DialogContent>
+                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                      "{t.components?.find((c: any) => c.type === "BODY")?.text || ""}"
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+          <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100">
+            <Button variant="outline" onClick={() => setIsTemplatesOpen(false)} className="w-full h-10 rounded-xl text-xs font-semibold">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

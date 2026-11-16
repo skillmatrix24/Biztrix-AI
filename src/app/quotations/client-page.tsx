@@ -21,10 +21,11 @@ import {
   SmartphoneNfc,
   Info
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { KpiStatCard, PageHeader, SectionCard } from "@/components/ui/editorial";
 import { 
   Table, 
   TableBody, 
@@ -45,10 +46,10 @@ import { evaluateCoreQuota, isCreatedInCurrentMonth } from "@/lib/marketplace-ca
 import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
 
 const STATUS_CONFIG: any = {
-  'draft': { label: 'Draft', color: 'text-slate-500', bg: 'bg-slate-100' },
-  'sent': { label: 'Sent', color: 'text-blue-600', bg: 'bg-blue-50' },
-  'converted': { label: 'Converted', color: 'text-green-600', bg: 'bg-green-50' },
-  'expired': { label: 'Expired', color: 'text-red-600', bg: 'bg-red-50' },
+  'draft': { label: 'Draft', color: 'text-slate-600', bg: 'bg-slate-100' },
+  'sent': { label: 'Sent', color: 'text-sky-700', bg: 'bg-sky-50' },
+  'converted': { label: 'Converted', color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  'expired': { label: 'Expired', color: 'text-rose-700', bg: 'bg-rose-50' },
 };
 
 export default function QuotationRegistryPage() {
@@ -114,101 +115,107 @@ export default function QuotationRegistryPage() {
   if (isProfileLoading) return <div className="flex items-center justify-center py-20"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-6 md:space-y-10 pb-20 text-left">
+    <div className="space-y-6 pb-20 text-left">
       <CoreQuotaBanner quota={quoteQuota} />
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between px-1">
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-2xl bg-orange-50 flex items-center justify-center shrink-0 border border-orange-100 shadow-inner">
-            <FileSpreadsheet className="h-8 w-8 text-orange-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-none">Quotation Hub</h2>
-            <p className="text-[10px] md:text-sm text-muted-foreground uppercase font-black tracking-widest mt-1 opacity-60">Sales Offer Registry</p>
-          </div>
-        </div>
-        {quoteQuota.isReached ? (
-          <Button asChild className="bg-slate-900 hover:bg-slate-800 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
-            <Link href={`/marketplace/features/${quoteQuota.menu.addonId}`}>Unlock Unlimited Quotes</Link>
-          </Button>
-        ) : (
-          <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl h-11 px-8 font-black uppercase text-[10px] tracking-widest rounded-xl text-white">
-            <Link href="/billing"><Plus className="mr-2 h-4 w-4" /> New Quote</Link>
-          </Button>
-        )}
+
+      <PageHeader
+        breadcrumb="Command Center / Quotations"
+        title="Quotation Hub"
+        description="Prepare sales offers and convert approved estimates directly into POS invoices."
+        icon={FileSpreadsheet}
+        actions={
+          quoteQuota.isReached ? (
+            <Button asChild className="bg-slate-900 hover:bg-slate-800 h-10 px-5 text-xs font-semibold rounded-xl text-white">
+              <Link href={`/marketplace/features/${quoteQuota.menu.addonId}`}>Unlock Unlimited Quotes</Link>
+            </Button>
+          ) : (
+            <Button asChild className="h-10 px-5 text-xs font-semibold rounded-xl">
+              <Link href="/billing"><Plus className="mr-1.5 h-4 w-4" /> New Quote</Link>
+            </Button>
+          )
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <KpiStatCard label="Active Offers" value={`${stats.active} Pending`} icon={Clock} />
+        <KpiStatCard label="Converted" value={`${stats.converted} Invoiced`} tone="positive" icon={CheckCircle2} />
+        <KpiStatCard
+          label="Pipeline Worth"
+          value={`${currencySymbol}${stats.pipelineWorth.toLocaleString("en-IN")}`}
+          tone="dark"
+          icon={FileSpreadsheet}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border border-border/50">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Active Offers</p>
-          <div className="text-2xl font-black text-slate-900">{stats.active} Pending</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-white rounded-3xl p-6 border-l-4 border-l-green-500 border-border/50">
-          <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">Converted</p>
-          <div className="text-2xl font-black text-green-700">{stats.converted} Invoiced</div>
-        </Card>
-        <Card className="border-none shadow-sm bg-slate-900 text-white rounded-3xl p-6">
-          <p className="text-[10px] font-black text-accent uppercase tracking-widest mb-1">Pipeline Worth</p>
-          <div className="text-2xl font-black text-white">{currencySymbol}{stats.pipelineWorth.toLocaleString()}</div>
-        </Card>
-      </div>
-
-      <Card className="border-none shadow-md overflow-hidden bg-white rounded-[2.5rem] border">
-        <div className="p-4 border-b bg-muted/20 flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-            <Input placeholder="Search customer or quote ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-11 pl-10 rounded-xl bg-white border-none shadow-inner text-xs font-bold w-full" />
+      <SectionCard
+        title="Quotation Registry"
+        description={`${(quotations || []).length} total quotations recorded`}
+        bodyClassName="p-0"
+        headerRight={
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search customer or quote ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-9 pl-9 rounded-xl bg-slate-50 border-slate-200 text-xs w-full"
+            />
           </div>
-          <Badge variant="outline" className="text-[8px] font-black h-6 border-primary/20 text-primary uppercase">{(quotations || []).length} Nodes in Vault</Badge>
-        </div>
+        }
+      >
         <div className="overflow-x-auto scrollbar-hide">
-          <Table className="min-w-[900px]">
+          <Table className="min-w-[820px]">
             <TableHeader>
-              <TableRow className="bg-muted/10">
-                <TableHead className="pl-8 text-[10px] font-black uppercase h-12">Quotation ID</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12">Client Identity</TableHead>
-                <TableHead className="text-[10px] font-black uppercase h-12 text-center">Status</TableHead>
-                <TableHead className="text-right text-[10px] font-black uppercase h-12">Estimated Value</TableHead>
-                <TableHead className="text-right pr-8 h-12 w-48"></TableHead>
+              <TableRow>
+                <TableHead className="pl-6">Quotation ID</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead className="text-center">Status</TableHead>
+                <TableHead className="text-right">Estimated Value</TableHead>
+                <TableHead className="text-right pr-6 w-48">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isQuotesLoading ? (
-                <TableRow><TableCell colSpan={5} className="h-60 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary opacity-20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="h-48 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary opacity-40" /></TableCell></TableRow>
               ) : filteredQuotes.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="h-40 text-center opacity-30 italic text-sm uppercase">No quotations in registry.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="h-36 text-center text-sm text-slate-500">No quotations in registry yet.</TableCell></TableRow>
               ) : (
                 filteredQuotes.map((q) => {
                   const s = STATUS_CONFIG[q.status || 'draft'];
                   return (
-                    <TableRow key={q.id} className="group hover:bg-muted/5 transition-colors border-b">
-                      <TableCell className="pl-8 py-5">
-                         <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center font-black text-orange-600 text-xs uppercase shadow-inner shrink-0">Q</div>
-                            <div className="min-w-0">
-                               <p className="text-sm font-black text-slate-900 truncate uppercase tracking-tight">{q.quotationId}</p>
-                               <p className="text-[8px] font-bold text-muted-foreground uppercase mt-1">Created: {q.createdAt?.toDate ? format(q.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}</p>
-                            </div>
-                         </div>
+                    <TableRow key={q.id}>
+                      <TableCell className="pl-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shrink-0">Q</div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate font-mono">{q.quotationId}</p>
+                            <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
+                              Created: {q.createdAt?.toDate ? format(q.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}
+                            </p>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                         <p className="text-xs font-bold text-slate-700">{q.customerName}</p>
-                         <p className="text-[8px] font-black uppercase opacity-40">Client ID: {q.customerId.slice(-6)}</p>
+                        <p className="text-sm font-semibold text-slate-900">{q.customerName}</p>
+                        <p className="text-xs text-slate-500 font-mono">ID · {q.customerId?.slice(-6) || '—'}</p>
                       </TableCell>
                       <TableCell className="text-center">
-                         <Badge className={cn("text-[8px] font-black uppercase h-5 px-2 border-none shadow-sm", s.bg, s.color)}>{s.label}</Badge>
+                        <span className={cn("inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold", s.bg, s.color)}>
+                          {s.label}
+                        </span>
                       </TableCell>
-                      <TableCell className="text-right font-black text-sm text-primary">
-                        {currencySymbol}{q.totals?.finalPayout?.toLocaleString()}
+                      <TableCell className="text-right font-mono tabular-nums font-bold text-sm text-slate-900">
+                        {currencySymbol}{Number(q.totals?.finalPayout || 0).toLocaleString("en-IN")}
                       </TableCell>
-                      <TableCell className="text-right pr-8">
-                         <div className="flex justify-end gap-2">
-                           <Button asChild variant="outline" size="sm" className="h-8 rounded-xl text-[8px] font-black uppercase border-primary/20 text-primary">
-                             <Link href={`/billing?quoteId=${q.id}`}><RefreshCcw className="mr-1.5 h-3 w-3" /> Load & Convert</Link>
-                           </Button>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl text-destructive/40 hover:text-destructive" onClick={() => handleDelete(q.id)}>
-                             <Trash2 className="h-4 w-4" />
-                           </Button>
-                         </div>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex justify-end gap-2">
+                          <Button asChild variant="outline" size="sm" className="h-8 rounded-lg text-xs">
+                            <Link href={`/billing?quoteId=${q.id}`}><RefreshCcw className="mr-1.5 h-3.5 w-3.5" /> Convert</Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" aria-label="Delete quotation" className="h-8 w-8 rounded-lg text-slate-400 hover:text-destructive" onClick={() => handleDelete(q.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -217,14 +224,16 @@ export default function QuotationRegistryPage() {
             </TableBody>
           </Table>
         </div>
-      </Card>
+      </SectionCard>
 
-      <div className="p-8 bg-orange-50 rounded-[2.5rem] border border-orange-100 flex items-start gap-4 mx-2">
-         <Info className="h-6 w-6 text-orange-600 shrink-0 opacity-40" />
-         <div className="space-y-1 text-left">
-            <p className="text-[10px] font-black uppercase text-orange-900 tracking-widest leading-none">Registry Logic</p>
-            <p className="text-[11px] text-orange-800/70 leading-relaxed font-medium italic">"Quotations are non-accounting nodes. Stock and Cashbook are only updated when you convert them to a finalized POS invoice."</p>
-         </div>
+      <div className="p-5 bg-white rounded-2xl border border-slate-200 flex items-start gap-3.5">
+        <Info className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+        <div className="space-y-1 text-left">
+          <p className="text-xs font-semibold text-slate-900">How Quotations Work</p>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Quotations are non-accounting estimates. Inventory stock and Cashbook ledgers update only when a quote is converted into a finalized POS invoice.
+          </p>
+        </div>
       </div>
     </div>
   );
