@@ -222,9 +222,9 @@ export default function StaffTrackPage(props: PageProps) {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
       <header className="sticky top-0 z-50 bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-11 w-11 bg-white rounded-xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-8">
+          <div className="flex items-center gap-3 min-w-0 shrink-0">
+            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 shrink-0 overflow-hidden">
               {business?.logoUrl ? (
                 <img
                   src={business.logoUrl}
@@ -238,21 +238,16 @@ export default function StaffTrackPage(props: PageProps) {
                 </div>
               )}
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm sm:text-base font-semibold text-slate-900 truncate leading-tight">
-                {business?.name || "Member Portal"}
-              </span>
-              <span className="text-xs font-medium text-emerald-600 mt-0.5">
-                Performance &amp; Payroll Portal
-              </span>
-            </div>
+            <span className="text-sm sm:text-base font-semibold text-slate-900 truncate whitespace-nowrap">
+              {business?.name || "Member Portal"}
+            </span>
           </div>
 
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="h-9 rounded-xl text-xs font-medium border-slate-200 bg-white shadow-none"
+            className="h-9 rounded-xl text-xs font-medium border-slate-200 bg-white shadow-none whitespace-nowrap shrink-0"
           >
             <Link href="/">
               <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Site Home

@@ -30,6 +30,7 @@ import {
 import { collection, doc, query, where } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { getCurrencySymbol } from "@/lib/utils";
+import { isStaffAdminRole } from "@/lib/staff-payroll";
 import { differenceInDays, parseISO } from "date-fns";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -75,12 +76,11 @@ function SettingsContent() {
   const currencySymbol = getCurrencySymbol(sanitizedBusiness?.currency);
 
   const isAdmin = useMemo(() => {
-    const role = (userProfile?.role || "").toLowerCase();
-    return (
-      role === "admin" ||
-      currentUser?.email?.toLowerCase() === "skillmatrix24@gmail.com"
+    return Boolean(
+      (currentUser?.uid && business?.ownerId === currentUser.uid) ||
+        isStaffAdminRole(userProfile?.role, currentUser?.email)
     );
-  }, [userProfile, currentUser]);
+  }, [userProfile?.role, currentUser?.uid, currentUser?.email, business?.ownerId]);
 
   const usersQuery = useMemoFirebase(() => {
     if (!businessId || !isAdmin) return null;
@@ -289,6 +289,7 @@ function SettingsContent() {
             currentUser={currentUser}
             isAdmin={isAdmin}
             isTrialExpired={isTrialExpired}
+            currencySymbol={currencySymbol}
           />
         </TabsContent>
 

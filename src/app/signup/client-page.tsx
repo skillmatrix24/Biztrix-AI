@@ -71,9 +71,26 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isInviteFlow, setIsInviteFlow] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const inviteFlag = params.get("invite") === "1";
+      const emailParam = (params.get("email") || "").trim();
+      const nameParam = (params.get("name") || "").trim();
+      const bizParam = (params.get("business") || "").trim();
+      if (inviteFlag || emailParam || nameParam || bizParam) {
+        setIsInviteFlow(inviteFlag || Boolean(emailParam));
+        setFormData((prev) => ({
+          ...prev,
+          email: emailParam || prev.email,
+          name: nameParam || prev.name,
+          businessName: bizParam || prev.businessName,
+        }));
+      }
+    }
   }, []);
 
   const provisionUser = async (
@@ -104,7 +121,8 @@ export default function SignupPage() {
     const invitedSnap = await getDocs(invitedUsersQuery);
 
     if (!invitedSnap.empty) {
-      const invitedProfile = invitedSnap.docs[0].data();
+      const invitedDoc = invitedSnap.docs[0];
+      const invitedProfile = invitedDoc.data();
       const bid = invitedProfile.businessId;
       const profileData = {
         ...invitedProfile,
@@ -119,7 +137,9 @@ export default function SignupPage() {
         profileData,
         { merge: true }
       );
-      await deleteDoc(doc(firestore, "users", invitedSnap.docs[0].id)).catch(() => {});
+      if (invitedDoc.id !== uid) {
+        await deleteDoc(doc(firestore, "users", invitedDoc.id)).catch(() => {});
+      }
       await deleteDoc(
         doc(firestore, "businesses", bid, "invites", email.toLowerCase())
       ).catch(() => {});
@@ -281,9 +301,13 @@ export default function SignupPage() {
 
           <Card className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-none">
             <CardHeader className="bg-slate-900 text-white p-6 text-left">
-              <h2 className="text-lg font-bold tracking-tight">Start Your Business</h2>
+              <h2 className="text-lg font-bold tracking-tight">
+                {isInviteFlow ? "Accept Workspace Invitation" : "Start Your Business"}
+              </h2>
               <p className="text-xs text-slate-300 mt-0.5">
-                Core Business OS is free forever · Pro modules include a 14-day trial
+                {isInviteFlow
+                  ? `Set your password or sign in with Google to join ${formData.businessName || "your team workspace"}`
+                  : "Core Business OS is free forever · Pro modules include a 14-day trial"}
               </p>
             </CardHeader>
 
@@ -388,7 +412,8 @@ export default function SignupPage() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <span className="flex items-center gap-2">
-                      Create Workspace <ArrowRight className="h-4 w-4" />
+                      {isInviteFlow ? "Accept Invite & Join" : "Create Workspace"}{" "}
+                      <ArrowRight className="h-4 w-4" />
                     </span>
                   )}
                 </Button>
@@ -418,7 +443,14 @@ export default function SignupPage() {
             <CardFooter className="p-6 sm:p-8 pt-2 flex flex-col gap-3">
               <p className="text-xs text-slate-500 text-center">
                 Already have an account?{" "}
-                <Link href="/login" className="font-semibold text-primary hover:underline">
+                <Link
+                  href={
+                    formData.email
+                      ? `/login?email=${encodeURIComponent(formData.email)}`
+                      : "/login"
+                  }
+                  className="font-semibold text-primary hover:underline"
+                >
                   Sign in
                 </Link>
               </p>

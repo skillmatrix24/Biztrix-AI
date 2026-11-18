@@ -3,15 +3,18 @@ import assert from "node:assert/strict";
 import {
   aggregateStaffPayrollRow,
   buildStaffActivityCsv,
+  buildTeamInviteLinks,
   buildTeamSummaryCsv,
   calculateDayEarning,
   computeDailyTeamStats,
   escapeCsvCell,
+  findMatchingExistingMemberByEmail,
   formatLongDateLabel,
   formatShortDateLabel,
   getCombinedDateQueryRange,
   getDailyDraftKey,
   getDynamicRoleOptions,
+  getMemberInviteState,
   getPayrollYearOptions,
   isDateInMonthYear,
   isPulseWidgetEnabled,
@@ -288,4 +291,57 @@ test("dynamic years, roles, pulse widget layout, and admin role detection work b
   assert.equal(isStaffAdminRole("manager"), true);
   assert.equal(isStaffAdminRole("Staff"), false);
   assert.equal(isStaffAdminRole("Staff", "skillmatrix24@gmail.com"), true);
+});
+
+test("team directory invite & re-invite helpers classify members and build share links", () => {
+  const uninvited = getMemberInviteState({ id: "u1", name: "Ramesh" }, "admin1");
+  assert.equal(uninvited.canInvite, true);
+  assert.equal(uninvited.actionLabel, "Invite");
+  assert.equal(uninvited.statusLabel, "No login invited");
+
+  const pending = getMemberInviteState(
+    { id: "u2", name: "Suresh", email: "suresh@company.com", status: "pending" },
+    "admin1"
+  );
+  assert.equal(pending.canInvite, true);
+  assert.equal(pending.actionLabel, "Re-invite");
+  assert.equal(pending.statusLabel, "Pending invite");
+
+  const active = getMemberInviteState(
+    { id: "u3", name: "Priya", email: "priya@company.com", status: "active" },
+    "admin1"
+  );
+  assert.equal(active.canInvite, true);
+  assert.equal(active.actionLabel, "Re-invite");
+  assert.equal(active.statusLabel, "Active");
+
+  const self = getMemberInviteState(
+    { id: "admin1", name: "Owner", email: "owner@company.com", status: "active" },
+    "admin1"
+  );
+  assert.equal(self.isSelf, true);
+  assert.equal(self.canInvite, false);
+
+  const matched = findMatchingExistingMemberByEmail(
+    [
+      { id: "u2", name: "Suresh", email: "Suresh@Company.com" },
+      { id: "u3", name: "Priya", email: "priya@company.com" },
+    ],
+    "  suresh@company.com "
+  );
+  assert.equal(matched?.id, "u2");
+
+  const links = buildTeamInviteLinks({
+    origin: "https://app.example.com/",
+    email: "Suresh@Company.com",
+    name: "Suresh Kumar",
+    role: "Manager",
+    businessName: "Apex Solar",
+    phone: "09876543210",
+  });
+  assert.match(links.inviteUrl, /^https:\/\/app\.example\.com\/signup\?/);
+  assert.match(links.inviteUrl, /invite=1/);
+  assert.match(links.inviteUrl, /email=suresh%40company\.com/);
+  assert.match(links.whatsappUrl, /^https:\/\/wa\.me\/919876543210\?text=/);
+  assert.match(links.mailtoUrl, /^mailto:suresh%40company\.com\?subject=/);
 });

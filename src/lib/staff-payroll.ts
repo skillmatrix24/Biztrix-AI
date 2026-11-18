@@ -704,3 +704,124 @@ export function isStaffAdminRole(role?: string | null, email?: string | null): b
 export function isPendingStaffMember(staff?: StaffMemberLike | null): boolean {
   return (staff?.status || "").trim().toLowerCase() === "pending";
 }
+
+export interface MemberInviteState {
+  isSelf: boolean;
+  hasEmail: boolean;
+  isPending: boolean;
+  canInvite: boolean;
+  actionLabel: "Invite" | "Re-invite";
+  statusLabel: "Active" | "Pending invite" | "No login invited";
+}
+
+export function getMemberInviteState(
+  member: StaffMemberLike & { status?: string },
+  currentUserId?: string | null
+): MemberInviteState {
+  const isSelf = Boolean(currentUserId && member?.id === currentUserId);
+  const cleanEmail = (member?.email || "").trim();
+  const hasEmail = Boolean(cleanEmail && cleanEmail.includes("@"));
+  const isPending = isPendingStaffMember(member);
+
+  if (!hasEmail) {
+    return {
+      isSelf,
+      hasEmail: false,
+      isPending,
+      canInvite: !isSelf,
+      actionLabel: "Invite",
+      statusLabel: "No login invited",
+    };
+  }
+
+  if (isPending) {
+    return {
+      isSelf,
+      hasEmail: true,
+      isPending: true,
+      canInvite: !isSelf,
+      actionLabel: "Re-invite",
+      statusLabel: "Pending invite",
+    };
+  }
+
+  return {
+    isSelf,
+    hasEmail: true,
+    isPending: false,
+    canInvite: !isSelf,
+    actionLabel: "Re-invite",
+    statusLabel: "Active",
+  };
+}
+
+export function findMatchingExistingMemberByEmail<T extends StaffMemberLike>(
+  members: T[],
+  email: string
+): T | undefined {
+  const target = (email || "").trim().toLowerCase();
+  if (!target || !target.includes("@")) return undefined;
+  return (members || []).find((m) => (m?.email || "").trim().toLowerCase() === target);
+}
+
+export function normalizeWhatsAppDigits(rawPhone?: string | null): string {
+  const digits = String(rawPhone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) return `91${digits}`;
+  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  return digits;
+}
+
+export function buildTeamInviteLinks(params: {
+  origin: string;
+  email: string;
+  name?: string;
+  role?: string;
+  businessName?: string;
+  phone?: string;
+}): {
+  inviteUrl: string;
+  loginUrl: string;
+  inviteMessage: string;
+  whatsappUrl: string;
+  mailtoUrl: string;
+} {
+  const cleanOrigin = (params.origin || "").replace(/\/+$/, "");
+  const cleanEmail = (params.email || "").trim().toLowerCase();
+  const cleanName = (params.name || "Team Member").trim();
+  const cleanRole = (params.role || "Staff").trim();
+  const cleanBusiness = (params.businessName || "Workspace").trim();
+
+  const queryParams = new URLSearchParams({
+    invite: "1",
+    email: cleanEmail,
+    name: cleanName,
+    business: cleanBusiness,
+  });
+
+  const inviteUrl = `${cleanOrigin}/signup?${queryParams.toString()}`;
+  const loginUrl = `${cleanOrigin}/login?email=${encodeURIComponent(cleanEmail)}`;
+
+  const inviteMessage = [
+    `Hi ${cleanName},`,
+    `You have been invited to join ${cleanBusiness} as ${cleanRole}.`,
+    `Accept your workspace invite using email (${cleanEmail}):`,
+    inviteUrl,
+    `Already have an account? Sign in here: ${loginUrl}`,
+  ].join("\n");
+
+  const phoneDigits = normalizeWhatsAppDigits(params.phone);
+  const whatsappBase = phoneDigits ? `https://wa.me/${phoneDigits}` : "https://wa.me/";
+  const whatsappUrl = `${whatsappBase}?text=${encodeURIComponent(inviteMessage)}`;
+
+  const subject = `Invitation to join ${cleanBusiness}`;
+  const mailtoUrl = `mailto:${encodeURIComponent(cleanEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(inviteMessage)}`;
+
+  return {
+    inviteUrl,
+    loginUrl,
+    inviteMessage,
+    whatsappUrl,
+    mailtoUrl,
+  };
+}

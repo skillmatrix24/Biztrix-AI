@@ -10,12 +10,14 @@ import {
   Calendar,
   CheckCircle2,
   Download,
+  PinOff,
   Plus,
   Printer,
   RefreshCw,
   Search,
   Sparkles,
   TrendingUp,
+  Users,
   X,
 } from "lucide-react";
 import {
@@ -69,6 +71,14 @@ export interface AllInOneReportDashboardProps {
   isBriefDismissed: boolean;
   onRefreshBrief: () => void;
   onDismissBrief: (dismissed: boolean) => void;
+  dailyPulse?: {
+    totalStaff: number;
+    presentToday: number;
+    halfDayToday: number;
+    accruedWageToday: number;
+    cashPaidToday: number;
+  } | null;
+  onUnpinDailyPulse?: () => void;
 }
 
 const DATE_RANGE_OPTIONS: Array<{ id: ReportDateRange; label: string }> = [
@@ -106,6 +116,8 @@ export function AllInOneReportDashboard({
   isBriefDismissed,
   onRefreshBrief,
   onDismissBrief,
+  dailyPulse = null,
+  onUnpinDailyPulse,
 }: AllInOneReportDashboardProps) {
   const [dateRange, setDateRange] = useState<ReportDateRange>("month");
   const [customStartDate, setCustomStartDate] = useState<string>(() =>
@@ -367,6 +379,79 @@ export function AllInOneReportDashboard({
             </button>
           </div>
         </div>
+      )}
+
+      {/* PINNED DAILY TEAM PULSE WIDGET */}
+      {dailyPulse && (
+        <section
+          aria-label="Daily team pulse"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 sm:px-5 print:hidden"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-1.5 font-bold text-slate-900">
+                <Users className="h-4 w-4 text-primary" />
+                Daily Team Pulse
+              </span>
+              <span aria-hidden="true" className="text-slate-300">
+                ·
+              </span>
+              <span className="font-mono tabular-nums font-semibold text-slate-800">
+                {dailyPulse.presentToday}/{dailyPulse.totalStaff} Present
+                {dailyPulse.halfDayToday > 0 ? ` (${dailyPulse.halfDayToday} Half-day)` : ""}
+              </span>
+              <span aria-hidden="true" className="text-slate-300">
+                ·
+              </span>
+              <span>
+                Wage Accrued:{" "}
+                <strong className="font-mono tabular-nums text-slate-900">
+                  {currencySymbol}
+                  {dailyPulse.accruedWageToday.toLocaleString("en-IN", {
+                    maximumFractionDigits: 0,
+                  })}
+                </strong>
+              </span>
+              <span aria-hidden="true" className="text-slate-300">
+                ·
+              </span>
+              <span>
+                Cash Paid Today:{" "}
+                <strong className="font-mono tabular-nums text-emerald-700">
+                  {currencySymbol}
+                  {dailyPulse.cashPaidToday.toLocaleString("en-IN", {
+                    maximumFractionDigits: 0,
+                  })}
+                </strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg border-slate-200 text-xs font-semibold text-slate-700 whitespace-nowrap"
+              >
+                <Link href="/staff">
+                  Mark Attendance <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+              {onUnpinDailyPulse && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onUnpinDailyPulse}
+                  className="h-8 px-2.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 whitespace-nowrap"
+                >
+                  <PinOff className="mr-1.5 h-3.5 w-3.5" />
+                  Unpin
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
       )}
 
       {/* COMPACT EXECUTIVE AI BRIEF BAR */}

@@ -62,6 +62,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = (params.get("email") || "").trim();
+      if (emailParam) {
+        setEmail((prev) => prev || emailParam);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -110,7 +117,9 @@ export default function LoginPage() {
 
       await setDoc(userDocRef, profileData, { merge: true });
       await setDoc(doc(firestore, 'businesses', bid, 'users', firebaseUser.uid), profileData, { merge: true });
-      await deleteDoc(doc(firestore, 'users', invitedDoc.id));
+      if (invitedDoc.id !== firebaseUser.uid) {
+        await deleteDoc(doc(firestore, 'users', invitedDoc.id)).catch(() => {});
+      }
       await deleteDoc(doc(firestore, 'businesses', bid, 'invites', identifier)).catch(() => {});
     } else {
       const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;

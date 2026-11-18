@@ -27,7 +27,6 @@ import {
 import { PageHeader, KpiStatCard, SectionCard, EmptyStatePanel } from "@/components/ui/editorial";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { 
   Dialog, 
   DialogContent, 
@@ -55,10 +54,13 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking, useDoc, setDocumentNonBlocking } from "@/firebase";
-import { collection, query, orderBy, doc, serverTimestamp, where, increment } from "firebase/firestore";
+import { format } from "date-fns";
+import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, updateDocumentNonBlocking, useDoc } from "@/firebase";
+import { collection, query, orderBy, doc, serverTimestamp, where, increment, addDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { cn, getCurrencySymbol } from "@/lib/utils";
+import { isPendingStaffMember, isStaffAdminRole, parseNonNegativeNumber } from "@/lib/staff-payroll";
+import { mirrorStaffPaymentIfPublic } from "@/lib/public-staff-sync";
 
 const RECIPIENT_TYPES = [
   { id: 'staff', label: 'Staff Member', icon: Users, color: 'text-blue-600' },
@@ -76,12 +78,20 @@ export default function PaymentRequestsPage() {
   , [firestore, user?.uid]);
   const { data: profile } = useDoc<any>(userProfileRef);
   const businessId = profile?.businessId;
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
   const businessRef = useMemoFirebase(() => 
     businessId ? doc(firestore, 'businesses', businessId) : null
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
+
+  const isAdmin = useMemo(
+    () =>
+      Boolean(
+        (user?.uid && business?.ownerId === user.uid) ||
+          isStaffAdminRole(profile?.role, user?.email)
+      ),
+    [user?.uid, user?.email, business?.ownerId, profile?.role]
+  );
 
   // Data Fetching
   const requestsQuery = useMemoFirebase(() => 
@@ -94,7 +104,10 @@ export default function PaymentRequestsPage() {
     businessId ? query(collection(firestore, 'users'), where('businessId', '==', businessId)) : null
   , [firestore, businessId]);
   const { data: staffListData } = useCollection<any>(staffQuery);
-  const staffList = staffListData || [];
+  const staffList = useMemo(
+    () => (staffListData || []).filter((s: any) => !isPendingStaffMember(s)),
+    [staffListData]
+  );
 
   const vendorsQuery = useMemoFirebase(() => 
     businessId ? collection(firestore, 'businesses', businessId, 'vendors') : null
@@ -124,13 +137,20 @@ export default function PaymentRequestsPage() {
     });
   }, [requests, searchTerm, activeTab]);
 
+  const currencySymbol = getCurrencySymbol(business?.currency);
+
   const handleCreateRequest = () => {
-    if (!businessId || !user?.uid || !amount || !purpose) return;
+    const cleanAmount = parseNonNegativeNumber(amount);
+    if (!businessId || !user?.uid || cleanAmount <= 0 || !purpose.trim()) return;
+    if ((recipientType === 'staff' || recipientType === 'vendor') && !recipientId) {
+      toast({ title: "Recipient Required", description: "Please select a recipient first.", variant: "destructive" });
+      return;
+    }
 
     let rName = "";
     if (recipientType === 'staff') rName = staffList.find(s => s.id === recipientId)?.name || "Unknown";
     else if (recipientType === 'vendor') rName = vendorList.find(v => v.id === recipientId)?.name || "Unknown";
-    else rName = directPurchaseLabel || "Direct Purchase";
+    else rName = directPurchaseLabel.trim() || "Direct Purchase";
 
     const requestData = {
       businessId,
@@ -139,8 +159,8 @@ export default function PaymentRequestsPage() {
       recipientType,
       recipientId: recipientType === 'direct_purchase' ? '' : recipientId,
       recipientName: rName,
-      amount: parseFloat(amount),
-      purpose,
+      amount: cleanAmount,
+      purpose: purpose.trim(),
       status: 'pending',
       createdAt: serverTimestamp()
     };
@@ -153,7 +173,7 @@ export default function PaymentRequestsPage() {
         businessId,
         recipientId: business.ownerId,
         title: "New Payment Request",
-        message: `${profile?.name} requested ₹${amount} for ${rName}`,
+        message: `${profile?.name || 'Team member'} requested ${currencySymbol}${cleanAmount.toLocaleString('en-IN')} for ${rName}`,
         type: 'payment',
         isRead: false,
         createdAt: serverTimestamp()
@@ -172,6 +192,8 @@ export default function PaymentRequestsPage() {
   const handleApprove = async (request: any) => {
     if (!businessId || !isAdmin) return;
 
+    const todayLocal = format(new Date(), 'yyyy-MM-dd');
+    const cleanAmount = parseNonNegativeNumber(request.amount);
     const requestRef = doc(firestore, 'businesses', businessId, 'paymentRequests', request.id);
     const cashbookRef = collection(firestore, 'businesses', businessId, 'cashbook');
 
@@ -185,32 +207,56 @@ export default function PaymentRequestsPage() {
     addDocumentNonBlocking(cashbookRef, {
       businessId,
       type: 'debit',
-      amount: request.amount,
+      amount: cleanAmount,
       particulars: `Payment: ${request.recipientName} (${request.purpose})`,
       category: request.recipientType === 'staff' ? 'Salary' : request.recipientType === 'vendor' ? 'Purchase' : 'Other',
       entryBy: profile?.name || 'Admin',
-      date: new Date().toISOString().split('T')[0],
+      date: todayLocal,
       createdAt: serverTimestamp()
     });
 
-    // 2. Sync to Staff Ledger (if applicable)
-    if (request.recipientType === 'staff' && request.recipientId) {
-      const recordId = `${request.recipientId}_${new Date().toISOString().split('T')[0]}`;
-      const attendanceRef = doc(firestore, 'businesses', businessId, 'attendance', recordId);
-      setDocumentNonBlocking(attendanceRef, {
+    // 2. Sync to Staff Payments Ledger (standalone advance — never overwrites attendance status)
+    if (request.recipientType === 'staff' && request.recipientId && cleanAmount > 0) {
+      const paymentPayload = {
         staffId: request.recipientId,
-        date: new Date().toISOString().split('T')[0],
-        manualPayment: increment(request.amount),
         businessId,
-        status: 'present'
-      }, { merge: true });
+        date: todayLocal,
+        amount: cleanAmount,
+        type: 'advance',
+        mode: 'Cash',
+        note: request.purpose || 'Approved fund request',
+        recordedBy: user?.uid || '',
+        createdAt: serverTimestamp(),
+      };
+      try {
+        const createdRef = await addDoc(
+          collection(firestore, 'businesses', businessId, 'staffPayments'),
+          paymentPayload
+        );
+        const targetStaff = staffList.find((s: any) => s.id === request.recipientId);
+        await mirrorStaffPaymentIfPublic({
+          firestore,
+          businessId,
+          staff: targetStaff,
+          paymentId: createdRef.id,
+          payload: {
+            date: todayLocal,
+            amount: cleanAmount,
+            type: 'advance',
+            mode: 'Cash',
+            note: request.purpose || 'Approved fund request',
+          },
+        });
+      } catch (err) {
+        console.error("Failed to record staff advance:", err);
+      }
     } 
     // 3. Sync to Vendor Balance (if applicable)
     else if (request.recipientType === 'vendor' && request.recipientId) {
       const vendorRef = doc(firestore, 'businesses', businessId, 'vendors', request.recipientId);
       updateDocumentNonBlocking(vendorRef, {
-        paidAmount: increment(request.amount),
-        pendingBalance: increment(-request.amount)
+        paidAmount: increment(cleanAmount),
+        pendingBalance: increment(-cleanAmount)
       });
     }
 
@@ -219,7 +265,7 @@ export default function PaymentRequestsPage() {
       businessId,
       recipientId: request.requesterId,
       title: "Request Approved",
-      message: `Your payment request of ₹${request.amount} for ${request.recipientName} has been approved.`,
+      message: `Your payment request of ${currencySymbol}${cleanAmount.toLocaleString('en-IN')} for ${request.recipientName} has been approved.`,
       type: 'payment',
       isRead: false,
       createdAt: serverTimestamp()
@@ -230,6 +276,7 @@ export default function PaymentRequestsPage() {
 
   const handleReject = (request: any) => {
     if (!businessId || !isAdmin) return;
+    const cleanAmount = parseNonNegativeNumber(request.amount);
     updateDocumentNonBlocking(doc(firestore, 'businesses', businessId, 'paymentRequests', request.id), { 
       status: 'rejected',
       processedBy: user?.uid,
@@ -241,7 +288,7 @@ export default function PaymentRequestsPage() {
       businessId,
       recipientId: request.requesterId,
       title: "Request Rejected",
-      message: `Your payment request of ₹${request.amount} was rejected.`,
+      message: `Your payment request of ${currencySymbol}${cleanAmount.toLocaleString('en-IN')} was rejected.`,
       type: 'payment',
       isRead: false,
       createdAt: serverTimestamp()
@@ -249,8 +296,6 @@ export default function PaymentRequestsPage() {
 
     toast({ title: "Request Rejected", variant: "destructive" });
   };
-
-  const currencySymbol = getCurrencySymbol(business?.currency);
 
   return (
     <div className="space-y-6 pb-10 text-left">
@@ -337,7 +382,7 @@ export default function PaymentRequestsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-slate-700">Amount ({currencySymbol})</Label>
-                    <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-xl border-slate-200 font-mono tabular-nums font-bold text-slate-900" />
+                    <Input type="number" min="0" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-xl border-slate-200 font-mono tabular-nums font-bold text-slate-900" />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-slate-700">Priority</Label>
@@ -465,13 +510,13 @@ export default function PaymentRequestsPage() {
                         {currencySymbol}{Number(req.amount || 0).toLocaleString('en-IN')}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className={cn(
-                          "text-xs font-medium capitalize",
-                          req.status === 'approved' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                          req.status === 'rejected' ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                        <span className={cn(
+                          "text-xs font-semibold capitalize",
+                          req.status === 'approved' ? "text-emerald-700" :
+                          req.status === 'rejected' ? "text-rose-700" : "text-amber-700"
                         )}>
                           {req.status}
-                        </Badge>
+                        </span>
                       </TableCell>
                       <TableCell className="pr-6 text-right">
                         {req.status === 'pending' && isAdmin ? (

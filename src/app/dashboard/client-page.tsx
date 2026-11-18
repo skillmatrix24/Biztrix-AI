@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { getCurrencySymbol } from "@/lib/utils";
 import {
@@ -9,10 +10,18 @@ import {
   useMemoFirebase,
   useCollection,
   useUser,
+  updateDocumentNonBlocking,
 } from "@/firebase";
 import { collection, doc, query, where, orderBy, limit } from "firebase/firestore";
 import { getMorningBrief, MorningBriefOutput } from "@/ai/flows/morning-brief-flow";
 import { AllInOneReportDashboard } from "@/components/dashboard/AllInOneReportDashboard";
+import {
+  computeDailyTeamStats,
+  isPendingStaffMember,
+  isPulseWidgetEnabled,
+  toggleDashboardPulseLayout,
+} from "@/lib/staff-payroll";
+import { toast } from "@/hooks/use-toast";
 
 export default function AICommandDashboard() {
   const firestore = useFirestore();
@@ -163,6 +172,70 @@ export default function AICommandDashboard() {
   );
   const { data: realEstateLeadsRaw } = useCollection<any>(realEstateLeadsQuery);
 
+  // PINNED DAILY TEAM PULSE WIDGET DATA (queried only when pinned)
+  const showDailyPulse = useMemo(
+    () => isPulseWidgetEnabled(userProfile?.dashboardLayout),
+    [userProfile?.dashboardLayout]
+  );
+  const todayYmd = useMemo(() => format(new Date(), "yyyy-MM-dd"), []);
+
+  const teamQuery = useMemoFirebase(
+    () =>
+      isProfileValid && showDailyPulse
+        ? query(collection(firestore, "users"), where("businessId", "==", businessId))
+        : null,
+    [firestore, businessId, isProfileValid, showDailyPulse]
+  );
+  const { data: teamMembersRaw } = useCollection<any>(teamQuery);
+
+  const todayAttendanceQuery = useMemoFirebase(
+    () =>
+      isProfileValid && showDailyPulse
+        ? query(
+            collection(firestore, "businesses", businessId, "attendance"),
+            where("date", "==", todayYmd)
+          )
+        : null,
+    [firestore, businessId, isProfileValid, showDailyPulse, todayYmd]
+  );
+  const { data: todayAttendanceRaw } = useCollection<any>(todayAttendanceQuery);
+
+  const todayStaffPaymentsQuery = useMemoFirebase(
+    () =>
+      isProfileValid && showDailyPulse
+        ? query(
+            collection(firestore, "businesses", businessId, "staffPayments"),
+            where("date", "==", todayYmd)
+          )
+        : null,
+    [firestore, businessId, isProfileValid, showDailyPulse, todayYmd]
+  );
+  const { data: todayStaffPaymentsRaw } = useCollection<any>(todayStaffPaymentsQuery);
+
+  const dailyPulseSummary = useMemo(() => {
+    if (!showDailyPulse) return null;
+    const activeStaff = (teamMembersRaw || []).filter((s: any) => !isPendingStaffMember(s));
+    return computeDailyTeamStats({
+      staffList: activeStaff,
+      attendanceData: todayAttendanceRaw || [],
+      staffPayments: todayStaffPaymentsRaw || [],
+      selectedDate: todayYmd,
+    });
+  }, [showDailyPulse, teamMembersRaw, todayAttendanceRaw, todayStaffPaymentsRaw, todayYmd]);
+
+  const handleToggleDailyPulse = useCallback(() => {
+    if (!userProfileRef) return;
+    const nextEnabled = !showDailyPulse;
+    const nextLayout = toggleDashboardPulseLayout(userProfile?.dashboardLayout, nextEnabled);
+    updateDocumentNonBlocking(userProfileRef, { dashboardLayout: nextLayout });
+    toast({
+      title: nextEnabled ? "Daily Pulse Pinned" : "Daily Pulse Unpinned",
+      description: nextEnabled
+        ? "Team Daily Pulse is now visible on your dashboard."
+        : "You can re-pin Daily Pulse anytime from Staff & Payroll.",
+    });
+  }, [userProfileRef, showDailyPulse, userProfile?.dashboardLayout]);
+
   const currencySymbol = getCurrencySymbol(business?.currency);
 
   const totalUdhaar = useMemo(
@@ -261,6 +334,8 @@ export default function AICommandDashboard() {
       isBriefDismissed={isBriefDismissed}
       onRefreshBrief={fetchBrief}
       onDismissBrief={setIsBriefDismissed}
+      dailyPulse={dailyPulseSummary}
+      onUnpinDailyPulse={handleToggleDailyPulse}
     />
   );
 }
