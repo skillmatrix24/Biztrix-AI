@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Loader2, SmartphoneNfc } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -1654,8 +1655,8 @@ function BillingContent() {
           onResetBill={resetBillDraft}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <div className="xl:col-span-8 space-y-6 min-w-0">
             <IdentitySection
               isRewardSyncMode={isRewardSyncMode}
               selectedCustomer={selectedCustomer}
@@ -1720,9 +1721,58 @@ function BillingContent() {
                 </div>
               </section>
             )}
+
+            {(items.length > 0 || Number(manualAmount) > 0) && (
+              <div className="xl:hidden rounded-xl border border-slate-800 bg-slate-900 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] text-slate-300 font-medium">
+                    {isQuotation ? "Quoted Total" : "Final Payable"} · {totals.qty} qty
+                  </p>
+                  <p className="font-mono tabular-nums text-lg font-extrabold text-white">
+                    {currencySymbol}
+                    {totals.finalPayout.toLocaleString("en-IN")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      document
+                        .getElementById("billing-reconciliation-panel")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="h-9 px-3 rounded-lg border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white text-xs font-semibold whitespace-nowrap"
+                  >
+                    Payment Options
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!selectedCustomerId || isSaving}
+                    onClick={handleSave}
+                    className={cn(
+                      "h-9 px-3.5 rounded-lg text-xs font-bold text-white whitespace-nowrap",
+                      isQuotation
+                        ? "bg-amber-600 hover:bg-amber-700"
+                        : isRewardSyncMode
+                          ? "bg-emerald-700 hover:bg-emerald-800"
+                          : "bg-primary hover:bg-primary/90"
+                    )}
+                  >
+                    {isQuotation
+                      ? "Save Quote"
+                      : isRewardSyncMode
+                        ? "Sync Rewards"
+                        : "Complete Sale"}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="lg:col-span-4">
+          <div id="billing-reconciliation-panel" className="xl:col-span-4 min-w-0">
             <ReconciliationPanel
               isRewardSyncMode={isRewardSyncMode}
               selectedCustomerId={selectedCustomerId}

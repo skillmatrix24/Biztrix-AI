@@ -196,15 +196,15 @@ export default function ProjectsPage() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <KpiStatCard label="Total Projects" value={stats.total} icon={Briefcase} />
         <KpiStatCard label="In Progress" value={stats.active} icon={Timer} tone="warning" />
         <KpiStatCard label="Completed" value={stats.completed} icon={CheckCircle2} tone="positive" />
         <KpiStatCard label="Delayed" value={stats.delayed} icon={AlertCircle} tone="danger" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-9 space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-9 space-y-6 min-w-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
             <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
               <TabsList className="bg-white border border-slate-200 h-11 p-1 rounded-xl w-full xl:w-auto overflow-x-auto scrollbar-hide flex">
@@ -319,7 +319,7 @@ export default function ProjectsPage() {
           </Tabs>
         </div>
 
-        <div className="lg:col-span-3 space-y-6 text-left">
+        <div className="xl:col-span-3 space-y-6 text-left min-w-0">
           <div className="rounded-2xl bg-slate-900 text-white p-6 space-y-4">
             <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
               <Sparkles className="h-4 w-4" /> AI Manager Tips

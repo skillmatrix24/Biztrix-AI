@@ -78,8 +78,193 @@ export function BillingCartTable({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table className="min-w-[740px] w-full">
+      {/* MOBILE LINE-ITEM CARDS (<768px) */}
+      <div className="md:hidden divide-y divide-slate-100">
+        {items.length === 0 ? (
+          <div className="py-10 px-4 text-center">
+            <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+              <ShoppingCart className="h-7 w-7 text-slate-400" />
+              <p className="text-sm font-semibold text-slate-700">No items in this bill yet</p>
+              <p className="text-xs text-slate-500">
+                Tap any product card above or search by name/SKU to start billing.
+              </p>
+            </div>
+          </div>
+        ) : (
+          items.map((item) => {
+            const discountedPrice = item.price * (1 - (item.itemDiscount || 0) / 100);
+            const lineAmount = discountedPrice * item.quantity;
+            const gstData = calculateGST(lineAmount, item.gstRate || 0, isInterState, gstMode);
+            const isOutOfStock = item.quantity > item.stock;
+            const isRateEdited =
+              item.originalPrice !== undefined && item.price !== item.originalPrice;
+            const showReasonInput =
+              expandedNoteId === item.id || isRateEdited || Boolean(item.rateChangeReason);
+
+            return (
+              <div key={item.id} className="p-4 space-y-3 text-left">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 space-y-1">
+                    <p className="text-sm font-semibold text-slate-900 leading-snug">
+                      {item.name}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 font-mono tabular-nums">
+                      <span>{item.gstRate}% GST</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Stock: {item.stock}</span>
+                      {isOutOfStock && (
+                        <span className="inline-flex items-center gap-1 text-amber-700 font-sans font-semibold">
+                          <AlertTriangle className="h-3 w-3" />
+                          {isQuotation ? "Quote Only" : "Exceeds stock"}
+                        </span>
+                      )}
+                      {!showReasonInput && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedNoteId(item.id)}
+                          className="font-sans text-primary hover:underline"
+                        >
+                          + Rate note
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-right font-mono tabular-nums">
+                      <p className="text-sm font-bold text-slate-900">
+                        {currencySymbol}
+                        {gstData.lineTotal.toLocaleString("en-IN")}
+                      </p>
+                      {gstData.gstAmount > 0 && (
+                        <p className="text-[11px] text-slate-500">
+                          Tax {currencySymbol}
+                          {gstData.gstAmount.toLocaleString("en-IN")}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remove ${item.name}`}
+                      onClick={() => setItems(items.filter((i) => i.id !== item.id))}
+                      className="h-9 w-9 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-5 space-y-1">
+                    <span className="block text-[11px] font-medium text-slate-500">Qty</span>
+                    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-0.5 h-9">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Decrease quantity of ${item.name}`}
+                        className="h-8 w-8 rounded-md text-slate-600 hover:text-slate-900 shrink-0"
+                        onClick={() => updateQty(item, item.quantity - 1)}
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <input
+                        type="number"
+                        min={1}
+                        aria-label={`Quantity for ${item.name}`}
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(parsed)) updateQty(item, parsed);
+                        }}
+                        className="w-9 text-center font-mono tabular-nums text-sm font-bold text-slate-900 bg-transparent outline-none"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Increase quantity of ${item.name}`}
+                        className="h-8 w-8 rounded-md text-slate-600 hover:text-slate-900 shrink-0"
+                        onClick={() => updateQty(item, item.quantity + 1)}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="col-span-3 space-y-1">
+                    <span className="block text-[11px] font-medium text-slate-500">Disc %</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      aria-label={`Discount percent for ${item.name}`}
+                      value={item.itemDiscount}
+                      onChange={(e) => {
+                        const val = Math.min(
+                          100,
+                          Math.max(0, parseFloat(e.target.value) || 0)
+                        );
+                        setItems(
+                          items.map((i) =>
+                            i.id === item.id ? { ...i, itemDiscount: val } : i
+                          )
+                        );
+                      }}
+                      className="h-9 w-full text-center font-mono tabular-nums text-xs font-semibold bg-slate-50 border-slate-200 rounded-lg px-1.5"
+                    />
+                  </div>
+
+                  <div className="col-span-4 space-y-1">
+                    <span className="block text-[11px] font-medium text-slate-500 text-right">
+                      Rate ({currencySymbol})
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      aria-label={`Unit rate for ${item.name}`}
+                      value={item.price}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                        setItems(
+                          items.map((i) => (i.id === item.id ? { ...i, price: val } : i))
+                        );
+                      }}
+                      className={cn(
+                        "h-9 w-full text-right font-mono tabular-nums text-xs font-bold rounded-lg px-2",
+                        isRateEdited
+                          ? "border-amber-300 bg-amber-50/70 text-amber-900"
+                          : "border-slate-200 bg-slate-50 text-slate-900"
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {showReasonInput && (
+                  <Input
+                    placeholder="Reason for price adjustment..."
+                    value={item.rateChangeReason || ""}
+                    onChange={(e) =>
+                      setItems(
+                        items.map((i) =>
+                          i.id === item.id ? { ...i, rateChangeReason: e.target.value } : i
+                        )
+                      )
+                    }
+                    className="h-8 text-xs bg-slate-50 border-slate-200 rounded-lg"
+                  />
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* TABLET & DESKTOP TABLE (>=768px) */}
+      <div className="hidden md:block overflow-x-auto">
+        <Table className="min-w-[680px] w-full">
           <TableHeader>
             <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
               <TableHead className="px-5 h-10 text-xs font-semibold text-slate-600 text-left">

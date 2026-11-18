@@ -525,8 +525,8 @@ export default function CampaignHubPage() {
       </div>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-[820px] rounded-2xl border border-slate-200 p-0 overflow-hidden w-[96vw] max-h-[92vh] flex flex-col lg:flex-row text-left">
-          <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <DialogContent className="sm:max-w-[820px] rounded-2xl border border-slate-200 p-0 overflow-hidden w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-1.5rem)] flex flex-col lg:flex-row text-left">
+          <div className="flex-1 flex flex-col bg-white overflow-hidden min-h-0">
             <DialogHeader className="p-6 bg-slate-900 text-white border-b border-slate-800 text-left shrink-0">
               <div className="flex items-center gap-3.5">
                 <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/15 shrink-0">
@@ -631,6 +631,28 @@ export default function CampaignHubPage() {
                     placeholder="Hi {{1}}, we have a special reward waiting for you..."
                     className="min-h-[120px] rounded-xl text-sm leading-relaxed"
                   />
+                  <div className="lg:hidden flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] font-medium text-slate-500 mr-1">
+                      Insert variable:
+                    </span>
+                    {[
+                      { id: "{{1}}", label: "Name" },
+                      { id: "{{2}}", label: "Mobile" },
+                      { id: "{{3}}", label: "Track URL" },
+                    ].map((v) => (
+                      <button
+                        type="button"
+                        key={v.id}
+                        onClick={() => {
+                          setFormData({ ...formData, message: `${formData.message} ${v.id}`.trim() });
+                          toast({ title: "Variable Mapped" });
+                        }}
+                        className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 whitespace-nowrap"
+                      >
+                        <span className="font-mono text-slate-900">{v.id}</span> · {v.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </ScrollArea>

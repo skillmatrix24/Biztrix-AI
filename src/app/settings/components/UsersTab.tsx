@@ -642,8 +642,8 @@ export function UsersTab({
         }
         bodyClassName="p-0"
       >
-        <div className="p-5 sm:p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl max-w-full overflow-x-auto scrollbar-hide w-full sm:w-fit">
             {(
               [
                 { id: "all", label: `All (${counts.all})` },
@@ -709,7 +709,7 @@ export function UsersTab({
               return (
                 <div
                   key={u.id}
-                  className="px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
+                  className="px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
                 >
                   <Link
                     href={`/staff/${u.id}`}
@@ -759,7 +759,7 @@ export function UsersTab({
                     </div>
                   </Link>
 
-                  <div className="flex items-center justify-end gap-1.5 shrink-0">
+                  <div className="flex items-center justify-end gap-1.5 shrink-0 pt-1 md:pt-0 border-t border-slate-100 md:border-t-0">
                     {inviteState.canInvite && (
                       <Button
                         type="button"
@@ -768,7 +768,7 @@ export function UsersTab({
                         disabled={isTrialExpired}
                         onClick={() => handleOpenRowInvite(u)}
                         className={cn(
-                          "h-8 px-3 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0",
+                          "h-9 md:h-8 px-3 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0",
                           inviteState.actionLabel === "Invite"
                             ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
                             : inviteState.isPending
@@ -791,7 +791,7 @@ export function UsersTab({
                       size="icon"
                       disabled={isTrialExpired}
                       aria-label={`Edit ${u.name || "member"}`}
-                      className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:text-slate-900"
+                      className="h-9 w-9 md:h-8 md:w-8 rounded-lg border-slate-200 text-slate-600 hover:text-slate-900"
                       onClick={() => handleOpenEdit(u)}
                     >
                       <Edit2 className="h-3.5 w-3.5" />
@@ -804,7 +804,7 @@ export function UsersTab({
                         size="icon"
                         disabled={isTrialExpired}
                         aria-label={`Remove ${u.name || "member"}`}
-                        className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                        className="h-9 w-9 md:h-8 md:w-8 rounded-lg text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                         onClick={() => handleDeleteUser(u)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -816,7 +816,7 @@ export function UsersTab({
                       variant="ghost"
                       size="icon"
                       aria-label={`Open ${u.name || "member"} profile`}
-                      className="h-8 w-8 rounded-lg text-slate-500 hover:text-slate-900"
+                      className="h-9 w-9 md:h-8 md:w-8 rounded-lg text-slate-500 hover:text-slate-900"
                     >
                       <Link href={`/staff/${u.id}`}>
                         <ChevronRight className="h-4 w-4" />
@@ -990,7 +990,7 @@ export function UsersTab({
 
             {showAdvanced && (
               <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="daily-rate" className="text-xs font-semibold text-slate-700">
                       Daily Rate ({currencySymbol})
@@ -1023,7 +1023,7 @@ export function UsersTab({
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-slate-700">Shift Start</Label>
                     <Select value={shiftStart} onValueChange={setShiftStart}>
@@ -1275,7 +1275,7 @@ export function UsersTab({
               </div>
 
               {shareContext.isActiveAccount && (
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <p className="text-xs text-slate-500">
                     Member already has an active login? Send a password reset email too.
                   </p>
@@ -1285,7 +1285,7 @@ export function UsersTab({
                     size="sm"
                     disabled={isSendingReset}
                     onClick={() => handleSendPasswordReset(shareContext.email)}
-                    className="h-8 px-3 rounded-lg text-xs font-semibold text-primary whitespace-nowrap shrink-0"
+                    className="h-8 px-3 rounded-lg text-xs font-semibold text-primary whitespace-nowrap shrink-0 self-start sm:self-auto"
                   >
                     <KeyRound className="mr-1.5 h-3.5 w-3.5" />
                     Reset Password
@@ -1407,7 +1407,7 @@ export function UsersTab({
 
                 {showEditAdvanced && (
                   <div className="space-y-4 pt-2">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label
                           htmlFor="edit-daily-rate"
@@ -1440,7 +1440,7 @@ export function UsersTab({
                         </Select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-slate-700">Shift Start</Label>
                         <Select value={editShiftStart} onValueChange={setEditShiftStart}>

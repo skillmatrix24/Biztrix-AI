@@ -793,7 +793,7 @@ export default function MarketingPage() {
               </DialogTitle>
             </div>
           </DialogHeader>
-          <div className="p-6 space-y-4">
+          <div className="p-5 sm:p-6 space-y-4 max-h-[68dvh] overflow-y-auto">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-700">
                 Promo Code *
@@ -811,7 +811,7 @@ export default function MarketingPage() {
                 disabled={isEditing}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">
                   Discount Type
@@ -846,7 +846,7 @@ export default function MarketingPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">
                   Min Order ({currencySymbol})
@@ -951,8 +951,8 @@ export default function MarketingPage() {
               </div>
             </div>
           </DialogHeader>
-          <div className="p-6 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-5 sm:p-6 space-y-5 max-h-[68dvh] overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">
                   Code Prefix
@@ -976,7 +976,7 @@ export default function MarketingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">
                   Discount Type

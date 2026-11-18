@@ -844,8 +844,8 @@ export default function WhatsAppAutomationPage() {
               </div>
             </div>
           </DialogHeader>
-          <div className="p-6 space-y-4 text-left">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-5 sm:p-6 space-y-4 text-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="stage-day" className="text-xs font-semibold text-slate-700">Day Offset</Label>
                 <Input
@@ -1014,7 +1014,7 @@ function BotflowDialog({ isOpen, onOpenChange, item, onSave, onUpdate, isKeyword
                 ) : (
                   (item.buttons || []).map((btn: any) => (
                     <div key={btn.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3 relative">
-                      <div className="grid grid-cols-2 gap-3 pr-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-7">
                         <Select value={btn.type} onValueChange={(v) => updateBtn(btn.id, "type", v)}>
                           <SelectTrigger className="h-9 rounded-lg bg-white text-xs font-medium">
                             <SelectValue />

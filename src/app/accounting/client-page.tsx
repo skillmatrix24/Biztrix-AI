@@ -317,8 +317,8 @@ export default function AccountingPage() {
       </div>
 
       {/* ANALYTICS SECTION: SPENDING BREAKDOWN & CASHFLOW TREND */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-4">
+      <section className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div className="xl:col-span-4 min-w-0">
           <SectionCard
             title="Spending breakdown"
             description="Expense distribution by category"
@@ -378,7 +378,7 @@ export default function AccountingPage() {
           </SectionCard>
         </div>
 
-        <div className="lg:col-span-8">
+        <div className="xl:col-span-8 min-w-0">
           <SectionCard
             title="Cashflow trend"
             description="Inflow vs outflow velocity over recent entries"
@@ -511,8 +511,8 @@ export default function AccountingPage() {
               </div>
             </div>
           </DialogHeader>
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-3.5">
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">Flow type</Label>
                 <Select value={type} onValueChange={(v: any) => setType(v)}>
@@ -536,7 +536,7 @@ export default function AccountingPage() {
               <Input value={particulars} onChange={(e) => setParticulars(e.target.value)} placeholder="What was this for?" className="h-10 rounded-xl bg-white border-slate-200 text-sm" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">Amount ({currencySymbol}) *</Label>
                 <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="h-10 rounded-xl font-mono tabular-nums font-semibold text-sm bg-white border-slate-200" />
@@ -565,7 +565,7 @@ export default function AccountingPage() {
             </div>
 
             {type === 'expense' && (
-              <div className="grid grid-cols-2 gap-3.5 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-100">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700">Input GST / ITC ({currencySymbol})</Label>
                   <Input type="number" value={gstAmount} onChange={(e) => setGstAmount(e.target.value)} placeholder="0.00 (Optional)" className="h-10 rounded-xl font-mono tabular-nums text-xs bg-white border-slate-200" />

@@ -2,13 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Minus, Maximize2, ExternalLink } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Minus, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/firebase";
+import { shouldShowGlobalChatbot, hasMobileBottomShell } from "@/lib/responsive-shell";
 
 type Message = {
   role: 'user' | 'ai';
@@ -17,6 +18,7 @@ type Message = {
 
 export function GlobalChatbot() {
   const pathname = usePathname();
+  const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState("");
@@ -30,9 +32,12 @@ export function GlobalChatbot() {
     }
   }, [messages, isLoading]);
 
-  if (pathname?.startsWith("/shop") || pathname?.startsWith("/funnel")) {
+  if (!shouldShowGlobalChatbot(pathname)) {
     return null;
   }
+
+  const isAuthenticatedUser = Boolean(user && !user.isAnonymous);
+  const offsetAboveMobileShell = hasMobileBottomShell(pathname, isAuthenticatedUser);
 
   const handleSendMessage = async (e?: React.FormEvent, overrideText?: string) => {
     if (e) e.preventDefault();
@@ -69,36 +74,53 @@ export function GlobalChatbot() {
         type="button"
         onClick={() => setIsOpen(true)}
         aria-label="Open Biztrix Assistant"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary text-white border border-white/20 hover:scale-105 transition-transform z-[100] group"
+        className={cn(
+          "fixed rounded-full bg-slate-900 md:bg-primary text-white border border-white/20 shadow-md hover:scale-105 transition-transform z-[55] md:z-[90] group",
+          offsetAboveMobileShell
+            ? "bottom-[calc(8.5rem+env(safe-area-inset-bottom))] right-3.5 h-11 w-11 md:bottom-6 md:right-6 md:h-14 md:w-14"
+            : "bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 h-12 w-12 md:bottom-6 md:right-6 md:h-14 md:w-14"
+        )}
       >
-        <MessageCircle className="h-7 w-7 group-hover:rotate-6 transition-transform" />
+        <MessageCircle className="h-5 w-5 md:h-6 md:w-6 group-hover:rotate-6 transition-transform" />
       </Button>
     );
   }
 
   return (
     <div className={cn(
-      "fixed bottom-6 right-6 z-[100] transition-all duration-300 animate-in slide-in-from-bottom-10",
-      isMinimized ? "h-14 w-64" : "h-[500px] w-[350px] sm:w-[400px]"
+      "fixed z-[95] transition-all duration-300 animate-in slide-in-from-bottom-6",
+      isMinimized
+        ? cn(
+            "right-3 md:right-6 h-14 w-[min(16rem,calc(100vw-1.5rem))]",
+            offsetAboveMobileShell
+              ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-6"
+              : "bottom-[calc(1rem+env(safe-area-inset-bottom))] md:bottom-6"
+          )
+        : cn(
+            "inset-x-3 md:inset-x-auto md:right-6 w-auto md:w-[380px] lg:w-[400px]",
+            offsetAboveMobileShell
+              ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] h-[min(480px,calc(100dvh-6rem))] md:bottom-6 md:h-[min(520px,calc(100dvh-3rem))]"
+              : "bottom-[calc(1rem+env(safe-area-inset-bottom))] h-[min(500px,calc(100dvh-2.5rem))] md:bottom-6 md:h-[min(520px,calc(100dvh-3rem))]"
+          )
     )}>
-      <Card className="h-full border border-slate-200 shadow-none rounded-2xl overflow-hidden flex flex-col bg-white">
-        <CardHeader className="bg-slate-900 py-4 px-5 shrink-0 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-              <Bot className="h-5 w-5 text-accent" />
+      <Card className="h-full border border-slate-200 shadow-xl rounded-2xl overflow-hidden flex flex-col bg-white">
+        <CardHeader className="bg-slate-900 py-3.5 px-4 sm:px-5 shrink-0 flex flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-8 w-8 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
+              <Bot className="h-4 w-4 text-accent" />
             </div>
-            <div className="text-left">
-              <CardTitle className="text-sm font-bold text-white leading-none">Biztrix Bot</CardTitle>
-              <p className="text-xs font-medium text-slate-300 mt-1">Platform Expert</p>
+            <div className="text-left min-w-0">
+              <CardTitle className="text-sm font-bold text-white leading-none truncate">Biztrix Bot</CardTitle>
+              <p className="text-[11px] font-medium text-slate-300 mt-1 truncate">Platform Expert</p>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
              <Button
                type="button"
                variant="ghost"
                size="icon"
                aria-label={isMinimized ? "Expand assistant" : "Minimize assistant"}
-               className="h-8 w-8 text-white/60 hover:text-white"
+               className="h-9 w-9 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
                onClick={() => setIsMinimized(!isMinimized)}
              >
                 {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
@@ -108,7 +130,7 @@ export function GlobalChatbot() {
                variant="ghost"
                size="icon"
                aria-label="Close assistant"
-               className="h-8 w-8 text-white/60 hover:text-white"
+               className="h-9 w-9 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
                onClick={() => setIsOpen(false)}
              >
                 <X className="h-4 w-4" />

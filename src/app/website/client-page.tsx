@@ -799,7 +799,7 @@ export default function EcommerceManagerPage() {
         {/* Global Store Stats Top Bar */}
         <Card className="bg-white overflow-hidden rounded-2xl border border-slate-200 shadow-none">
           <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+            <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
               <div className="p-5 sm:p-6 flex items-center gap-4">
                 <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center border border-emerald-200 shrink-0">
                   <Globe className="h-5 w-5 text-emerald-600" />
@@ -922,23 +922,23 @@ export default function EcommerceManagerPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="p-6 sm:p-8">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-xs font-medium text-slate-500">Catalog Online</p>
-                  <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{onlineProductsCount} <span className="text-xs text-slate-500 font-sans font-normal">/ {(dbProducts || []).length} items</span></p>
+            <CardContent className="p-4 sm:p-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-left">
+                <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 min-w-0">
+                  <p className="text-xs font-medium text-slate-500 truncate">Catalog Online</p>
+                  <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{onlineProductsCount} <span className="text-xs text-slate-500 font-sans font-normal">/ {(dbProducts || []).length} items</span></p>
                 </div>
-                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-xs font-medium text-slate-500">Active Sections</p>
-                  <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{sections.filter(s => s.status === 'Active').length} <span className="text-xs text-slate-500 font-sans font-normal">/ {sections.length}</span></p>
+                <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 min-w-0">
+                  <p className="text-xs font-medium text-slate-500 truncate">Active Sections</p>
+                  <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{sections.filter(s => s.status === 'Active').length} <span className="text-xs text-slate-500 font-sans font-normal">/ {sections.length}</span></p>
                 </div>
-                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-xs font-medium text-slate-500">Total Paid Orders</p>
-                  <p className="text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{paidOrders.length} <span className="text-xs text-slate-500 font-sans font-normal">/ {orders.length} total</span></p>
+                <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 min-w-0">
+                  <p className="text-xs font-medium text-slate-500 truncate">Total Paid Orders</p>
+                  <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-slate-900 mt-1">{paidOrders.length} <span className="text-xs text-slate-500 font-sans font-normal">/ {orders.length} total</span></p>
                 </div>
-                <div className="p-5 rounded-xl bg-slate-50 border border-slate-200">
-                  <p className="text-xs font-medium text-slate-500">Design Style</p>
-                  <p className="text-sm font-bold text-primary capitalize mt-2 flex items-center gap-2">
+                <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200 min-w-0">
+                  <p className="text-xs font-medium text-slate-500 truncate">Design Style</p>
+                  <p className="text-sm font-bold text-primary capitalize mt-2 flex items-center gap-2 min-w-0">
                     <span className="h-3.5 w-3.5 rounded-full border border-slate-200 shrink-0" style={{ backgroundColor: primaryColor }} />
                     <span className="truncate">{uiStyle}</span>
                   </p>
@@ -947,10 +947,10 @@ export default function EcommerceManagerPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-left">
-            <div className="lg:col-span-8 space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 sm:gap-8 items-start text-left">
+            <div className="xl:col-span-8 space-y-6 sm:space-y-8 min-w-0">
               <Card className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-none">
-                <CardHeader className="bg-slate-50 border-b border-slate-200 py-5 px-6 sm:px-8 flex flex-row justify-between items-center text-left gap-4">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-4 sm:py-5 px-4 sm:px-8 flex flex-col sm:flex-row justify-between sm:items-center text-left gap-3">
                   <div className="space-y-1 text-left">
                     <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
                       <BarChart3 className="h-4 w-4 text-primary" /> Funnel &amp; Merchandising Diagnostics
@@ -1080,7 +1080,7 @@ export default function EcommerceManagerPage() {
               </Card>
             </div>
 
-            <div className="lg:col-span-4 space-y-8">
+            <div className="xl:col-span-4 space-y-6 sm:space-y-8 min-w-0">
               <Card className="bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-none overflow-hidden">
                 <CardHeader className="p-6 sm:p-8 pb-4 border-b border-white/10 text-left">
                   <div className="flex items-center justify-between">

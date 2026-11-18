@@ -72,11 +72,11 @@ export function StatusHeader({
         </h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5 max-w-full">
         <div
           role="tablist"
           aria-label="Billing mode"
-          className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200"
+          className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200 max-w-full overflow-x-auto scrollbar-hide"
         >
           {MODE_TABS.map((tab) => {
             const Icon = tab.icon;
@@ -89,7 +89,7 @@ export function StatusHeader({
                 aria-selected={active}
                 onClick={() => onModeChange(tab.id)}
                 className={cn(
-                  "px-3 py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1.5",
+                  "px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold transition-colors whitespace-nowrap shrink-0 inline-flex items-center gap-1.5",
                   active
                     ? tab.id === "quotation"
                       ? "bg-amber-600 text-white shadow-sm"

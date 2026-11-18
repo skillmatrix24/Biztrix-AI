@@ -4819,8 +4819,8 @@ export function ShopClient({
                     );
                   })()}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center text-left">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="p-4 sm:p-5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center text-left">
                       <p className="text-xs font-medium text-slate-500">
                         Online Price
                       </p>
@@ -4839,7 +4839,7 @@ export function ShopClient({
                           </p>
                         )}
                     </div>
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center text-left">
+                    <div className="p-4 sm:p-5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-center text-left">
                       <p className="text-xs font-medium text-slate-500">
                         Stock Availability
                       </p>
@@ -4872,7 +4872,7 @@ export function ShopClient({
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
                     <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col gap-1 text-left">
                       <span className="text-xs font-medium text-slate-500">
                         Product SKU
@@ -5043,7 +5043,7 @@ export function ShopClient({
                     This order is currently marked as {trackedOrder.status}.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
                       { key: "created", label: "Placed" },
                       { key: "processing", label: "Packed" },

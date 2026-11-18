@@ -276,11 +276,11 @@ export default function LeadsPage() {
         <Input placeholder="Search name or phone..." className="pl-10 h-10 text-xs rounded-xl bg-white border-slate-200" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
-      <div className="flex gap-5 overflow-x-auto pb-6 scrollbar-hide min-h-[560px]">
+      <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-6 scrollbar-hide min-h-[520px] snap-x snap-mandatory sm:snap-none">
         {STAGES.map((stage) => {
           const stageLeads = filteredLeads.filter(l => (l.status || 'new') === stage.id);
           return (
-            <div key={stage.id} className="w-[310px] shrink-0 space-y-3">
+            <div key={stage.id} className="w-[82vw] max-w-[310px] sm:w-[310px] shrink-0 space-y-3 snap-start">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2">
                   <span className={cn("h-2 w-2 rounded-full", stage.color)} />
@@ -324,32 +324,32 @@ export default function LeadsPage() {
         <SheetContent className="w-full sm:max-w-xl p-0 flex flex-col border-l border-slate-200 overflow-hidden bg-white">
           {selectedLead && (
             <>
-              <div className="p-6 sm:p-8 bg-slate-900 text-white shrink-0">
-                <div className="text-left space-y-4">
+              <div className="p-5 sm:p-8 bg-slate-900 text-white shrink-0 pr-12">
+                <div className="text-left space-y-3 sm:space-y-4">
                   <p className="text-xs font-mono text-slate-400">Inquiry · {selectedLead.id.slice(-8).toUpperCase()}</p>
-                  <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-2xl bg-white/10 flex items-center justify-center text-white font-bold text-xl shrink-0">{selectedLead.name?.charAt(0)}</div>
+                  <div className="flex items-center gap-3.5 sm:gap-4">
+                    <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white/10 flex items-center justify-center text-white font-bold text-lg sm:text-xl shrink-0">{selectedLead.name?.charAt(0)}</div>
                     <div className="space-y-0.5 min-w-0">
-                      <SheetTitle className="text-xl font-bold text-white truncate">{selectedLead.name}</SheetTitle>
+                      <SheetTitle className="text-lg sm:text-xl font-bold text-white truncate">{selectedLead.name}</SheetTitle>
                       <p className="text-slate-300 text-xs font-mono tabular-nums">{selectedLead.phone}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6 sm:p-8 scrollbar-hide text-left">
-                <div className="space-y-8">
+              <ScrollArea className="flex-1 p-5 sm:p-8 scrollbar-hide text-left">
+                <div className="space-y-6 sm:space-y-8">
                   <section className="space-y-4">
-                     <div className="flex items-center justify-between">
+                     <div className="flex items-center justify-between gap-2">
                        <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2"><Layout className="h-4 w-4 text-primary" /> Pipeline Context</h4>
                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 capitalize">{selectedLead.status}</span>
                      </div>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                            <p className="text-xs text-slate-500">Source</p>
                            <p className="text-sm font-semibold text-slate-900">{selectedLead.source}</p>
                         </div>
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+                        <div className="p-3.5 sm:p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                            <p className="text-xs text-slate-500">Intent Score</p>
                            <p className="text-sm font-bold font-mono tabular-nums text-amber-700">{selectedLead.intentScore || 50}%</p>
                         </div>

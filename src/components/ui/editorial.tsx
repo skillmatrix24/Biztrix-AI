@@ -30,11 +30,11 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5 text-left",
+        "flex flex-col gap-3.5 md:flex-row md:items-start lg:items-center md:justify-between border-b border-slate-200 pb-4 sm:pb-5 text-left min-w-0",
         className
       )}
     >
-      <div className="flex items-center gap-3.5 min-w-0">
+      <div className="flex items-start sm:items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
         {backHref && (
           <Button
             asChild
@@ -51,28 +51,34 @@ export function PageHeader({
         {Icon && !backHref && (
           <div
             className={cn(
-              "h-11 w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0",
+              "h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 mt-0.5 sm:mt-0",
               iconClassName
             )}
           >
             <Icon className="h-5 w-5" />
           </div>
         )}
-        <div className="min-w-0 space-y-0.5">
+        <div className="min-w-0 flex-1 space-y-0.5">
           {breadcrumb && (
-            <p className="text-xs font-medium text-slate-500 truncate">{breadcrumb}</p>
+            <p className="text-[11px] sm:text-xs font-medium text-slate-500 truncate">
+              {breadcrumb}
+            </p>
           )}
-          <h1 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900 truncate">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-slate-900 break-words leading-tight">
             {title}
           </h1>
           {description && (
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{description}</p>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed break-words">
+              {description}
+            </p>
           )}
         </div>
       </div>
 
       {actions && (
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">{actions}</div>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto md:justify-end min-w-0 [&>div]:max-w-full">
+          {actions}
+        </div>
       )}
     </div>
   );
@@ -98,28 +104,36 @@ export function OverviewBanner({
   return (
     <div
       className={cn(
-        "rounded-2xl bg-slate-900 text-white p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 text-left",
+        "rounded-2xl bg-slate-900 text-white p-4 sm:p-6 lg:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-5 text-left min-w-0 overflow-hidden",
         className
       )}
     >
-      <div className="space-y-3 min-w-0">
-        <div className="flex items-center gap-3">
+      <div className="space-y-2.5 sm:space-y-3 min-w-0 flex-1">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
           {Icon && (
-            <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
               <Icon className="h-5 w-5 text-white" />
             </div>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {subtitle && (
               <p className="text-xs font-medium text-slate-300 truncate">{subtitle}</p>
             )}
-            <h2 className="text-lg font-bold text-white truncate">{title}</h2>
+            <h2 className="text-base sm:text-lg font-bold text-white break-words leading-snug">
+              {title}
+            </h2>
           </div>
         </div>
-        <p className="text-sm text-slate-200 leading-relaxed max-w-3xl">{description}</p>
+        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-3xl break-words">
+          {description}
+        </p>
       </div>
 
-      {rightSlot && <div className="shrink-0">{rightSlot}</div>}
+      {rightSlot && (
+        <div className="w-full lg:w-auto shrink-0 flex flex-wrap items-center gap-2.5">
+          {rightSlot}
+        </div>
+      )}
     </div>
   );
 }
@@ -145,17 +159,17 @@ export function KpiStatCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border p-5 text-left space-y-2 transition-colors",
+        "rounded-2xl border p-4 sm:p-5 text-left space-y-1.5 sm:space-y-2 transition-colors min-w-0 overflow-hidden",
         isDark
           ? "border-slate-900 bg-slate-900 text-white"
           : "border-slate-200 bg-white text-slate-900",
         className
       )}
     >
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2 min-w-0">
         <p
           className={cn(
-            "text-xs font-medium",
+            "text-xs font-medium leading-snug break-words min-w-0",
             isDark ? "text-slate-300" : "text-slate-500"
           )}
         >
@@ -174,7 +188,7 @@ export function KpiStatCard({
       </div>
       <div
         className={cn(
-          "text-2xl font-bold tracking-tight tabular-nums font-mono",
+          "text-lg sm:text-xl xl:text-2xl font-bold tracking-tight tabular-nums font-mono break-words leading-tight min-w-0",
           isDark
             ? "text-white"
             : tone === "positive"
@@ -191,7 +205,7 @@ export function KpiStatCard({
       {subtext && (
         <p
           className={cn(
-            "text-xs tabular-nums",
+            "text-[11px] sm:text-xs tabular-nums leading-relaxed break-words",
             isDark ? "text-slate-300" : "text-slate-500"
           )}
         >
@@ -222,26 +236,32 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-slate-200 bg-white overflow-hidden text-left",
+        "rounded-2xl border border-slate-200 bg-white overflow-hidden text-left min-w-0 max-w-full",
         className
       )}
     >
       {(title || headerRight) && (
-        <div className="px-5 py-4 sm:px-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="space-y-0.5 min-w-0">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3 min-w-0">
+          <div className="space-y-0.5 min-w-0 flex-1">
             {title && (
-              <h3 className="text-base font-bold text-slate-900 truncate">{title}</h3>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 break-words leading-snug">
+                {title}
+              </h3>
             )}
             {description && (
-              <p className="text-xs text-slate-500">{description}</p>
+              <p className="text-xs text-slate-500 leading-relaxed break-words">
+                {description}
+              </p>
             )}
           </div>
           {headerRight && (
-            <div className="flex flex-wrap items-center gap-2 shrink-0">{headerRight}</div>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto md:justify-end min-w-0">
+              {headerRight}
+            </div>
           )}
         </div>
       )}
-      <div className={cn("p-5 sm:p-6", bodyClassName)}>{children}</div>
+      <div className={cn("p-4 sm:p-6 min-w-0", bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -264,7 +284,7 @@ export function EmptyStatePanel({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 sm:p-10 text-center flex flex-col items-center justify-center space-y-3",
+        "rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 sm:p-10 text-center flex flex-col items-center justify-center space-y-3",
         className
       )}
     >
@@ -277,7 +297,7 @@ export function EmptyStatePanel({
         <p className="text-sm font-semibold text-slate-900">{title}</p>
         <p className="text-xs text-slate-500 leading-relaxed">{description}</p>
       </div>
-      {action && <div className="pt-1">{action}</div>}
+      {action && <div className="pt-1 flex flex-wrap justify-center gap-2">{action}</div>}
     </div>
   );
 }

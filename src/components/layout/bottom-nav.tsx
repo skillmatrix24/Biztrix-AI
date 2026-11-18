@@ -217,7 +217,7 @@ export function BottomNav() {
     <nav 
       style={customStyle}
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 h-16 flex items-center justify-around px-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] md:hidden transition-all duration-500",
+        "fixed bottom-0 left-0 right-0 z-50 h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] flex items-center justify-around px-1.5 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] md:hidden transition-all duration-300",
         styleClasses
       )}
     >
@@ -238,7 +238,7 @@ export function BottomNav() {
             key={idx} 
             href={item.href}
             className={cn(
-              "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all active:scale-90 relative min-w-0",
+              "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-all active:scale-95 relative min-w-0",
               isActive ? (footerStyle === 'solid' || footerStyle === 'glass' ? "text-primary" : "text-white") : (footerStyle === 'solid' || footerStyle === 'glass' ? "text-muted-foreground" : "opacity-40"),
               isFloating && "z-10 overflow-visible"
             )}
@@ -290,17 +290,18 @@ export function BottomNav() {
           </DropdownMenuTrigger>
           <DropdownMenuContent 
             side="top" 
-            align="center" 
+            align="end" 
+            sideOffset={10}
             style={customStyle}
             className={cn(
-              "w-56 mb-4 rounded-2xl border border-slate-200 shadow-none p-2 animate-in slide-in-from-bottom-2 duration-300",
+              "z-[70] w-60 max-w-[calc(100vw-1.5rem)] mb-1 rounded-2xl border border-slate-200 shadow-lg p-2 animate-in slide-in-from-bottom-2 duration-200",
               styleClasses
             )}
           >
             <div className="px-3 py-2 border-b border-border/15 mb-2 text-left">
                <p className="text-xs font-semibold opacity-65">Quick Navigation</p>
             </div>
-            <ScrollArea className="h-full max-h-[300px]">
+            <ScrollArea className="h-full max-h-[min(320px,60dvh)]">
               <div className="grid grid-cols-1 gap-1">
                 {[...footerItems.slice(4), ...moreItems].map((item, idx) => (
                   <DropdownMenuItem key={idx} asChild className="p-0 focus:bg-transparent">
@@ -311,10 +312,10 @@ export function BottomNav() {
                         (footerStyle === 'solid' || footerStyle === 'glass') ? "hover:bg-primary/5" : "hover:bg-white/10"
                       )}
                     >
-                       <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center border", (footerStyle === 'solid' || footerStyle === 'glass') ? "bg-white text-primary border-slate-200" : "bg-white/10 text-white border-white/15")}>
+                       <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center border shrink-0", (footerStyle === 'solid' || footerStyle === 'glass') ? "bg-white text-primary border-slate-200" : "bg-white/10 text-white border-white/15")}>
                           <item.icon className="h-4 w-4" />
                        </div>
-                       <span className="text-xs font-semibold">{item.label}</span>
+                       <span className="text-xs font-semibold truncate">{item.label}</span>
                     </Link>
                   </DropdownMenuItem>
                 ))}

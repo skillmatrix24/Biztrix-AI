@@ -99,18 +99,21 @@ export function QuickActionFAB() {
 
   return (
     <div className={cn(
-      "fixed z-[60] flex flex-col items-end gap-3 transition-all duration-300",
-      isCentered ? "bottom-20 left-1/2 -translate-x-1/2 items-center" : "bottom-20 right-4"
+      "fixed flex flex-col items-end gap-2.5 transition-all duration-300",
+      isOpen ? "z-[80]" : "z-[55]",
+      isCentered
+        ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 items-center"
+        : "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-3.5"
     )}>
       {/* Action Menu */}
       {isOpen && (
         <div className={cn(
-          "flex flex-col gap-3 mb-2 animate-in slide-in-from-bottom-4 fade-in duration-200",
+          "flex flex-col gap-2.5 mb-1.5 animate-in slide-in-from-bottom-4 fade-in duration-200",
           isCentered ? "items-center" : "items-end"
         )}>
           {dynamicActions.map((action: any, i: number) => (
-            <div key={i} className={cn("flex items-center gap-3 group", isCentered ? "flex-col-reverse" : "flex-row")}>
-              <span className="bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-800">
+            <div key={i} className={cn("flex items-center gap-2.5 group", isCentered ? "flex-col-reverse" : "flex-row")}>
+              <span className="bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-800 shadow-md whitespace-nowrap">
                 {action.label}
               </span>
               <Link href={action.href} onClick={() => setIsOpen(false)}>
@@ -118,7 +121,7 @@ export function QuickActionFAB() {
                   type="button"
                   size="icon" 
                   aria-label={action.label}
-                  className={cn("h-12 w-12 rounded-2xl border border-white/20 text-white", action.color)}
+                  className={cn("h-11 w-11 rounded-2xl border border-white/20 text-white shadow-md", action.color)}
                 >
                   <action.icon className="h-5 w-5" />
                 </Button>
@@ -135,15 +138,15 @@ export function QuickActionFAB() {
         size="icon" 
         aria-label={isOpen ? "Close quick actions" : "Open quick actions"}
         className={cn(
-          "h-14 w-14 rounded-full border border-white/20 transition-all duration-300 active:scale-95",
+          "h-12 w-12 rounded-full border border-white/20 shadow-md transition-all duration-300 active:scale-95",
           isOpen ? "bg-slate-900 rotate-0" : "bg-primary",
           isCentered && !isOpen && "ring-4 ring-white"
         )}
       >
         {isOpen ? (
-          <X className="h-6 w-6 text-white" />
+          <X className="h-5 w-5 text-white" />
         ) : (
-          <Plus className="h-7 w-7 text-white" />
+          <Plus className="h-6 w-6 text-white" />
         )}
       </Button>
 

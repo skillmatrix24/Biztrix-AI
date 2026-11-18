@@ -337,8 +337,8 @@ export function SidebarNav() {
   };
 
   return (
-    <Sidebar variant="sidebar" collapsible="icon" className="hidden md:flex border-r border-slate-200 bg-white">
-      <SidebarHeader className="border-b border-slate-200 px-5 py-5">
+    <Sidebar variant="sidebar" collapsible="icon" className="hidden lg:flex border-r border-slate-200 bg-white">
+      <SidebarHeader className="border-b border-slate-200 px-5 py-4 sm:py-5 pr-12 lg:pr-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 shrink-0 overflow-hidden group-data-[collapsible=icon]:mx-auto">
             {activeLogoPublic ? (

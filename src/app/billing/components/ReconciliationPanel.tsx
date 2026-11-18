@@ -165,7 +165,7 @@ export function ReconciliationPanel({
     manualDiscount > 0;
 
   return (
-    <aside className="rounded-xl border border-slate-200 bg-white overflow-hidden lg:sticky lg:top-6">
+    <aside className="rounded-xl border border-slate-200 bg-white overflow-hidden xl:sticky xl:top-6">
       <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-primary shrink-0" />
@@ -232,11 +232,11 @@ export function ReconciliationPanel({
                 : "bg-slate-900"
           )}
         >
-          <div className="flex items-baseline justify-between gap-2">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
             <span className="text-xs font-semibold text-white/80">
               {isQuotation ? "Quoted Total" : "Final Payable"}
             </span>
-            <span className="font-mono tabular-nums text-3xl font-extrabold tracking-tight">
+            <span className="font-mono tabular-nums text-2xl sm:text-3xl font-extrabold tracking-tight">
               {currencySymbol}
               {totals.finalPayout.toLocaleString("en-IN")}
             </span>
@@ -432,7 +432,7 @@ export function ReconciliationPanel({
 
             {showAdjustments && (
               <div className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3.5">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-[11px] font-semibold text-slate-600">
                       Global Discount ({currencySymbol})
@@ -445,7 +445,7 @@ export function ReconciliationPanel({
                       onChange={(e) =>
                         setManualDiscount(Math.max(0, parseFloat(e.target.value) || 0))
                       }
-                      className="h-8 text-xs font-mono tabular-nums bg-white"
+                      className="h-9 sm:h-8 text-xs font-mono tabular-nums bg-white"
                     />
                   </div>
                   <div className="space-y-1">
@@ -458,12 +458,12 @@ export function ReconciliationPanel({
                       placeholder="0"
                       value={advanceAmount || ""}
                       onChange={(e) => setAdvanceAmount(e.target.value)}
-                      className="h-8 text-xs font-mono tabular-nums bg-white"
+                      className="h-9 sm:h-8 text-xs font-mono tabular-nums bg-white"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-[11px] font-semibold text-slate-600">
                       Manual Total Override
@@ -474,7 +474,7 @@ export function ReconciliationPanel({
                       placeholder="Leave blank"
                       value={manualAmount || ""}
                       onChange={(e) => setManualAmount(e.target.value)}
-                      className="h-8 text-xs font-mono tabular-nums bg-white"
+                      className="h-9 sm:h-8 text-xs font-mono tabular-nums bg-white"
                     />
                   </div>
                   <div className="space-y-1">
@@ -487,7 +487,7 @@ export function ReconciliationPanel({
                       placeholder="0"
                       value={exemptAmount || ""}
                       onChange={(e) => setExemptAmount(e.target.value)}
-                      className="h-8 text-xs font-mono tabular-nums bg-white"
+                      className="h-9 sm:h-8 text-xs font-mono tabular-nums bg-white"
                     />
                   </div>
                 </div>
@@ -657,7 +657,7 @@ export function ReconciliationPanel({
             ) : (
               <div className="space-y-2.5 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
                 {splitPayments.map((sp, idx) => (
-                  <div key={sp.id} className="flex items-center gap-1.5">
+                  <div key={sp.id} className="flex items-center gap-1.5 min-w-0">
                     <Select
                       value={sp.mode}
                       onValueChange={(mode) =>
@@ -668,7 +668,7 @@ export function ReconciliationPanel({
                         )
                       }
                     >
-                      <SelectTrigger className="h-9 w-[122px] shrink-0 bg-white text-xs font-semibold">
+                      <SelectTrigger className="h-9 w-[104px] sm:w-[122px] shrink-0 bg-white text-xs font-semibold px-2.5">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

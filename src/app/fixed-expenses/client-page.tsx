@@ -207,13 +207,13 @@ export default function FixedExpensesPage() {
                 <DialogTitle className="text-lg font-bold text-white">Add Fixed Expense</DialogTitle>
                 <DialogDescription className="text-slate-300 text-xs">Configure recurring commitments and auto-post to Cashbook.</DialogDescription>
               </DialogHeader>
-              <div className="p-6 space-y-4 text-left">
+              <div className="p-5 sm:p-6 space-y-4 text-left">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-700">Expense Name *</Label>
                   <Input placeholder="e.g. Shop Rent" value={name} onChange={(e) => setName(e.target.value)} className="h-10 rounded-xl" />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-slate-700">Amount ({currencySymbol}) *</Label>
                     <Input type="number" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 rounded-xl font-mono tabular-nums font-semibold" />
@@ -231,7 +231,7 @@ export default function FixedExpensesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-slate-700">Cycle</Label>
                     <Select value={frequency} onValueChange={setFrequency}>
@@ -306,7 +306,7 @@ export default function FixedExpensesPage() {
           </div>
         }
       >
-        <Table>
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead className="pl-6">Expense Name</TableHead>

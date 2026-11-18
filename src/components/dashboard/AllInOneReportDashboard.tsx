@@ -267,7 +267,7 @@ export function AllInOneReportDashboard({
           <div
             role="tablist"
             aria-label="Report period"
-            className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200"
+            className="flex items-center sm:flex-wrap gap-1 p-1 bg-slate-100 rounded-lg border border-slate-200 max-w-full overflow-x-auto scrollbar-hide"
           >
             {DATE_RANGE_OPTIONS.map((opt) => (
               <button
@@ -337,29 +337,29 @@ export function AllInOneReportDashboard({
           aria-label="Custom report date bounds"
           className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white px-4 py-3 print:hidden"
         >
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
+          <div className="flex flex-wrap items-center gap-3 text-xs w-full sm:w-auto">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 w-full sm:w-auto">
               <Calendar className="h-3.5 w-3.5 text-primary" />
               Custom Range
             </span>
-            <label className="flex items-center gap-2 text-slate-600">
-              <span>From</span>
+            <label className="flex items-center gap-2 text-slate-600 flex-1 sm:flex-initial min-w-[140px]">
+              <span className="shrink-0">From</span>
               <Input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
                 aria-label="Report start date"
-                className="h-8 w-36 rounded-md border-slate-200 bg-slate-50 px-2.5 text-xs font-mono tabular-nums text-slate-900"
+                className="h-9 sm:h-8 w-full sm:w-36 rounded-md border-slate-200 bg-slate-50 px-2.5 text-xs font-mono tabular-nums text-slate-900"
               />
             </label>
-            <label className="flex items-center gap-2 text-slate-600">
-              <span>To</span>
+            <label className="flex items-center gap-2 text-slate-600 flex-1 sm:flex-initial min-w-[140px]">
+              <span className="shrink-0">To</span>
               <Input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
                 aria-label="Report end date"
-                className="h-8 w-36 rounded-md border-slate-200 bg-slate-50 px-2.5 text-xs font-mono tabular-nums text-slate-900"
+                className="h-9 sm:h-8 w-full sm:w-36 rounded-md border-slate-200 bg-slate-50 px-2.5 text-xs font-mono tabular-nums text-slate-900"
               />
             </label>
           </div>
@@ -495,7 +495,7 @@ export function AllInOneReportDashboard({
                   )}
                 </div>
                 {isBriefLoading ? (
-                  <div className="w-64 space-y-1.5 py-1">
+                  <div className="w-full max-w-[16rem] space-y-1.5 py-1">
                     <Progress value={60} className="h-1 bg-slate-800" />
                     <p className="text-xs text-slate-300">Compiling cross-module intelligence...</p>
                   </div>
@@ -543,35 +543,35 @@ export function AllInOneReportDashboard({
 
       {/* 6-METRIC CONSOLIDATED FINANCIAL & INVENTORY STRIP */}
       <section aria-label="Key financial and inventory figures">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 rounded-xl border border-slate-200 bg-white divide-y md:divide-y-0 md:divide-x divide-slate-200 overflow-hidden">
-          <div className="p-4 space-y-1">
-            <p className="text-xs text-slate-500">Gross Sales</p>
-            <p className="font-mono tabular-nums text-xl font-bold text-slate-900">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-px rounded-xl border border-slate-200 bg-slate-200 overflow-hidden">
+          <div className="bg-white p-3.5 sm:p-4 space-y-1 min-w-0">
+            <p className="text-xs text-slate-500 truncate">Gross Sales</p>
+            <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-slate-900 break-words">
               {currencySymbol}
               {report.grossSales.toLocaleString("en-IN")}
             </p>
-            <p className="text-[11px] font-mono tabular-nums text-slate-500">
+            <p className="text-[11px] font-mono tabular-nums text-slate-500 truncate">
               {report.salesTxnCount} sales · {report.ordersCount} orders
             </p>
           </div>
 
-          <div className="p-4 space-y-1">
-            <p className="text-xs text-slate-500">Total Outflow</p>
-            <p className="font-mono tabular-nums text-xl font-bold text-slate-900">
+          <div className="bg-white p-3.5 sm:p-4 space-y-1 min-w-0">
+            <p className="text-xs text-slate-500 truncate">Total Outflow</p>
+            <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-slate-900 break-words">
               {currencySymbol}
               {report.totalOutflow.toLocaleString("en-IN")}
             </p>
-            <p className="text-[11px] font-mono tabular-nums text-slate-500">
-              Total inflow: {currencySymbol}
+            <p className="text-[11px] font-mono tabular-nums text-slate-500 truncate">
+              Inflow: {currencySymbol}
               {report.totalInflow.toLocaleString("en-IN")}
             </p>
           </div>
 
-          <div className="p-4 space-y-1">
-            <p className="text-xs text-slate-500">Net Cashflow</p>
+          <div className="bg-white p-3.5 sm:p-4 space-y-1 min-w-0">
+            <p className="text-xs text-slate-500 truncate">Net Cashflow</p>
             <p
               className={cn(
-                "font-mono tabular-nums text-xl font-bold",
+                "font-mono tabular-nums text-base sm:text-xl font-bold break-words",
                 report.netCashflow >= 0 ? "text-emerald-700" : "text-red-700"
               )}
             >
@@ -579,47 +579,47 @@ export function AllInOneReportDashboard({
               {currencySymbol}
               {Math.abs(report.netCashflow).toLocaleString("en-IN")}
             </p>
-            <p className="text-[11px] font-mono tabular-nums text-slate-500">
+            <p className="text-[11px] font-mono tabular-nums text-slate-500 truncate">
               Net margin: {report.profitMarginPct}%
             </p>
           </div>
 
-          <div className="p-4 space-y-1">
-            <p className="text-xs text-slate-500">Receivables (Udhaar)</p>
+          <div className="bg-white p-3.5 sm:p-4 space-y-1 min-w-0">
+            <p className="text-xs text-slate-500 truncate">Receivables (Udhaar)</p>
             <p
               className={cn(
-                "font-mono tabular-nums text-xl font-bold",
+                "font-mono tabular-nums text-base sm:text-xl font-bold break-words",
                 report.totalUdhaar > 0 ? "text-red-700" : "text-slate-900"
               )}
             >
               {currencySymbol}
               {report.totalUdhaar.toLocaleString("en-IN")}
             </p>
-            <p className="text-[11px] font-mono tabular-nums text-slate-500">
+            <p className="text-[11px] font-mono tabular-nums text-slate-500 truncate">
               {report.udhaarCustomerCount} pending accounts
             </p>
           </div>
 
-          <div className="p-4 space-y-1">
-            <p className="text-xs text-slate-500">Vendor Payables</p>
-            <p className="font-mono tabular-nums text-xl font-bold text-slate-900">
+          <div className="bg-white p-3.5 sm:p-4 space-y-1 min-w-0">
+            <p className="text-xs text-slate-500 truncate">Vendor Payables</p>
+            <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-slate-900 break-words">
               {currencySymbol}
               {report.totalPayable.toLocaleString("en-IN")}
             </p>
-            <p className="text-[11px] font-mono tabular-nums text-slate-500">
+            <p className="text-[11px] font-mono tabular-nums text-slate-500 truncate">
               {report.payableVendorCount} unpaid suppliers
             </p>
           </div>
 
-          <div className="p-4 space-y-1">
-            <p className="text-xs text-slate-500">Stock Cost Value</p>
-            <p className="font-mono tabular-nums text-xl font-bold text-slate-900">
+          <div className="bg-white p-3.5 sm:p-4 space-y-1 min-w-0">
+            <p className="text-xs text-slate-500 truncate">Stock Cost Value</p>
+            <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-slate-900 break-words">
               {currencySymbol}
               {Math.round(report.inventoryCostValue).toLocaleString("en-IN")}
             </p>
             <p
               className={cn(
-                "text-[11px] font-mono tabular-nums",
+                "text-[11px] font-mono tabular-nums truncate",
                 report.lowStockItems.length > 0 ? "text-amber-700 font-semibold" : "text-slate-500"
               )}
             >
@@ -630,9 +630,9 @@ export function AllInOneReportDashboard({
       </section>
 
       {/* ANALYTICS CHARTS & CATEGORY BREAKDOWN (7 / 5 SPLIT) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
         {/* CASHFLOW CHART */}
-        <section className="lg:col-span-7 rounded-xl border border-slate-200 bg-white p-5 flex flex-col justify-between gap-4">
+        <section className="xl:col-span-7 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 flex flex-col justify-between gap-4 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm font-bold text-slate-900">
@@ -741,7 +741,7 @@ export function AllInOneReportDashboard({
         </section>
 
         {/* CATEGORY BREAKDOWN TABLE */}
-        <section className="lg:col-span-5 rounded-xl border border-slate-200 bg-white p-5 flex flex-col justify-between gap-4">
+        <section className="xl:col-span-5 rounded-xl border border-slate-200 bg-white p-4 sm:p-5 flex flex-col justify-between gap-4 min-w-0">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Category Volume Breakdown</h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -869,11 +869,11 @@ export function AllInOneReportDashboard({
 
       {/* MULTI-MODULE DETAILED LEDGER DRILL-DOWN */}
       <section className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="px-4 sm:px-5 py-4 border-b border-slate-200 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
           <div
             role="tablist"
             aria-label="Detailed ledger report views"
-            className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit print:hidden"
+            className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg max-w-full overflow-x-auto scrollbar-hide w-full sm:w-fit print:hidden"
           >
             {(
               [
@@ -902,7 +902,7 @@ export function AllInOneReportDashboard({
             ))}
           </div>
 
-          <div className="relative w-full lg:w-64 print:hidden">
+          <div className="relative w-full xl:w-64 print:hidden">
             <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <Input
               value={ledgerSearch}

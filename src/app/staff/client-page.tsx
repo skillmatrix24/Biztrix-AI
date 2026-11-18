@@ -720,23 +720,25 @@ export default function StaffManagementPage() {
           </TabsList>
 
           <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
-            <div className="flex items-center gap-1.5 bg-white px-2 h-10 rounded-xl border border-slate-200">
-              <Filter className="h-3.5 w-3.5 text-slate-400 ml-1" />
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger
-                  aria-label="Filter month"
-                  className="h-8 w-28 border-none bg-transparent font-medium text-xs focus:ring-0"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
-                  {PAYROLL_MONTHS.map((m, i) => (
-                    <SelectItem key={m} value={(i + 1).toString()}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-white px-2.5 h-10 rounded-xl border border-slate-200 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger
+                    aria-label="Filter month"
+                    className="h-8 w-28 border-none bg-transparent font-medium text-xs focus:ring-0"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-200">
+                    {PAYROLL_MONTHS.map((m, i) => (
+                      <SelectItem key={m} value={(i + 1).toString()}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Separator orientation="vertical" className="h-4 bg-slate-200" />
               <Select value={selectedYear} onValueChange={setSelectedYear}>
                 <SelectTrigger
@@ -774,7 +776,7 @@ export default function StaffManagementPage() {
               </SelectContent>
             </Select>
 
-            <div className="relative flex-1 sm:w-64">
+            <div className="relative w-full sm:flex-1 xl:w-64">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search name or email..."
@@ -972,14 +974,14 @@ export default function StaffManagementPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 w-full xl:w-auto">
+                      <div className="flex flex-col lg:flex-row items-stretch lg:items-end gap-3.5 w-full xl:w-auto">
                         <div className="grid grid-cols-3 gap-2">
                           <Button
                             type="button"
                             disabled={!canManagePayroll}
                             variant={currentStatus === "present" ? "default" : "outline"}
                             className={cn(
-                              "h-9 rounded-xl text-xs font-medium px-3.5",
+                              "h-10 sm:h-9 rounded-xl text-xs font-medium px-2.5 sm:px-3.5",
                               currentStatus === "present"
                                 ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                                 : "bg-white border-slate-200 text-slate-700"
@@ -993,7 +995,7 @@ export default function StaffManagementPage() {
                             disabled={!canManagePayroll}
                             variant={currentStatus === "half-day" ? "default" : "outline"}
                             className={cn(
-                              "h-9 rounded-xl text-xs font-medium px-3.5",
+                              "h-10 sm:h-9 rounded-xl text-xs font-medium px-2.5 sm:px-3.5",
                               currentStatus === "half-day"
                                 ? "bg-amber-600 hover:bg-amber-700 text-white"
                                 : "bg-white border-slate-200 text-slate-700"
@@ -1007,7 +1009,7 @@ export default function StaffManagementPage() {
                             disabled={!canManagePayroll}
                             variant={currentStatus === "absent" ? "default" : "outline"}
                             className={cn(
-                              "h-9 rounded-xl text-xs font-medium px-3.5",
+                              "h-10 sm:h-9 rounded-xl text-xs font-medium px-2.5 sm:px-3.5",
                               currentStatus === "absent"
                                 ? "bg-rose-600 hover:bg-rose-700 text-white"
                                 : "bg-white border-slate-200 text-slate-700"
@@ -1018,11 +1020,11 @@ export default function StaffManagementPage() {
                           </Button>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                          <div className="space-y-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 flex-1">
+                          <div className="space-y-1 min-w-0">
                             <Label
                               htmlFor={`ot-${s.id}`}
-                              className="text-[11px] font-medium text-slate-500"
+                              className="text-[11px] font-medium text-slate-500 block truncate"
                             >
                               OT hrs
                             </Label>
@@ -1037,22 +1039,22 @@ export default function StaffManagementPage() {
                               onChange={(e) =>
                                 setOtDrafts({ ...otDrafts, [draftKey]: e.target.value })
                               }
-                              className="h-9 w-full sm:w-20 text-center font-mono tabular-nums text-xs font-semibold rounded-xl bg-white border-slate-200"
+                              className="h-10 sm:h-9 w-full xl:w-20 text-center font-mono tabular-nums text-xs font-semibold rounded-xl bg-white border-slate-200"
                             />
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-[11px] font-medium text-slate-500">
+                          <div className="space-y-1 min-w-0">
+                            <Label className="text-[11px] font-medium text-slate-500 block truncate">
                               OT pay ({currencySymbol})
                             </Label>
-                            <div className="h-9 w-full sm:w-24 flex items-center justify-center font-mono tabular-nums text-xs font-semibold text-slate-900 bg-slate-50 rounded-xl border border-slate-200">
+                            <div className="h-10 sm:h-9 w-full xl:w-24 px-2 flex items-center justify-center font-mono tabular-nums text-xs font-semibold text-slate-900 bg-slate-50 rounded-xl border border-slate-200 truncate">
                               {currencySymbol}
                               {Math.round(otPayment).toLocaleString()}
                             </div>
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-1 min-w-0">
                             <Label
                               htmlFor={`allow-${s.id}`}
-                              className="text-[11px] font-medium text-slate-500"
+                              className="text-[11px] font-medium text-slate-500 block truncate"
                             >
                               Allowance ({currencySymbol})
                             </Label>
@@ -1069,13 +1071,13 @@ export default function StaffManagementPage() {
                                   [draftKey]: e.target.value,
                                 })
                               }
-                              className="h-9 w-full sm:w-24 text-center font-mono tabular-nums text-xs font-semibold rounded-xl bg-white border-slate-200"
+                              className="h-10 sm:h-9 w-full xl:w-24 text-center font-mono tabular-nums text-xs font-semibold rounded-xl bg-white border-slate-200"
                             />
                           </div>
-                          <div className="space-y-1 col-span-2 sm:col-span-1">
+                          <div className="space-y-1 min-w-0">
                             <Label
                               htmlFor={`pay-${s.id}`}
-                              className="text-[11px] font-medium text-slate-500"
+                              className="text-[11px] font-medium text-slate-500 block truncate"
                             >
                               Pay today ({currencySymbol})
                             </Label>
@@ -1093,7 +1095,7 @@ export default function StaffManagementPage() {
                                   })
                                 }
                                 placeholder="0"
-                                className="h-9 text-center font-mono tabular-nums text-xs font-semibold rounded-xl bg-emerald-50/70 text-emerald-800 border-emerald-200"
+                                className="h-10 sm:h-9 w-full xl:w-24 text-center font-mono tabular-nums text-xs font-semibold rounded-xl bg-emerald-50/70 text-emerald-800 border-emerald-200 px-2"
                               />
                               <Button
                                 type="button"
@@ -1107,7 +1109,7 @@ export default function StaffManagementPage() {
                                     : "Log Pay today advance"
                                 }
                                 className={cn(
-                                  "h-9 w-9 rounded-xl shrink-0",
+                                  "h-10 w-10 sm:h-9 sm:w-9 rounded-xl shrink-0",
                                   hasDraftChanges
                                     ? "bg-slate-900 text-white hover:bg-slate-800"
                                     : "border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white"
@@ -1133,8 +1135,98 @@ export default function StaffManagementPage() {
             title={`Monthly payroll ledger (${PAYROLL_MONTHS[Number.parseInt(selectedMonth, 10) - 1]} ${selectedYear})`}
             bodyClassName="p-0"
           >
-            <div className="overflow-x-auto">
-              <Table className="min-w-[1020px]">
+            {/* MOBILE SETTLEMENT CARDS (<768px) */}
+            <div className="md:hidden">
+              {payrollSummary.length === 0 ? (
+                <div className="py-12 px-5 text-center text-slate-500 text-sm">
+                  No payroll records found for this month.
+                </div>
+              ) : (
+                <>
+                  <div className="divide-y divide-slate-100">
+                    {payrollSummary.map((s: any) => (
+                      <div key={s.id} className="p-4 space-y-3 text-left">
+                        <div className="flex items-start justify-between gap-3">
+                          <Link href={`/staff/${s.id}`} className="min-w-0 group">
+                            <p className="text-sm font-semibold text-slate-900 group-hover:underline truncate">
+                              {s.name}
+                            </p>
+                            <p className="text-xs text-slate-500 capitalize">
+                              {s.role} · {s.payableDays} days
+                              {s.otHours > 0 ? ` · ${s.otHours}h OT` : ""}
+                            </p>
+                          </Link>
+
+                          {canManagePayroll ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              aria-label={`Settle payment for ${s.name}`}
+                              className="h-9 px-3 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white shrink-0"
+                              onClick={() => openSettleDialog(s)}
+                            >
+                              <HandCoins className="mr-1.5 h-3.5 w-3.5" />
+                              Settle
+                            </Button>
+                          ) : (
+                            <Link
+                              href={`/staff/${s.id}`}
+                              className="text-xs font-semibold text-primary hover:underline shrink-0"
+                            >
+                              View slip
+                            </Link>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-xs font-mono tabular-nums">
+                          <div>
+                            <p className="font-sans text-[11px] text-slate-500">Earned</p>
+                            <p className="font-semibold text-slate-900 mt-0.5">
+                              {currencySymbol}
+                              {Math.round(s.totalEarnedMonth).toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="font-sans text-[11px] text-slate-500">Paid</p>
+                            <p className="font-semibold text-emerald-700 mt-0.5">
+                              {currencySymbol}
+                              {Math.round(s.totalPaidMonth).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-sans text-[11px] text-slate-500">Balance</p>
+                            <p
+                              className={cn(
+                                "font-bold mt-0.5",
+                                (s.pendingBalance || 0) > 0 ? "text-rose-600" : "text-emerald-700"
+                              )}
+                            >
+                              {currencySymbol}
+                              {Math.round(s.pendingBalance || 0).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs font-mono tabular-nums">
+                    <span className="font-sans font-semibold text-slate-700">
+                      Grand Total ({grandTotals.attendance} days)
+                    </span>
+                    <span className="font-bold text-rose-600 text-sm">
+                      Due: {currencySymbol}
+                      {Math.round(grandTotals.balance).toLocaleString()}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* TABLET & DESKTOP PAYROLL TABLE (>=768px) */}
+            <div className="hidden md:block overflow-x-auto">
+              <Table className="min-w-[920px]">
                 <TableHeader>
                   <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
                     <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11 w-14">
@@ -1227,7 +1319,7 @@ export default function StaffManagementPage() {
                               size="sm"
                               variant="outline"
                               aria-label={`Settle payment for ${s.name}`}
-                              className="h-8 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white"
+                              className="h-8 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white whitespace-nowrap"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openSettleDialog(s);
@@ -1306,8 +1398,8 @@ export default function StaffManagementPage() {
             </div>
           </DialogHeader>
 
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="settle-amount" className="text-xs font-semibold text-slate-700">
                   Amount ({currencySymbol})
@@ -1336,7 +1428,7 @@ export default function StaffManagementPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">Payout Type</Label>
                 <Select
