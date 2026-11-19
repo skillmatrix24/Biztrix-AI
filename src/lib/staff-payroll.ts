@@ -774,7 +774,7 @@ export function normalizeWhatsAppDigits(rawPhone?: string | null): string {
 
 export function buildTeamInviteLinks(params: {
   origin: string;
-  email: string;
+  email?: string;
   name?: string;
   role?: string;
   businessName?: string;
@@ -794,18 +794,24 @@ export function buildTeamInviteLinks(params: {
 
   const queryParams = new URLSearchParams({
     invite: "1",
-    email: cleanEmail,
     name: cleanName,
     business: cleanBusiness,
   });
+  if (cleanEmail) {
+    queryParams.set("email", cleanEmail);
+  }
 
   const inviteUrl = `${cleanOrigin}/signup?${queryParams.toString()}`;
-  const loginUrl = `${cleanOrigin}/login?email=${encodeURIComponent(cleanEmail)}`;
+  const loginUrl = cleanEmail
+    ? `${cleanOrigin}/login?email=${encodeURIComponent(cleanEmail)}`
+    : `${cleanOrigin}/login`;
 
   const inviteMessage = [
     `Hi ${cleanName},`,
     `You have been invited to join ${cleanBusiness} as ${cleanRole}.`,
-    `Accept your workspace invite using email (${cleanEmail}):`,
+    cleanEmail
+      ? `Accept your workspace invite using email (${cleanEmail}):`
+      : `Accept your workspace invite using the link below:`,
     inviteUrl,
     `Already have an account? Sign in here: ${loginUrl}`,
   ].join("\n");
@@ -824,4 +830,256 @@ export function buildTeamInviteLinks(params: {
     whatsappUrl,
     mailtoUrl,
   };
+}
+
+export interface TeamMemberCsvDraft {
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  dailyRate: number;
+  shiftHours: number;
+  shiftTimings: string;
+  address: string;
+}
+
+export interface TeamMemberCsvSkippedRow {
+  rowNumber: number;
+  name?: string;
+  reason: string;
+}
+
+export interface TeamMemberCsvParseResult {
+  valid: TeamMemberCsvDraft[];
+  skipped: TeamMemberCsvSkippedRow[];
+}
+
+export function buildTeamDirectoryCsv(
+  members: Array<
+    StaffMemberLike & {
+      status?: string;
+      phone?: string;
+      shiftHours?: number;
+      shiftTimings?: string;
+      address?: string;
+    }
+  >
+): string {
+  const headers = [
+    "Name",
+    "Email",
+    "Phone",
+    "Role",
+    "Status",
+    "Daily Rate",
+    "Shift Hours",
+    "Shift Timings",
+    "Address",
+  ];
+
+  const rows = (members || []).map((m) =>
+    [
+      m.name || "",
+      m.email || "",
+      m.phone || "",
+      m.role || "Staff",
+      m.status || (m.email ? "active" : "pending"),
+      parseNonNegativeNumber(m.dailyRate ?? 500),
+      parseNonNegativeNumber(m.shiftHours ?? 8),
+      m.shiftTimings || "09:00 AM - 06:00 PM",
+      m.address || "",
+    ]
+      .map(escapeCsvCell)
+      .join(",")
+  );
+
+  return [headers.map(escapeCsvCell).join(","), ...rows].join("\n");
+}
+
+export function buildSampleTeamMembersCsvTemplate(): string {
+  const headers = [
+    "Name",
+    "Email",
+    "Phone",
+    "Role",
+    "Daily Rate",
+    "Shift Hours",
+    "Shift Timings",
+    "Address",
+  ];
+  const sampleRows = [
+    [
+      "Aarav Sharma",
+      "aarav@company.com",
+      "9876543210",
+      "Manager",
+      "900",
+      "9",
+      "09:00 AM - 06:00 PM",
+      "Pune, MH",
+    ],
+    [
+      "Priya Verma",
+      "priya@company.com",
+      "9822011223",
+      "Staff",
+      "600",
+      "8",
+      "10:00 AM - 06:00 PM",
+      "Nashik, MH",
+    ],
+  ];
+
+  return [
+    headers.map(escapeCsvCell).join(","),
+    ...sampleRows.map((row) => row.map(escapeCsvCell).join(",")),
+  ].join("\n");
+}
+
+function parseCsvLines(rawText: string): string[][] {
+  const text = (rawText || "").replace(/^\uFEFF/, "");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field.trim());
+      field = "";
+    } else if (ch === "\r") {
+      if (text[i + 1] === "\n") i += 1;
+      row.push(field.trim());
+      if (row.some((cell) => cell.length > 0)) rows.push(row);
+      row = [];
+      field = "";
+    } else if (ch === "\n") {
+      row.push(field.trim());
+      if (row.some((cell) => cell.length > 0)) rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += ch;
+    }
+  }
+
+  row.push(field.trim());
+  if (row.some((cell) => cell.length > 0)) rows.push(row);
+  return rows;
+}
+
+function normalizePhoneLast10(phone?: string | null): string {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return digits;
+}
+
+export function parseTeamMembersCsvImport(
+  csvText: string,
+  existingMembers: Array<StaffMemberLike & { phone?: string }> = []
+): TeamMemberCsvParseResult {
+  const parsedRows = parseCsvLines(csvText);
+  if (parsedRows.length < 2) {
+    return { valid: [], skipped: [] };
+  }
+
+  const headerRow = parsedRows[0].map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  const findCol = (aliases: string[]) =>
+    headerRow.findIndex((h) => aliases.some((a) => h === a || h.includes(a)));
+
+  const nameIdx = findCol(["fullname", "membername", "staffname", "name"]);
+  const emailIdx = findCol(["emailaddress", "loginemail", "email"]);
+  const phoneIdx = findCol(["whatsapp", "mobile", "phone", "contact"]);
+  const roleIdx = findCol(["role", "designation", "position"]);
+  const rateIdx = findCol(["dailyrate", "rate", "wage", "salary"]);
+  const hoursIdx = findCol(["shifthours", "hours"]);
+  const timingsIdx = findCol(["shifttimings", "timings", "shift"]);
+  const addressIdx = findCol(["address", "city", "location"]);
+
+  const seenEmails = new Set<string>();
+  const seenPhones = new Set<string>();
+
+  for (const existing of existingMembers || []) {
+    const em = (existing?.email || "").trim().toLowerCase();
+    if (em) seenEmails.add(em);
+    const ph = normalizePhoneLast10(existing?.phone);
+    if (ph.length >= 10) seenPhones.add(ph);
+  }
+
+  const valid: TeamMemberCsvDraft[] = [];
+  const skipped: TeamMemberCsvSkippedRow[] = [];
+
+  for (let i = 1; i < parsedRows.length; i += 1) {
+    const cells = parsedRows[i];
+    const rowNumber = i + 1;
+    const getCell = (idx: number) => (idx >= 0 && idx < cells.length ? cells[idx].trim() : "");
+
+    const name = getCell(nameIdx >= 0 ? nameIdx : 0);
+    const rawEmail = getCell(emailIdx).toLowerCase();
+    const phone = getCell(phoneIdx);
+    const role = getCell(roleIdx) || "Staff";
+    const dailyRateRaw = getCell(rateIdx);
+    const shiftHoursRaw = getCell(hoursIdx);
+    const shiftTimings = getCell(timingsIdx) || "09:00 AM - 06:00 PM";
+    const address = getCell(addressIdx);
+
+    if (!name) {
+      skipped.push({ rowNumber, reason: "Missing member name" });
+      continue;
+    }
+
+    if (rawEmail && (!rawEmail.includes("@") || !rawEmail.includes("."))) {
+      skipped.push({ rowNumber, name, reason: `Invalid email "${rawEmail}"` });
+      continue;
+    }
+
+    if (!rawEmail && !phone) {
+      skipped.push({ rowNumber, name, reason: "Provide at least an Email or Phone number" });
+      continue;
+    }
+
+    if (rawEmail && seenEmails.has(rawEmail)) {
+      skipped.push({ rowNumber, name, reason: `Duplicate email (${rawEmail})` });
+      continue;
+    }
+
+    const phoneKey = normalizePhoneLast10(phone);
+    if (phoneKey.length >= 10 && seenPhones.has(phoneKey)) {
+      skipped.push({ rowNumber, name, reason: `Duplicate mobile number (${phone})` });
+      continue;
+    }
+
+    if (rawEmail) seenEmails.add(rawEmail);
+    if (phoneKey.length >= 10) seenPhones.add(phoneKey);
+
+    const parsedRate = parseNonNegativeNumber(dailyRateRaw);
+    const parsedHours = Number.parseInt(shiftHoursRaw, 10);
+
+    valid.push({
+      name,
+      email: rawEmail,
+      phone,
+      role,
+      dailyRate: parsedRate > 0 ? parsedRate : 500,
+      shiftHours: Number.isFinite(parsedHours) && parsedHours > 0 && parsedHours <= 24 ? parsedHours : 8,
+      shiftTimings,
+      address,
+    });
+  }
+
+  return { valid, skipped };
 }

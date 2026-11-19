@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useEffect, useRef, useState, useMemo, Suspense } from "react";
 import {
   Plus,
   Loader2,
@@ -58,7 +58,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { getCurrencySymbol } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSolarNotification } from "@/firebase/solar-notifications";
 import { NewCustomerDialog } from "@/app/billing/components/NewCustomerDialog";
 
@@ -112,6 +112,9 @@ function NewSolarInquiryContent() {
   const firestore = useFirestore();
   const { user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const incomingLeadId = searchParams.get("leadId");
+  const hydratedLeadIdRef = useRef<string | null>(null);
 
   const userProfileRef = useMemoFirebase(
     () => (user?.uid ? doc(firestore, "users", user.uid) : null),
@@ -180,6 +183,24 @@ function NewSolarInquiryContent() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    if (!incomingLeadId || hydratedLeadIdRef.current === incomingLeadId) return;
+    const matched = leads.find((l: any) => l.id === incomingLeadId);
+    if (!matched) return;
+    hydratedLeadIdRef.current = incomingLeadId;
+    setFormData((prev) => ({
+      ...prev,
+      sourceType: "lead",
+      sourceId: matched.id,
+      location: prev.location || matched.location || "",
+      notes: prev.notes || matched.notes || matched.interest || "",
+    }));
+    toast({
+      title: "CRM Lead Selected",
+      description: `Prefilled Solar Inquiry for ${matched.name}.`,
+    });
+  }, [incomingLeadId, leads]);
 
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);

@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { Loader2, SmartphoneNfc } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { BrainCircuit, Loader2, SmartphoneNfc, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn, getCurrencySymbol } from "@/lib/utils";
+import { cn, getCurrencySymbol, normalizePhoneNumber } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import {
   commitBatchNonBlocking,
@@ -29,8 +29,15 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { useSearchParams } from "next/navigation";
-import { Customer, Product, Vendor } from "@/lib/mock-db";
+import { Customer, Lead, Product, Vendor } from "@/lib/mock-db";
 import { sendWhatsAppTemplate } from "@/app/actions/whatsapp-actions";
+import {
+  calculateLeadIntentScore,
+  createLeadActivityEntry,
+  getLeadFollowUpTaskId,
+  getTodayLocalYmd,
+  prependLeadActivity,
+} from "@/lib/crm-engine";
 import {
   calculateBillingTotals,
   findBestCouponOffer,
@@ -78,6 +85,8 @@ function BillingContent() {
   const incomingQuoteId = searchParams.get("quoteId");
   const incomingProjectId = searchParams.get("projectId");
   const incomingMilestoneId = searchParams.get("milestoneId");
+  const incomingLeadId = searchParams.get("leadId");
+  const incomingMode = searchParams.get("mode");
 
   const userProfileRef = useMemoFirebase(
     () => (user?.uid ? doc(firestore, "users", user.uid) : null),
@@ -144,10 +153,19 @@ function BillingContent() {
   const [lastInvoice, setLastInvoice] = useState<any>(null);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [linkedLead, setLinkedLead] = useState<Lead | null>(null);
+  const hydratedLeadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (incomingAmount) setManualAmount(incomingAmount);
     if (incomingCustomerId) setSelectedCustomerId(incomingCustomerId);
+    if (incomingMode === "quotation") {
+      setIsQuotation(true);
+      setIsRewardSyncMode(false);
+    } else if (incomingMode === "sale") {
+      setIsQuotation(false);
+      setIsRewardSyncMode(false);
+    }
     if (incomingProjectId) {
       setPaymentNote((prev) =>
         prev ||
@@ -156,7 +174,7 @@ function BillingContent() {
           : `Project ${incomingProjectId}`)
       );
     }
-  }, [incomingAmount, incomingCustomerId, incomingProjectId, incomingMilestoneId]);
+  }, [incomingAmount, incomingCustomerId, incomingMode, incomingProjectId, incomingMilestoneId]);
 
   useEffect(() => {
     async function loadQuote() {
@@ -216,6 +234,116 @@ function BillingContent() {
   );
   const { data: productListData } = useCollection<Product>(productsQuery);
   const productList = useMemo(() => productListData || [], [productListData]);
+
+  useEffect(() => {
+    async function loadIncomingLead() {
+      if (!incomingLeadId || !businessId) return;
+      if (hydratedLeadIdRef.current === incomingLeadId) return;
+
+      try {
+        const leadRef = doc(firestore, "businesses", businessId, "leads", incomingLeadId);
+        const leadSnap = await getDoc(leadRef);
+        if (!leadSnap.exists()) return;
+
+        hydratedLeadIdRef.current = incomingLeadId;
+        const leadData = { ...leadSnap.data(), id: leadSnap.id } as Lead;
+        setLinkedLead(leadData);
+
+        // Resolve or upsert linked Customer record for billing
+        const normalizedPhone = normalizePhoneNumber(leadData.phone || "");
+        const existingCustomer =
+          (leadData.convertedCustomerId &&
+            customerList.find((c) => c.id === leadData.convertedCustomerId)) ||
+          customerList.find(
+            (c) =>
+              normalizedPhone.length >= 10 &&
+              normalizePhoneNumber(c.phone || "") === normalizedPhone
+          );
+
+        let targetCustomerId = existingCustomer?.id || leadData.convertedCustomerId || "";
+        if (!targetCustomerId) {
+          targetCustomerId =
+            normalizedPhone.length >= 10 ? `c_${normalizedPhone}` : `c_${leadData.id}`;
+          await setDoc(
+            doc(firestore, "businesses", businessId, "customers", targetCustomerId),
+            {
+              id: targetCustomerId,
+              tenantId: businessId,
+              name: leadData.name || "CRM Prospect",
+              phone: leadData.phone || "",
+              normalizedPhone: normalizedPhone || leadData.phone || "",
+              email: leadData.email || "",
+              businessName: leadData.companyName || "",
+              gstin: leadData.gstin || "",
+              city: leadData.location || "",
+              address: leadData.location || "",
+              source: leadData.source || "CRM Lead",
+              customerType: leadData.companyName || leadData.gstin ? "B2B" : "Regular",
+              creditBalance: 0,
+              whatsappOptIn: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+        setSelectedCustomerId(targetCustomerId);
+
+        // Prefill catalog items if linked on lead, otherwise fallback to lead budget
+        const matchedProducts: Product[] = [];
+        if (Array.isArray(leadData.interestedProductIds) && leadData.interestedProductIds.length > 0) {
+          for (const pid of leadData.interestedProductIds) {
+            const prod = productList.find((p) => p.id === pid);
+            if (prod) matchedProducts.push(prod);
+          }
+        }
+        if (
+          matchedProducts.length === 0 &&
+          Array.isArray(leadData.viewedProducts) &&
+          leadData.viewedProducts.length > 0
+        ) {
+          for (const name of leadData.viewedProducts) {
+            const clean = String(name || "").trim().toLowerCase();
+            const prod = productList.find((p) => (p.name || "").trim().toLowerCase() === clean);
+            if (prod && !matchedProducts.some((m) => m.id === prod.id)) {
+              matchedProducts.push(prod);
+            }
+          }
+        }
+
+        if (matchedProducts.length > 0) {
+          setItems((prev) =>
+            prev.length > 0
+              ? prev
+              : matchedProducts.map((p, idx) => ({
+                  id: `lead_item_${Date.now()}_${idx}`,
+                  productId: p.id,
+                  name: p.name,
+                  hsnCode: p.hsnCode || "",
+                  quantity: 1,
+                  price: Number(p.price) || 0,
+                  gstRate: Number(p.gstRate) || 0,
+                  stock: Number(p.stock) || 999,
+                  itemDiscount: 0,
+                }))
+          );
+        } else if (!incomingAmount && Number(leadData.budget || 0) > 0) {
+          setManualAmount(String(leadData.budget));
+        }
+
+        setPaymentNote((prev) => prev || `CRM Lead: ${leadData.name}`);
+        toast({
+          title: "CRM Lead Loaded",
+          description: `Prefilled ${
+            incomingMode === "quotation" ? "quotation" : "POS bill"
+          } for ${leadData.name}.`,
+        });
+      } catch (e) {
+        console.error("Lead Hydration Error:", e);
+      }
+    }
+    loadIncomingLead();
+  }, [incomingLeadId, incomingAmount, incomingMode, businessId, firestore, customerList, productList]);
 
   const vendorsQuery = useMemoFirebase(
     () => (businessId ? collection(firestore, "businesses", businessId, "vendors") : null),
@@ -851,6 +979,7 @@ function BillingContent() {
             id: quoteId,
             quotationId: quoteId,
             businessId,
+            leadId: linkedLead?.id || incomingLeadId || null,
             customerId: selectedCustomerId,
             customerName: selectedCustomer?.name,
             items: quoteItems,
@@ -861,6 +990,35 @@ function BillingContent() {
           },
           { merge: true }
         );
+
+        if (linkedLead) {
+          const todayYmd = getTodayLocalYmd();
+          const shouldAdvanceStage = ["new", "contacted", "interested"].includes(
+            linkedLead.status || "new"
+          );
+          const nextStatus = shouldAdvanceStage ? "negotiation" : linkedLead.status;
+          const quoteActivity = createLeadActivityEntry(
+            shouldAdvanceStage ? "stage_change" : "note",
+            `Prepared quotation ${quoteId} (${currencySymbol}${totals.finalPayout.toLocaleString("en-IN")})`,
+            userProfile?.name || user?.displayName || "Team"
+          );
+          const updatedActivities = prependLeadActivity(linkedLead.activities, quoteActivity);
+          const nextIntent = calculateLeadIntentScore(
+            { ...linkedLead, status: nextStatus, activities: updatedActivities },
+            todayYmd
+          );
+
+          batch.set(
+            doc(firestore, "businesses", businessId, "leads", linkedLead.id),
+            {
+              status: nextStatus,
+              intentScore: nextIntent,
+              activities: updatedActivities,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
 
         setSplitInvoices([]);
         setActiveSplitIndex(0);
@@ -1140,6 +1298,7 @@ function BillingContent() {
           id: invoiceId,
           invoiceId,
           businessId,
+          leadId: linkedLead?.id || incomingLeadId || null,
           type: "sales",
           customerId: selectedCustomerId,
           customerName: selectedCustomer?.name || "Customer",
@@ -1165,11 +1324,43 @@ function BillingContent() {
           invoiceDocPayload
         );
 
+        if (linkedLead) {
+          const saleActivity = createLeadActivityEntry(
+            "stage_change",
+            `Converted via POS Invoice ${invoiceId} (${currencySymbol}${totals.finalPayout.toLocaleString("en-IN")})`,
+            userProfile?.name || user?.displayName || "Team"
+          );
+          batch.set(
+            doc(firestore, "businesses", businessId, "leads", linkedLead.id),
+            {
+              status: "converted",
+              intentScore: 100,
+              convertedCustomerId: selectedCustomerId,
+              activities: prependLeadActivity(linkedLead.activities, saleActivity),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+
         setSplitInvoices([]);
         setActiveSplitIndex(0);
         setLastInvoice(invoiceDocPayload);
 
         await commitBatchNonBlocking(batch);
+        if (linkedLead) {
+          updateDoc(
+            doc(
+              firestore,
+              "businesses",
+              businessId,
+              "tasks",
+              getLeadFollowUpTaskId(linkedLead.id)
+            ),
+            { status: "completed", updatedAt: serverTimestamp() }
+          ).catch(() => {});
+          setLinkedLead(null);
+        }
         await dispatchWhatsAppBill(
           "pos",
           { invoiceId, amount: totals.finalPayout },
@@ -1654,6 +1845,32 @@ function BillingContent() {
           hasActiveDraft={hasActiveDraft}
           onResetBill={resetBillDraft}
         />
+
+        {linkedLead && (
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 text-xs text-indigo-950">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <BrainCircuit className="h-4 w-4 text-indigo-600 shrink-0" />
+              <p className="truncate">
+                <span className="font-semibold">Linked CRM Lead:</span> {linkedLead.name}
+                {linkedLead.phone ? ` · ${linkedLead.phone}` : ""}
+                {" · "}
+                <span className="text-indigo-700">
+                  {isQuotation
+                    ? "Saving quotation will move lead to Negotiation"
+                    : "Completing POS bill will mark lead Converted"}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLinkedLead(null)}
+              aria-label="Unlink CRM lead"
+              className="p-1 rounded-lg text-indigo-500 hover:text-indigo-900 hover:bg-indigo-100 transition-colors shrink-0"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           <div className="xl:col-span-8 space-y-6 min-w-0">

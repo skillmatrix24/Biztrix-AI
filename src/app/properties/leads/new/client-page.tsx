@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { Suspense, useRef, useState, useMemo, useEffect } from "react";
 import {
   UserPlus,
   Users,
@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/ui/editorial";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useFirestore,
   useUser,
@@ -48,6 +48,7 @@ import {
 import {
   doc,
   collection,
+  getDoc,
   serverTimestamp,
   query,
   where,
@@ -58,10 +59,13 @@ import { getCurrencySymbol } from "@/lib/utils";
 const PRODUCT_OPTIONS = ["Khet", "Plot", "Building", "Farmhouse", "Chukta"];
 const CLASSIFICATIONS = ["RESIDENTIAL", "COMMERCIAL"];
 
-export default function NewCustomerEntryPage() {
+function NewCustomerEntryContent() {
   const firestore = useFirestore();
   const { user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const incomingLeadId = searchParams.get("leadId");
+  const hydratedLeadIdRef = useRef<string | null>(null);
 
   const userProfileRef = useMemoFirebase(
     () => (user?.uid ? doc(firestore, "users", user.uid) : null),
@@ -189,6 +193,34 @@ export default function NewCustomerEntryPage() {
     }
   }, [business]);
 
+  useEffect(() => {
+    async function hydrateFromCrmLead() {
+      if (!incomingLeadId || !businessId) return;
+      if (hydratedLeadIdRef.current === incomingLeadId) return;
+      try {
+        const snap = await getDoc(doc(firestore, "businesses", businessId, "leads", incomingLeadId));
+        if (!snap.exists()) return;
+        hydratedLeadIdRef.current = incomingLeadId;
+        const leadData = snap.data();
+        setFormData((prev: any) => ({
+          ...prev,
+          name: prev.name || leadData.name || "",
+          phone: prev.phone || leadData.phone || "",
+          location: prev.location || leadData.location || "",
+          budgetMax: prev.budgetMax || (leadData.budget ? String(leadData.budget) : ""),
+          notes: prev.notes || leadData.notes || leadData.interest || "",
+        }));
+        toast({
+          title: "CRM Lead Loaded",
+          description: `Prefilled property enquiry for ${leadData.name || "prospect"}.`,
+        });
+      } catch (e) {
+        console.error("CRM Property Lead Prefill Error:", e);
+      }
+    }
+    hydrateFromCrmLead();
+  }, [incomingLeadId, businessId, firestore]);
+
   const currencySymbol = getCurrencySymbol(business?.currency);
 
   const handleSave = () => {
@@ -211,6 +243,7 @@ export default function NewCustomerEntryPage() {
       collection(firestore, "businesses", businessId, "realEstateLeads"),
       {
         ...formData,
+        ...(incomingLeadId ? { crmLeadId: incomingLeadId } : {}),
         businessId,
         assignedAgentId: selectedAgent?.id || user.uid,
         createdBy: user.uid,
@@ -896,5 +929,19 @@ export default function NewCustomerEntryPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function NewCustomerEntryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        </div>
+      }
+    >
+      <NewCustomerEntryContent />
+    </Suspense>
   );
 }

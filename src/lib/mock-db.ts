@@ -115,13 +115,37 @@ export type Customer = {
 };
 
 export type LeadStatus = 'new' | 'contacted' | 'interested' | 'negotiation' | 'converted' | 'lost';
-export type LeadSource = 'WhatsApp' | 'Facebook' | 'Website' | 'Walk-in' | 'Referral';
+export type LeadSource =
+  | 'WhatsApp'
+  | 'Facebook'
+  | 'Instagram'
+  | 'Google'
+  | 'Website'
+  | 'Funnel'
+  | 'Walk-in'
+  | 'Referral'
+  | 'Other';
+
+export type LeadPriority = 'Hot' | 'Warm' | 'Cold';
+
+export type LeadActivityType =
+  | 'visit'
+  | 'click'
+  | 'message'
+  | 'form'
+  | 'note'
+  | 'call'
+  | 'whatsapp'
+  | 'stage_change'
+  | 'followup'
+  | 'created';
 
 export type LeadActivity = {
   id: string;
-  type: 'visit' | 'click' | 'message' | 'form';
+  type: LeadActivityType;
   description: string;
   timestamp: string;
+  actorName?: string;
   metadata?: any;
 };
 
@@ -130,21 +154,30 @@ export type Lead = {
   tenantId: string;
   name: string;
   phone: string;
+  normalizedPhone?: string;
   email?: string;
+  companyName?: string;
+  gstin?: string;
   source: LeadSource;
   status: LeadStatus;
   notes?: string;
   followUpDate?: string;
   followUpTime?: string;
   createdAt: string;
+  updatedAt?: any;
   activities?: LeadActivity[];
   intentScore?: number;
   viewedProducts?: string[];
+  interestedProductIds?: string[];
   interest?: string;
-  priority?: any;
+  priority?: LeadPriority | string;
   budget?: number;
   location?: string;
   assignedTo?: string;
+  assignedName?: string;
+  lostReason?: string;
+  convertedCustomerId?: string;
+  funnelSlug?: string;
 };
 
 export type Vendor = {
@@ -302,6 +335,8 @@ export type Task = {
   repeat: 'none' | 'daily' | 'weekly' | 'monthly';
   createdAt: string;
   projectId?: string; // Linked to a project
+  leadId?: string; // Linked to a CRM lead follow-up
+  leadName?: string;
 };
 
 export type ProjectStatus = 'planning' | 'in-progress' | 'on-hold' | 'completed' | 'cancelled';

@@ -57,16 +57,21 @@ export default function GlobalContactHub() {
     if (!businessId) return;
     setIsSyncing(true);
     try {
-      const customersSnap = await getDocs(collection(firestore, "businesses", businessId, "customers"));
-      const membersSnap = await getDocs(collection(firestore, "businesses", businessId, "memberships"));
+      const [customersSnap, membersSnap, leadsSnap] = await Promise.all([
+        getDocs(collection(firestore, "businesses", businessId, "customers")),
+        getDocs(collection(firestore, "businesses", businessId, "memberships")),
+        getDocs(collection(firestore, "businesses", businessId, "leads")),
+      ]);
 
       let batch = writeBatch(firestore);
       let count = 0;
+      const syncedCustomerPhones = new Set<string>();
 
       for (const cDoc of customersSnap.docs) {
         const cData = cDoc.data();
         if (!cData.phone) continue;
 
+        syncedCustomerPhones.add(String(cData.phone).replace(/\D/g, "").slice(-10));
         const contactRef = doc(firestore, "businesses", businessId, "globalContacts", cData.phone);
         batch.set(
           contactRef,
@@ -122,11 +127,60 @@ export default function GlobalContactHub() {
         }
       }
 
+      for (const lDoc of leadsSnap.docs) {
+        const lData = lDoc.data();
+        if (!lData.phone) continue;
+
+        const cleanLeadPhone = String(lData.phone).trim();
+        const last10 = cleanLeadPhone.replace(/\D/g, "").slice(-10);
+        const alreadyCustomer = Boolean(last10 && syncedCustomerPhones.has(last10));
+        const leadTags = Array.from(
+          new Set(["Lead", ...(lData.source ? [String(lData.source)] : [])])
+        );
+
+        const contactRef = doc(
+          firestore,
+          "businesses",
+          businessId,
+          "globalContacts",
+          cleanLeadPhone
+        );
+        batch.set(
+          contactRef,
+          {
+            id: cleanLeadPhone,
+            name: lData.name || "CRM Lead",
+            phone: cleanLeadPhone,
+            email: lData.email || "",
+            ...(alreadyCustomer ? {} : { source: "lead" }),
+            city: lData.location || "",
+            tags: alreadyCustomer
+              ? Array.from(new Set(["Customer", ...leadTags]))
+              : leadTags,
+            leadId: lDoc.id,
+            updatedAt: serverTimestamp(),
+            createdAt: lData.createdAt || serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        count++;
+        if (count >= 450) {
+          await commitBatchNonBlocking(batch);
+          batch = writeBatch(firestore);
+          count = 0;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+
       if (count > 0) {
         await commitBatchNonBlocking(batch);
       }
 
-      toast({ title: "Contacts Synced", description: "Customer and loyalty lists merged into the contact registry." });
+      toast({
+        title: "Contacts Synced",
+        description: "Customers, loyalty members, and CRM leads merged into the contact hub.",
+      });
     } catch (e) {
       console.error(e);
       toast({ variant: "destructive", title: "Sync Failed" });
@@ -148,7 +202,7 @@ export default function GlobalContactHub() {
       <PageHeader
         breadcrumb="WhatsApp Cloud · Audience"
         title="Contact Hub"
-        description="Unified audience registry combining CRM customers, loyalty members, and CSV imports."
+        description="Unified audience registry combining CRM leads, customers, loyalty members, and CSV imports."
         icon={Users}
         actions={
           <div className="flex flex-wrap gap-2.5">

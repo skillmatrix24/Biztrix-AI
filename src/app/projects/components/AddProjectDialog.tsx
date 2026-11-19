@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Plus, Zap, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ interface AddProjectDialogProps {
   customersList: any[];
   leadsList: any[];
   businessUsers: any[];
+  initialLead?: any | null;
 }
 
 interface TempTask {
@@ -54,6 +55,7 @@ export function AddProjectDialog({
   customersList,
   leadsList,
   businessUsers,
+  initialLead,
 }: AddProjectDialogProps) {
   const [formData, setFormData] = useState({
     title: "",
@@ -63,6 +65,25 @@ export function AddProjectDialog({
     deadline: "",
     team: [] as string[],
   });
+
+  useEffect(() => {
+    if (!isOpen || !initialLead) return;
+    setFormData((prev) => ({
+      ...prev,
+      title:
+        prev.title ||
+        `${initialLead.name || "Client"}${initialLead.interest ? ` — ${initialLead.interest}` : " Project"}`,
+      description: prev.description || initialLead.notes || initialLead.interest || "",
+      clientType: initialLead.convertedCustomerId ? "customer" : "lead",
+      clientId: initialLead.convertedCustomerId || initialLead.id || "",
+      team:
+        prev.team.length > 0
+          ? prev.team
+          : initialLead.assignedTo
+            ? [initialLead.assignedTo]
+            : [],
+    }));
+  }, [isOpen, initialLead]);
 
   const [deepResearch, setDeepResearch] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);

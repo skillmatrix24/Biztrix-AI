@@ -864,6 +864,38 @@ export async function syncStorefrontRelays(params: {
             updatedAt: SERVER_TIMESTAMP_SENTINEL,
           },
         });
+
+        const cleanPhoneDigits = String(lead.phone || "").replace(/\D/g, "").slice(-10);
+        const crmLeadId =
+          cleanPhoneDigits.length >= 10 ? `crm_sf_${cleanPhoneDigits}` : `crm_sf_${lead.id}`;
+        const isFunnelLead = Boolean(lead.funnelId || lead.source === "funnel_lead_capture");
+        ops.push({
+          type: "set",
+          path: `businesses/${tenantBusinessId}/leads/${crmLeadId}`,
+          merge: true,
+          data: {
+            id: crmLeadId,
+            tenantId: tenantBusinessId,
+            name: lead.name || "Storefront Visitor",
+            phone: lead.phone || lead.email || lead.contact || "Online Inquiry",
+            ...(cleanPhoneDigits.length >= 10 ? { normalizedPhone: cleanPhoneDigits } : {}),
+            ...(lead.email ? { email: lead.email } : {}),
+            source: isFunnelLead ? "Funnel" : "Website",
+            status: "new",
+            priority: "Warm",
+            interest: lead.funnelSlug
+              ? `Sales Funnel (${lead.funnelSlug})`
+              : "Online Storefront VIP / Deal Inquiry",
+            ...(lead.funnelSlug ? { funnelSlug: lead.funnelSlug } : {}),
+            intentScore: isFunnelLead ? 62 : 58,
+            createdAt:
+              typeof lead.subscribedAtIso === "string" && lead.subscribedAtIso.length >= 10
+                ? lead.subscribedAtIso.slice(0, 10)
+                : new Date().toISOString().slice(0, 10),
+            updatedAt: SERVER_TIMESTAMP_SENTINEL,
+          },
+        });
+
         if (lead.contactType === "phone" && lead.phone) {
           const customerId = `c_${lead.phone}`;
           ops.push({

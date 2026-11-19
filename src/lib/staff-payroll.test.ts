@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   aggregateStaffPayrollRow,
+  buildSampleTeamMembersCsvTemplate,
   buildStaffActivityCsv,
+  buildTeamDirectoryCsv,
   buildTeamInviteLinks,
   buildTeamSummaryCsv,
   calculateDayEarning,
@@ -19,6 +21,7 @@ import {
   isDateInMonthYear,
   isPulseWidgetEnabled,
   isStaffAdminRole,
+  parseTeamMembersCsvImport,
   planAttendanceAction,
   resolveNumericDraft,
   toggleDashboardPulseLayout,
@@ -344,4 +347,72 @@ test("team directory invite & re-invite helpers classify members and build share
   assert.match(links.inviteUrl, /email=suresh%40company\.com/);
   assert.match(links.whatsappUrl, /^https:\/\/wa\.me\/919876543210\?text=/);
   assert.match(links.mailtoUrl, /^mailto:suresh%40company\.com\?subject=/);
+
+  const phoneOnlyLinks = buildTeamInviteLinks({
+    origin: "https://app.example.com",
+    name: "Kiran",
+    role: "Technician",
+    businessName: "Apex Solar",
+    phone: "9811223344",
+  });
+  assert.match(phoneOnlyLinks.whatsappUrl, /^https:\/\/wa\.me\/919811223344\?text=/);
+  assert.doesNotMatch(phoneOnlyLinks.inviteUrl, /email=/);
+
+  const genericWaLinks = buildTeamInviteLinks({
+    origin: "https://app.example.com",
+    email: "no-phone@company.com",
+    name: "Meera",
+  });
+  assert.match(genericWaLinks.whatsappUrl, /^https:\/\/wa\.me\/\?text=/);
+});
+
+test("team directory CSV export and import handle formula neutralization, aliases, and deduplication", () => {
+  const csv = buildTeamDirectoryCsv([
+    {
+      id: "u1",
+      name: "=HYPERLINK(\"bad\")",
+      email: "admin@company.com",
+      phone: "9876543210",
+      role: "Admin",
+      status: "active",
+      dailyRate: 1200,
+      shiftHours: 9,
+      shiftTimings: "09:00 AM - 06:00 PM",
+      address: "Pune, MH",
+    },
+  ]);
+
+  const lines = csv.split("\n");
+  assert.equal(lines.length, 2);
+  assert.match(lines[0], /^Name,Email,Phone,Role,Status,Daily Rate/);
+  assert.match(lines[1], /^"'=HYPERLINK/);
+  assert.match(lines[1], /"Pune, MH"/);
+
+  const sample = buildSampleTeamMembersCsvTemplate();
+  const sampleParsed = parseTeamMembersCsvImport(sample, []);
+  assert.equal(sampleParsed.valid.length, 2);
+  assert.equal(sampleParsed.skipped.length, 0);
+  assert.equal(sampleParsed.valid[0].name, "Aarav Sharma");
+  assert.equal(sampleParsed.valid[0].dailyRate, 900);
+
+  const batchCsv = [
+    "Full Name,Login Email,WhatsApp,Designation,Rate,Hours,Address",
+    'Rohan Patel,rohan@company.com,9820011223,Supervisor,850,9,"Surat, GJ"',
+    "Duplicate Existing,admin@company.com,9999988888,Staff,500,8,Mumbai",
+    "Duplicate Phone,fresh@company.com,+91 9820011223,Staff,500,8,Mumbai",
+    "Invalid Email,not-an-email,9111122222,Staff,500,8,Delhi",
+    ",missingname@company.com,9333344444,Staff,500,8,Delhi",
+    "Phone Only Member,,9444455555,Field Agent,650,8,Indore",
+  ].join("\n");
+
+  const parsed = parseTeamMembersCsvImport(batchCsv, [
+    { id: "u1", name: "Existing Admin", email: "admin@company.com", phone: "9876543210" },
+  ]);
+
+  assert.equal(parsed.valid.length, 2);
+  assert.equal(parsed.valid[0].name, "Rohan Patel");
+  assert.equal(parsed.valid[0].address, "Surat, GJ");
+  assert.equal(parsed.valid[1].name, "Phone Only Member");
+  assert.equal(parsed.valid[1].email, "");
+  assert.equal(parsed.skipped.length, 4);
 });

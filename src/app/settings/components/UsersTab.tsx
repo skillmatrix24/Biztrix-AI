@@ -20,6 +20,8 @@ import {
   Mail,
   MessageSquare,
   KeyRound,
+  Download,
+  CloudUpload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,20 +47,31 @@ import {
   useAuth,
   useFirestore,
   addDocumentNonBlocking,
+  commitBatchNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from "@/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { collection, deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  setDoc,
+  writeBatch,
+} from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import {
+  buildTeamDirectoryCsv,
   buildTeamInviteLinks,
   findMatchingExistingMemberByEmail,
   getDynamicRoleOptions,
   getMemberInviteState,
   parseNonNegativeNumber,
+  type TeamMemberCsvDraft,
 } from "@/lib/staff-payroll";
+import { TeamImportDialog } from "./TeamImportDialog";
 import Link from "next/link";
 
 const SHIFT_HOURS = ["4", "6", "8", "9", "10", "12"];
@@ -118,6 +131,7 @@ export function UsersTab({
 
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [isManageRolesOpen, setIsManageRolesOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showEditAdvanced, setShowEditAdvanced] = useState(false);
@@ -548,6 +562,103 @@ export function UsersTab({
     toast({ title: "Role Added" });
   };
 
+  const handleExportMembersCsv = () => {
+    const sourceList = processedUsers.length > 0 ? processedUsers : businessUsers || [];
+    if (sourceList.length === 0) {
+      toast({
+        title: "No members to export",
+        description: "Add or invite team members first.",
+      });
+      return;
+    }
+    const csv = buildTeamDirectoryCsv(sourceList);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `team-members-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({
+      title: "Team CSV Exported",
+      description: `Downloaded ${sourceList.length} team member record${
+        sourceList.length === 1 ? "" : "s"
+      }.`,
+    });
+  };
+
+  const handleBatchImportMembers = async (rows: TeamMemberCsvDraft[]) => {
+    if (!businessId || !isAdmin || rows.length === 0) return;
+    const nowIso = new Date().toISOString();
+    let batch = writeBatch(firestore);
+    let ops = 0;
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i];
+      const userDocRef = doc(collection(firestore, "users"));
+      batch.set(userDocRef, {
+        name: row.name,
+        email: row.email,
+        phone: row.phone,
+        address: row.address,
+        role: row.role || "Staff",
+        businessId,
+        businessName: business?.name || "Business",
+        dailyRate: row.dailyRate,
+        shiftHours: row.shiftHours,
+        shiftTimings: row.shiftTimings,
+        createdAt: nowIso,
+        invitedAt: nowIso,
+        inviteCount: 1,
+        status: "pending",
+        dashboardLayout: [
+          { id: "hero", label: "AI Slate", enabled: true, order: 0 },
+          { id: "pulse", label: "Daily Pulse", enabled: true, order: 1 },
+          { id: "stats", label: "Main Stats", enabled: true, order: 2 },
+          { id: "assistant", label: "AI Assistant", enabled: true, order: 3 },
+        ],
+        updatedAt: serverTimestamp(),
+      });
+      ops += 1;
+
+      if (row.email && row.email.includes("@")) {
+        const inviteRef = doc(firestore, "businesses", businessId, "invites", row.email);
+        batch.set(
+          inviteRef,
+          {
+            businessId,
+            businessName: business?.name || "Workspace",
+            email: row.email,
+            name: row.name,
+            role: row.role || "Staff",
+            invitedBy: currentUser?.uid || "",
+            status: "pending",
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+        ops += 1;
+      }
+
+      if (ops >= 380) {
+        await commitBatchNonBlocking(batch);
+        batch = writeBatch(firestore);
+        ops = 0;
+      }
+    }
+
+    if (ops > 0) {
+      await commitBatchNonBlocking(batch);
+    }
+
+    toast({
+      title: "Team Members Imported",
+      description: `Added ${rows.length} member${rows.length === 1 ? "" : "s"} to Team Directory. You can now send invites on WhatsApp or Email.`,
+    });
+  };
+
   const counts = useMemo(() => {
     let active = 0;
     let pending = 0;
@@ -599,11 +710,11 @@ export function UsersTab({
   }, [shareContext, business?.name]);
 
   const reinvitePreviewLinks = useMemo(() => {
-    if (!reinviteTarget || !reinviteEmail.trim().includes("@")) return null;
+    if (!reinviteTarget) return null;
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     return buildTeamInviteLinks({
       origin,
-      email: reinviteEmail,
+      email: reinviteEmail.trim().includes("@") ? reinviteEmail : "",
       name: reinviteTarget.name || "Team Member",
       role: reinviteRole,
       businessName: business?.name || "Workspace",
@@ -611,13 +722,47 @@ export function UsersTab({
     });
   }, [reinviteTarget, reinviteEmail, reinviteRole, reinvitePhone, business?.name]);
 
+  const mainDialogWhatsappPreview = useMemo(() => {
+    if (!newUserName.trim() && !newUserEmail.trim() && !newUserPhone.trim()) return null;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return buildTeamInviteLinks({
+      origin,
+      email: newUserEmail.trim().includes("@") ? newUserEmail : "",
+      name: newUserName.trim() || "Team Member",
+      role: newUserRole,
+      businessName: business?.name || "Workspace",
+      phone: newUserPhone,
+    });
+  }, [newUserName, newUserEmail, newUserPhone, newUserRole, business?.name]);
+
+  const originForLinks = typeof window !== "undefined" ? window.location.origin : "";
+
   return (
     <div className="space-y-6 text-left">
       <SectionCard
         title="Team Directory"
-        description="Manage workspace members, invite or re-invite existing staff, and configure roles & payroll rates."
+        description="Manage workspace members, bulk import/export team CSVs, and invite via WhatsApp or Email."
         headerRight={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportMembersCsv}
+              className="h-9 px-3 rounded-xl text-xs font-semibold border-slate-200 bg-white whitespace-nowrap shrink-0"
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Export CSV
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isTrialExpired || !isAdmin}
+              onClick={() => setIsImportOpen(true)}
+              className="h-9 px-3 rounded-xl text-xs font-semibold border-slate-200 bg-white whitespace-nowrap shrink-0"
+            >
+              <CloudUpload className="mr-1.5 h-3.5 w-3.5" />
+              Import CSV
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -759,30 +904,65 @@ export function UsersTab({
                     </div>
                   </Link>
 
-                  <div className="flex items-center justify-end gap-1.5 shrink-0 pt-1 md:pt-0 border-t border-slate-100 md:border-t-0">
+                  <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0 pt-1 md:pt-0 border-t border-slate-100 md:border-t-0">
                     {inviteState.canInvite && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isTrialExpired}
-                        onClick={() => handleOpenRowInvite(u)}
-                        className={cn(
-                          "h-9 md:h-8 px-3 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0",
-                          inviteState.actionLabel === "Invite"
-                            ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
-                            : inviteState.isPending
-                              ? "border-amber-200 bg-amber-50/60 text-amber-900 hover:bg-amber-100/70"
-                              : "border-slate-200 text-slate-700 hover:text-slate-900"
-                        )}
-                      >
-                        {inviteState.actionLabel === "Invite" ? (
-                          <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-                        ) : (
-                          <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        {inviteState.actionLabel}
-                      </Button>
+                      <>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="h-9 md:h-8 px-2.5 rounded-lg text-xs font-semibold border-emerald-200 bg-emerald-50/70 text-emerald-800 hover:bg-emerald-100/80 whitespace-nowrap shrink-0"
+                        >
+                          <a
+                            href={
+                              buildTeamInviteLinks({
+                                origin: originForLinks,
+                                email: u.email || "",
+                                name: u.name || "Team Member",
+                                role: u.role || "Staff",
+                                businessName: business?.name || "Workspace",
+                                phone: u.phone || "",
+                              }).whatsappUrl
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => {
+                              if (u.email && isAdmin) {
+                                syncInviteMarker({
+                                  email: u.email,
+                                  role: u.role || "Staff",
+                                  name: u.name || "Team Member",
+                                }).catch(() => {});
+                              }
+                            }}
+                          >
+                            <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                            WhatsApp
+                          </a>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isTrialExpired}
+                          onClick={() => handleOpenRowInvite(u)}
+                          className={cn(
+                            "h-9 md:h-8 px-3 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0",
+                            inviteState.actionLabel === "Invite"
+                              ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                              : inviteState.isPending
+                                ? "border-amber-200 bg-amber-50/60 text-amber-900 hover:bg-amber-100/70"
+                                : "border-slate-200 text-slate-700 hover:text-slate-900"
+                          )}
+                        >
+                          {inviteState.actionLabel === "Invite" ? (
+                            <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+                          ) : (
+                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          {inviteState.actionLabel}
+                        </Button>
+                      </>
                     )}
 
                     <Button
@@ -1057,6 +1237,34 @@ export function UsersTab({
                 </div>
               </div>
             )}
+            {mainDialogWhatsappPreview && (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-emerald-950">
+                    WhatsApp Invite Ready
+                  </p>
+                  <p className="text-[11px] text-emerald-800">
+                    Save the invite first or send the join link straight to{" "}
+                    {newUserPhone.trim() || "WhatsApp"}.
+                  </p>
+                </div>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 rounded-lg border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100 text-xs font-semibold whitespace-nowrap shrink-0 self-start sm:self-auto"
+                >
+                  <a
+                    href={mainDialogWhatsappPreview.whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                    Invite via WhatsApp
+                  </a>
+                </Button>
+              </div>
+            )}
           </div>
 
           <DialogFooter className="p-5 bg-slate-50 border-t border-slate-200 flex-row gap-3">
@@ -1075,8 +1283,8 @@ export function UsersTab({
             >
               <Send className="mr-1.5 h-3.5 w-3.5" />
               {inviteDialogMode === "existing" || matchedByTypedEmail
-                ? "Send / Resend Invite"
-                : "Send Invitation"}
+                ? "Save & Share Invite"
+                : "Create & Share Invite"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1152,7 +1360,7 @@ export function UsersTab({
 
               {reinvitePreviewLinks && (
                 <div className="pt-2 border-t border-slate-100 space-y-2.5">
-                  <p className="text-xs font-semibold text-slate-700">Quick Share Link</p>
+                  <p className="text-xs font-semibold text-slate-700">Quick Share & WhatsApp Invite</p>
                   <div className="flex items-center gap-2">
                     <Input
                       readOnly
@@ -1173,6 +1381,20 @@ export function UsersTab({
                       )}
                     </Button>
                   </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full h-9 rounded-lg border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100/80 text-xs font-semibold"
+                  >
+                    <a
+                      href={reinvitePreviewLinks.whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                      Send Invite Directly on WhatsApp
+                    </a>
+                  </Button>
                 </div>
               )}
             </div>
@@ -1567,6 +1789,15 @@ export function UsersTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk CSV Import Members Dialog */}
+      <TeamImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        existingMembers={businessUsers || []}
+        currencySymbol={currencySymbol}
+        onConfirmImport={handleBatchImportMembers}
+      />
     </div>
   );
 }

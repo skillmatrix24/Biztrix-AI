@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { Suspense, useEffect, useRef, useState, useMemo } from "react";
 import { 
   Briefcase, 
   Search, 
@@ -48,7 +48,7 @@ import {
 } from "@/firebase";
 import { collection, query, where, orderBy, doc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Sub-components
 import { ProjectCard } from "./components/ProjectCard";
@@ -63,10 +63,12 @@ const STATUS_CONFIG: Record<ProjectStatus, { label: string; color: string; bg: s
   'cancelled': { label: 'Closed', color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
 };
 
-export default function ProjectsPage() {
+function ProjectsPageContent() {
   const firestore = useFirestore();
   const { user } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const incomingLeadId = searchParams.get("leadId");
 
   const userProfileRef = useMemoFirebase(() => user?.uid ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
@@ -95,6 +97,18 @@ export default function ProjectsPage() {
   const [activeTab, setActiveTab] = useState("board");
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
+  const hydratedLeadRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!incomingLeadId || hydratedLeadRef.current === incomingLeadId) return;
+    const matched = leadsList.find((l) => l.id === incomingLeadId);
+    if (matched) {
+      hydratedLeadRef.current = incomingLeadId;
+      setPrefillLead(matched);
+      setIsAddOpen(true);
+    }
+  }, [incomingLeadId, leadsList]);
 
   const filteredProjects = useMemo(() => projects.filter(p => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.clientName?.toLowerCase().includes(searchTerm.toLowerCase())), [projects, searchTerm]);
 
@@ -127,8 +141,9 @@ export default function ProjectsPage() {
 
     addDocumentNonBlocking(projectsRef, { 
       ...projectData, 
+      ...(prefillLead?.id ? { leadId: prefillLead.id } : projectData.clientType === 'lead' ? { leadId: projectData.clientId } : {}),
       status: 'planning', 
-      clientName: client?.name || 'No Client', 
+      clientName: client?.name || prefillLead?.name || 'No Client', 
       sharePublic: false, 
       createdAt: serverTimestamp(), 
       updatedAt: serverTimestamp() 
@@ -187,11 +202,15 @@ export default function ProjectsPage() {
         actions={
           <AddProjectDialog 
             isOpen={isAddOpen} 
-            onOpenChange={setIsAddOpen} 
+            onOpenChange={(open) => {
+              setIsAddOpen(open);
+              if (!open) setPrefillLead(null);
+            }} 
             onSubmit={handleAddProject} 
             customersList={customersList} 
             leadsList={leadsList} 
             businessUsers={businessUsers} 
+            initialLead={prefillLead}
           />
         }
       />
@@ -359,5 +378,20 @@ export default function ProjectsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center py-20 opacity-60">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+          <p className="text-xs font-medium text-slate-600">Loading projects...</p>
+        </div>
+      }
+    >
+      <ProjectsPageContent />
+    </Suspense>
   );
 }

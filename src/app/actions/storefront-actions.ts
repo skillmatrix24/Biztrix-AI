@@ -937,6 +937,32 @@ export async function subscribeStorefrontLead(params: {
           { merge: true }
         );
 
+      const crmLeadId =
+        check.contactType === 'phone' ? `crm_sf_${check.cleanedContact}` : `crm_sf_${leadId}`;
+      await db
+        .doc(`businesses/${cleanBiz}/leads/${crmLeadId}`)
+        .set(
+          {
+            id: crmLeadId,
+            tenantId: cleanBiz,
+            name: cleanName,
+            phone: check.contactType === 'phone' ? check.cleanedContact : check.cleanedContact,
+            ...(check.contactType === 'phone' ? { normalizedPhone: check.cleanedContact } : {}),
+            ...(check.contactType === 'email' ? { email: check.cleanedContact } : {}),
+            source: cleanFunnelId ? 'Funnel' : 'Website',
+            status: 'new',
+            priority: 'Warm',
+            interest: cleanFunnelSlug
+              ? `Sales Funnel (${cleanFunnelSlug})`
+              : 'Online Storefront VIP / Deal Inquiry',
+            ...(cleanFunnelSlug ? { funnelSlug: cleanFunnelSlug } : {}),
+            intentScore: cleanFunnelId ? 62 : 58,
+            createdAt: nowIso.slice(0, 10),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+
       if (check.contactType === 'phone') {
         const customerId = `c_${check.cleanedContact}`;
         await db.doc(`businesses/${cleanBiz}/customers/${customerId}`).set(
