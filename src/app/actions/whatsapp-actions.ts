@@ -491,3 +491,175 @@ export async function sendMemberVerificationOtpAction(
     otp: otpCode
   };
 }
+
+/**
+ * Platform Master: Verify Meta Cloud API credentials (Phone Number ID + WABA ID + Token)
+ * and immediately return verified phone info and live WABA message templates.
+ */
+export async function verifyPlatformWhatsAppConnection(config: {
+  phoneId: string;
+  wabaId: string;
+  accessToken: string;
+}): Promise<{
+  success: boolean;
+  verifiedName?: string;
+  displayPhoneNumber?: string;
+  qualityRating?: string;
+  templates?: any[];
+  error?: string;
+}> {
+  const phoneId = String(config?.phoneId || "").trim();
+  const wabaId = String(config?.wabaId || "").trim();
+  const accessToken = String(config?.accessToken || "").trim();
+
+  if (!phoneId || !wabaId || !accessToken) {
+    return {
+      success: false,
+      error: "Phone Number ID, WABA ID, and System User Access Token are all required.",
+    };
+  }
+
+  try {
+    // 1. Verify Phone Number ID & Token against Meta Graph API
+    const phoneRes = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(phoneId)}?fields=display_phone_number,verified_name,quality_rating`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      }
+    );
+    const phoneJson = await phoneRes.json();
+    if (!phoneRes.ok) {
+      return {
+        success: false,
+        error: phoneJson?.error?.message || "Invalid Phone Number ID or Meta Access Token.",
+      };
+    }
+
+    // 2. Fetch WABA Message Templates
+    const tplRes = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(wabaId)}/message_templates?limit=100`,
+      {
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      }
+    );
+    const tplJson = await tplRes.json();
+    if (!tplRes.ok) {
+      return {
+        success: false,
+        error: tplJson?.error?.message || "Phone verified, but failed to fetch templates from WABA ID. Check WABA ID & permissions.",
+      };
+    }
+
+    return {
+      success: true,
+      verifiedName: phoneJson.verified_name || "Meta Business Account",
+      displayPhoneNumber: phoneJson.display_phone_number || "",
+      qualityRating: phoneJson.quality_rating || "GREEN",
+      templates: tplJson.data || [],
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Network error connecting to Meta Graph API.",
+    };
+  }
+}
+
+/**
+ * Platform Master: Create and submit a new WhatsApp message template directly to Meta WABA.
+ */
+export async function createPlatformWhatsAppTemplate(
+  config: { wabaId: string; accessToken: string },
+  templateData: {
+    name: string;
+    category: "MARKETING" | "UTILITY" | "AUTHENTICATION";
+    language: string;
+    components: any[];
+  }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+  const wabaId = String(config?.wabaId || "").trim();
+  const accessToken = String(config?.accessToken || "").trim();
+
+  if (!wabaId || !accessToken) {
+    return {
+      success: false,
+      error: "Platform WABA ID and Access Token are required before creating templates on Meta.",
+    };
+  }
+
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(wabaId)}/message_templates`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(templateData),
+        cache: "no-store",
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: result?.error?.error_user_msg || result?.error?.message || "Meta rejected the template submission.",
+      };
+    }
+
+    return { success: true, data: result };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Network failure submitting template to Meta.",
+    };
+  }
+}
+
+/**
+ * Platform Master: Delete a WhatsApp message template from Meta WABA by name.
+ */
+export async function deletePlatformWhatsAppTemplate(
+  config: { wabaId: string; accessToken: string },
+  templateName: string
+): Promise<{ success: boolean; error?: string }> {
+  const wabaId = String(config?.wabaId || "").trim();
+  const accessToken = String(config?.accessToken || "").trim();
+  const cleanName = String(templateName || "").trim();
+
+  if (!wabaId || !accessToken || !cleanName) {
+    return { success: false, error: "WABA ID, Access Token, and Template Name are required." };
+  }
+
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(wabaId)}/message_templates?name=${encodeURIComponent(cleanName)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      }
+    );
+
+    const result = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: result?.error?.message || "Meta failed to delete template.",
+      };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Network error deleting template from Meta.",
+    };
+  }
+}

@@ -7,6 +7,8 @@ import {
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail,
   RecaptchaVerifier,
   signInWithPhoneNumber,
@@ -28,12 +30,36 @@ export function initiateEmailSignIn(authInstance: Auth, email: string, password:
   return signInWithEmailAndPassword(authInstance, email, password);
 }
 
-/** Initiate Google sign-in with account selector. */
-export function initiateGoogleSignIn(authInstance: Auth) {
+/** Check and resolve redirect sign-in result on page mount. */
+export async function checkRedirectAuthResult(authInstance: Auth) {
+  try {
+    return await getRedirectResult(authInstance);
+  } catch (err: any) {
+    console.warn("Firebase redirect auth check warning:", err?.code || err?.message);
+    return null;
+  }
+}
+
+/** Initiate Google sign-in with account selector and popup-block fallback. */
+export async function initiateGoogleSignIn(authInstance: Auth) {
   const provider = new GoogleAuthProvider();
   // Force Google to show the account picker every time
   provider.setCustomParameters({ prompt: 'select_account' });
-  return signInWithPopup(authInstance, provider);
+  try {
+    return await signInWithPopup(authInstance, provider);
+  } catch (err: any) {
+    if (err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked') || err?.message?.includes('_open')) {
+      // In an iframe / sandboxed preview, popup is blocked by the browser.
+      // Attempt fallback redirect if permissible in environment
+      try {
+        await signInWithRedirect(authInstance, provider);
+        return null;
+      } catch (redirectErr) {
+        throw err;
+      }
+    }
+    throw err;
+  }
 }
 
 /** Initiate password reset. */

@@ -16,6 +16,7 @@ import {
   Globe, 
   Settings as SettingsIcon, 
   UserCheck, 
+  UserPlus, 
   MousePointer2, 
   SmartphoneNfc, 
   Wallet, 
@@ -44,6 +45,7 @@ import {
   SearchCode,
   ChevronRight,
   Headset,
+  LifeBuoy,
   Layers,
   FileSpreadsheet,
   Users as UsersIcon,
@@ -57,7 +59,8 @@ import {
   ShieldAlert,
   BarChart3,
   FileText,
-  Percent
+  Percent,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -94,6 +97,7 @@ const mainItems = [
   { label: "CRM & Leads", href: "/leads", icon: UserCheckIcon },
   { label: "Customers", href: "/customers", icon: Users },
   { label: "Vendors", href: "/vendors", icon: Truck },
+  { label: "Team Directory", href: "/team", icon: UserPlus },
 ];
 
 // SOLAR MANAGEMENT
@@ -118,6 +122,7 @@ const solarItems = [
 
 // ENGAGEMENT MODULE
 const engagementItems = [
+  { label: "Customer Care Hub", href: "/support", icon: LifeBuoy, suiteId: 'suite_support' },
   { label: "Customer Feedback", href: "/feedback", icon: MessageCircle, addonId: 'feat_feedback' },
   { label: "Support Desk", href: "/complaints", icon: Headset, suiteId: 'suite_support' },
 ];
@@ -128,6 +133,7 @@ const ownerItems = [
   { label: "Plans & Limits", href: "/owner/limits", icon: Activity },
   { label: "Gateways", href: "/owner/gateways", icon: KeyRound },
   { label: "Global Users", href: "/owner/users", icon: UserCog },
+  { label: "Database Cleanup", href: "/owner/cleanup", icon: Trash2 },
 ];
 
 const propertyItems = [

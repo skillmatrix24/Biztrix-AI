@@ -25,6 +25,11 @@ import {
   planAttendanceAction,
   resolveNumericDraft,
   toggleDashboardPulseLayout,
+  DEFAULT_RBAC_MATRIX,
+  normalizeRoleKey,
+  isRbacRoleLocked,
+  resolveEffectivePermission,
+  updateRbacPermission,
 } from "./staff-payroll";
 
 test("planAttendanceAction: clicking + Save on an already Present member updates instead of deleting", () => {
@@ -416,3 +421,79 @@ test("team directory CSV export and import handle formula neutralization, aliase
   assert.equal(parsed.valid[1].email, "");
   assert.equal(parsed.skipped.length, 4);
 });
+
+test("RBAC matrix resolution: default fallbacks, admin lockout protection, and manual permission editing", () => {
+  assert.equal(DEFAULT_RBAC_MATRIX.length, 11);
+  assert.equal(normalizeRoleKey("Field Agent"), "field_agent");
+  assert.equal(normalizeRoleKey("Manager "), "manager");
+
+  // Admin lockout protection
+  assert.equal(isRbacRoleLocked("OS Settings & Role Configuration", "admin"), true);
+  assert.equal(isRbacRoleLocked("Dashboard & Executive KPIs", "admin"), true);
+  assert.equal(isRbacRoleLocked("Billing (POS) & Invoice Checkout", "admin"), false);
+  assert.equal(isRbacRoleLocked("OS Settings & Role Configuration", "manager"), false);
+
+  // Default permissions
+  assert.equal(
+    resolveEffectivePermission(null, "Billing (POS) & Invoice Checkout", "staff"),
+    true
+  );
+  assert.equal(
+    resolveEffectivePermission(null, "Billing (POS) & Invoice Checkout", "agent"),
+    false
+  );
+  assert.equal(
+    resolveEffectivePermission(null, "Staff Payroll & Wage Payouts", "supervisor"),
+    false
+  );
+
+  // Locked admin cannot be revoked via custom matrix
+  const maliciousMatrix = {
+    "OS Settings & Role Configuration": { admin: false },
+  };
+  assert.equal(
+    resolveEffectivePermission(maliciousMatrix, "OS Settings & Role Configuration", "admin"),
+    true
+  );
+
+  // Manual edit / override: Grant agent billing access
+  const updated1 = updateRbacPermission(
+    null,
+    "Billing (POS) & Invoice Checkout",
+    "agent",
+    true
+  );
+  assert.equal(
+    resolveEffectivePermission(updated1, "Billing (POS) & Invoice Checkout", "agent"),
+    true
+  );
+
+  // Manual edit / override: Revoke staff billing access
+  const updated2 = updateRbacPermission(
+    updated1,
+    "Billing (POS) & Invoice Checkout",
+    "staff",
+    false
+  );
+  assert.equal(
+    resolveEffectivePermission(updated2, "Billing (POS) & Invoice Checkout", "staff"),
+    false
+  );
+
+  // Custom role permissions (e.g. Cashier)
+  assert.equal(
+    resolveEffectivePermission(null, "Billing (POS) & Invoice Checkout", "cashier"),
+    false
+  );
+  const updated3 = updateRbacPermission(
+    updated2,
+    "Billing (POS) & Invoice Checkout",
+    "cashier",
+    true
+  );
+  assert.equal(
+    resolveEffectivePermission(updated3, "Billing (POS) & Invoice Checkout", "cashier"),
+    true
+  );
+});
+

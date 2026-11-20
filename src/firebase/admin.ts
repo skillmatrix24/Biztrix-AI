@@ -20,7 +20,10 @@ export function initializeAdmin() {
   }
 
   if (!globalForAdmin.__biztrixAdminDb) {
-    const db = getFirestore(admin.app());
+    const db =
+      firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+        ? getFirestore(admin.app(), firebaseConfig.firestoreDatabaseId)
+        : getFirestore(admin.app());
     if (!globalForAdmin.__biztrixAdminSettingsApplied) {
       try {
         db.settings({ ignoreUndefinedProperties: true });

@@ -74,6 +74,7 @@ const MASTER_NAV_REGISTRY: Record<string, { label: string, icon: any, suiteId?: 
   "/leads": { label: "Leads", icon: UserCheck },
   "/customers": { label: "Clients", icon: Users },
   "/vendors": { label: "Vendors", icon: Target },
+  "/team": { label: "Team", icon: UserCheck },
   "/feedback": { label: "Feedback", icon: MessageCircle, addonId: 'feat_feedback' },
   "/complaints": { label: "Support", icon: Headset, suiteId: 'suite_support' },
   "/properties": { label: "Catalog", icon: Building, suiteId: 'suite_property' },

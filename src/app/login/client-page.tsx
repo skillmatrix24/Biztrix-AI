@@ -26,7 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth, useFirestore, initiateEmailSignIn, initiateGoogleSignIn, useUser, setupRecaptcha, initiatePhoneSignIn } from "@/firebase";
+import { useAuth, useFirestore, initiateEmailSignIn, initiateGoogleSignIn, checkRedirectAuthResult, useUser, setupRecaptcha, initiatePhoneSignIn } from "@/firebase";
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { addDays } from "date-fns";
@@ -69,7 +69,20 @@ export default function LoginPage() {
         setEmail((prev) => prev || emailParam);
       }
     }
-  }, []);
+
+    // Handle Google redirect auth return
+    if (auth) {
+      checkRedirectAuthResult(auth).then(async (result) => {
+        if (result && result.user) {
+          setLoading(true);
+          await provisionMissingProfile(result.user);
+          router.push("/dashboard");
+        }
+      }).catch((redirectErr) => {
+        console.warn("Redirect sign-in notice:", redirectErr);
+      });
+    }
+  }, [auth]);
 
   useEffect(() => {
     let interval: any;
@@ -225,17 +238,32 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await initiateGoogleSignIn(auth);
+      if (!result) {
+        // Redirect flow started or handled
+        return;
+      }
       await provisionMissingProfile(result.user);
       router.push("/dashboard");
     } catch (err: any) {
-    console.error(err);
+      console.warn("Google login notification:", err?.code || err?.message);
       setLoading(false);
-      if (err.code === 'auth/cancelled-popup-request' || err.code === 'auth/popup-closed-by-user') {
+      if (err?.code === 'auth/cancelled-popup-request' || err?.code === 'auth/popup-closed-by-user') {
         return;
       }
-      toast({ variant: "destructive", title: "Auth Error", description: "Google login failed." });
+      if (err?.code === 'auth/popup-blocked' || err?.message?.includes('popup-blocked') || err?.message?.includes('_open')) {
+        setError("Browser popup block hai. Kripya browser me popups allow karein ya Email / Mobile OTP se login karein.");
+        toast({
+          variant: "destructive",
+          title: "Popup Blocked",
+          description: "Google popup was blocked. Please allow popups or use Email / Phone OTP.",
+        });
+        return;
+      }
+      setError(err?.message || "Google sign in failed. Please try again or use Email / Phone.");
+      toast({ variant: "destructive", title: "Auth Error", description: "Google login failed. Try email or phone." });
     }
   };
 

@@ -1027,14 +1027,21 @@ export function MasterDataTab({
                 {getSmartFields(selectedWAType).map((field) => {
                   const active = !!currentWA.toggles?.[field.id];
                   return (
-                    <button
+                    <div
                       key={field.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Enter") {
+                          e.preventDefault();
+                          updateWAConfig(field.id, !active, true);
+                        }
+                      }}
                       onClick={() =>
                         updateWAConfig(field.id, !active, true)
                       }
                       className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl border text-left transition-colors",
+                        "flex items-center gap-3 p-3 rounded-xl border text-left transition-colors cursor-pointer",
                         active
                           ? "bg-white/10 border-white/25 text-white"
                           : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200"
@@ -1042,12 +1049,13 @@ export function MasterDataTab({
                     >
                       <Checkbox
                         checked={active}
+                        onCheckedChange={(val) => updateWAConfig(field.id, !!val, true)}
                         className="border-white/30 data-[state=checked]:bg-white data-[state=checked]:text-slate-900 pointer-events-none"
                       />
                       <span className="text-xs font-medium truncate">
                         {field.label}
                       </span>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

@@ -48,7 +48,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const CATEGORIES = [
   { id: "GENERAL_SERVICE", label: "General Service" },
@@ -62,6 +62,7 @@ const CATEGORIES = [
 export default function PublicServiceRequestForm() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const bIdFromUrl = searchParams.get("bId");
 
@@ -71,7 +72,7 @@ export default function PublicServiceRequestForm() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      window.location.assign(`/portal/solar/login?bId=${bIdFromUrl || ""}`);
+      router.push(`/portal/solar/login?bId=${bIdFromUrl || ""}`);
       return;
     }
     async function resolve() {

@@ -534,12 +534,19 @@ export default function GlobalUserManagementPage() {
                         const isActive =
                           selectedBusiness?.activeAddonIds?.includes(module.id);
                         return (
-                          <button
+                          <div
                             key={module.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === " " || e.key === "Enter") {
+                                e.preventDefault();
+                                handleToggleModule(module.id);
+                              }
+                            }}
                             onClick={() => handleToggleModule(module.id)}
                             className={cn(
-                              "w-full p-4 rounded-xl border text-left transition-colors flex items-center justify-between gap-4",
+                              "w-full p-4 rounded-xl border text-left transition-colors flex items-center justify-between gap-4 cursor-pointer",
                               isActive
                                 ? "border-slate-900 bg-slate-50"
                                 : "bg-white border-slate-200 hover:bg-slate-50/70"
@@ -548,6 +555,7 @@ export default function GlobalUserManagementPage() {
                             <div className="flex items-center gap-3 min-w-0">
                               <Checkbox
                                 checked={!!isActive}
+                                onCheckedChange={() => handleToggleModule(module.id)}
                                 aria-hidden="true"
                                 tabIndex={-1}
                               />
@@ -566,7 +574,7 @@ export default function GlobalUserManagementPage() {
                               </p>
                               <p className="text-xs text-slate-500">/mo</p>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -582,12 +590,19 @@ export default function GlobalUserManagementPage() {
                         const isActive =
                           selectedBusiness?.activeAddonIds?.includes(module.id);
                         return (
-                          <button
+                          <div
                             key={module.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === " " || e.key === "Enter") {
+                                e.preventDefault();
+                                handleToggleModule(module.id);
+                              }
+                            }}
                             onClick={() => handleToggleModule(module.id)}
                             className={cn(
-                              "p-3.5 rounded-xl border text-left transition-colors flex items-center gap-3",
+                              "p-3.5 rounded-xl border text-left transition-colors flex items-center gap-3 cursor-pointer",
                               isActive
                                 ? "bg-slate-50 border-slate-900"
                                 : "bg-white border-slate-200 hover:bg-slate-50/70"
@@ -595,6 +610,7 @@ export default function GlobalUserManagementPage() {
                           >
                             <Checkbox
                               checked={!!isActive}
+                              onCheckedChange={() => handleToggleModule(module.id)}
                               aria-hidden="true"
                               tabIndex={-1}
                             />
@@ -606,7 +622,7 @@ export default function GlobalUserManagementPage() {
                                 ₹{module.price}/mo
                               </p>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>

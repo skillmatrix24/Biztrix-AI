@@ -257,6 +257,14 @@ service cloud.firestore {
         allow create: if isTargetCustomer(businessId, request.resource.data.customerId) || isBusinessMember(businessId) || isPlatformOwner();
         allow update: if isBusinessMember(businessId) || isPlatformOwner();
       }
+      match /solarDocuments/{id} {
+        allow read: if isBusinessMember(businessId) || (isTargetCustomer(businessId, resource.data.customerId) && resource.data.visibility == 'CUSTOMER_VISIBLE') || isPlatformOwner();
+        allow write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+      match /solarDealerCommissions/{id} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
 
       // SOCIAL REVIEWS & FEEDBACK
       match /socialReviews/{id} {
@@ -307,9 +315,51 @@ service cloud.firestore {
         allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
-      match /campaigns/{campaignId} {
+      match /loyaltyActivityLogs/{logId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /loyaltyAutomation/{ruleId} {
         allow read: if isBusinessMember(businessId) || isPlatformOwner();
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /references/{refId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // GROWTH ENGINE & WHATSAPP AUTOMATION
+      match /campaigns/{campaignId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /chats/{chatId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+
+        match /messages/{messageId} {
+          allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+        }
+      }
+
+      match /globalContacts/{contactId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /contactGroups/{groupId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /whatsappFollowups/{stepId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /whatsappTriggers/{triggerId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /whatsappKeywords/{keywordId} {
+        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
       match /coupons/{couponId} {
@@ -422,6 +472,19 @@ service cloud.firestore {
           );
           allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
         }
+      }
+
+      // REAL ESTATE ASSET CATALOG & BUYER LEADS
+      match /properties/{propertyId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner() || resource.data.isPublic == true;
+        allow create, update: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      match /realEstateLeads/{leadId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if isBusinessMember(businessId) || isPlatformOwner() || (request.resource.data.businessId == businessId && request.resource.data.name is string);
+        allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
       // BUSINESS DEFAULT CATCH-ALL

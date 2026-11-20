@@ -30,6 +30,7 @@ import {
   useFirestore,
   initiateEmailSignUp,
   initiateGoogleSignIn,
+  checkRedirectAuthResult,
   useUser,
 } from "@/firebase";
 import {
@@ -91,7 +92,25 @@ export default function SignupPage() {
         }));
       }
     }
-  }, []);
+
+    if (auth) {
+      checkRedirectAuthResult(auth).then(async (result) => {
+        if (result && result.user) {
+          setLoading(true);
+          const googleUser = result.user;
+          await provisionUser(
+            googleUser.uid,
+            googleUser.email || "",
+            googleUser.displayName || "User",
+            formData.businessName || `${googleUser.displayName || "My"} Business`
+          );
+          router.push("/dashboard");
+        }
+      }).catch((redirectErr) => {
+        console.warn("Redirect sign-up notice:", redirectErr);
+      });
+    }
+  }, [auth]);
 
   const provisionUser = async (
     uid: string,
@@ -214,8 +233,13 @@ export default function SignupPage() {
 
   const handleGoogleSignup = async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await initiateGoogleSignIn(auth);
+      if (!result) {
+        // Redirect flow in progress
+        return;
+      }
       const googleUser = result.user;
       await provisionUser(
         googleUser.uid,
@@ -225,20 +249,29 @@ export default function SignupPage() {
       );
       router.push("/dashboard");
     } catch (err: any) {
-      console.error(err);
+      console.warn("Google signup notification:", err?.code || err?.message);
+      setLoading(false);
       if (
         err.code === "auth/cancelled-popup-request" ||
         err.code === "auth/popup-closed-by-user"
       ) {
-        setLoading(false);
         return;
       }
+      if (err.code === "auth/popup-blocked" || err?.message?.includes("popup-blocked") || err?.message?.includes("_open")) {
+        setError("Browser popup block hai. Kripya browser me popups allow karein ya email/password se create karein.");
+        toast({
+          variant: "destructive",
+          title: "Popup Blocked",
+          description: "Google popup was blocked. Please allow popups or use email & password.",
+        });
+        return;
+      }
+      setError(err?.message || "Google signup failed. Please try email & password.");
       toast({
         variant: "destructive",
         title: "Auth Error",
-        description: "Google signup failed.",
+        description: err?.message || "Google signup failed.",
       });
-      setLoading(false);
     }
   };
 

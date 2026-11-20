@@ -20,6 +20,7 @@ import {
   Send,
   Reply,
   ShieldAlert,
+  LifeBuoy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -243,6 +244,19 @@ export default function TicketDetailPage(props: { params: { ticketId: string } }
         description={`${ticket.customerName} · ${ticket.customerPhone}`}
         backHref="/complaints"
         backLabel="Back to Support Desk"
+        action={
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-slate-200 text-xs font-semibold bg-white hover:bg-slate-50"
+          >
+            <Link href="/support" target="_blank">
+              <LifeBuoy className="h-3.5 w-3.5 mr-1.5 text-primary" />
+              SOPs & Knowledge Hub
+            </Link>
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -340,20 +354,30 @@ export default function TicketDetailPage(props: { params: { ticketId: string } }
                                 ? [ticket.assignedTo]
                                 : [];
                             return (
-                              <button
+                              <div
                                 key={m.id}
-                                type="button"
-                                className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors text-left"
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Enter") {
+                                    e.preventDefault();
+                                    toggleAssignee(m.id);
+                                  }
+                                }}
+                                className="w-full flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition-colors text-left cursor-pointer"
                                 onClick={() => toggleAssignee(m.id)}
                               >
-                                <Checkbox checked={assignedIds.includes(m.id)} />
+                                <Checkbox
+                                  checked={assignedIds.includes(m.id)}
+                                  onCheckedChange={() => toggleAssignee(m.id)}
+                                />
                                 <div className="min-w-0">
                                   <p className="text-xs font-semibold text-slate-900 truncate">
                                     {m.name}
                                   </p>
                                   <p className="text-[11px] text-slate-500">{m.role}</p>
                                 </div>
-                              </button>
+                              </div>
                             );
                           })}
                         </div>

@@ -33,7 +33,7 @@ test('SIDEBAR_BLUEPRINT_GROUPS covers all 11 sidebar groups with complete metada
     }
   }
 
-  assert.equal(totalItems, 63);
+  assert.equal(totalItems, 66);
 });
 
 test('SIDEBAR_BLUEPRINT_GROUPS matches SidebarNav hrefs and includes Store Builder 16-section & relay architecture', () => {
@@ -81,7 +81,7 @@ test('SIDEBAR_BLUEPRINT_GROUPS matches SidebarNav hrefs and includes Store Build
 test('getBlueprintSummaryStats and filterBlueprintGroups accurately compute stats and search across backend/frontend', () => {
   const stats = getBlueprintSummaryStats(SIDEBAR_BLUEPRINT_GROUPS);
   assert.equal(stats.totalGroups, 11);
-  assert.equal(stats.totalPages, 63);
+  assert.equal(stats.totalPages, 66);
   assert.ok(stats.uniqueCollections >= 25);
   assert.ok(stats.uniqueApiRoutes >= 6);
   assert.ok(stats.uniqueServerActions >= 5);

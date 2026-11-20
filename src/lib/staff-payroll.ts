@@ -1083,3 +1083,203 @@ export function parseTeamMembersCsvImport(
 
   return { valid, skipped };
 }
+
+export interface RolePermissionRule {
+  module: string;
+  category: string;
+  description: string;
+  admin: boolean;
+  manager: boolean;
+  supervisor: boolean;
+  staff: boolean;
+  agent: boolean;
+  [customRole: string]: boolean | string;
+}
+
+export const DEFAULT_RBAC_MATRIX: RolePermissionRule[] = [
+  {
+    module: "Dashboard & Executive KPIs",
+    category: "Core",
+    description: "View daily sales, profit metrics, low stock notices, and business telemetry",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: true,
+    agent: true,
+  },
+  {
+    module: "Billing (POS) & Invoice Checkout",
+    category: "Sales",
+    description: "Create counter sales bills, barcode scanner lookup, and receive bill cash/UPI",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: true,
+    agent: false,
+  },
+  {
+    module: "Invoices, Receipts & E-Way Bills",
+    category: "Sales",
+    description: "Generate B2B tax invoices, government e-Way bills, and credit return notes",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: false,
+    agent: false,
+  },
+  {
+    module: "Quotations & Estimates",
+    category: "Sales",
+    description: "Draft customer price quotations, print PDFs, and convert offers to POS invoices",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: true,
+    agent: true,
+  },
+  {
+    module: "Sales CRM & Lead Pipeline",
+    category: "CRM",
+    description: "Capture inbound inquiries, schedule follow-up reminders, and assign leads",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: true,
+    agent: true,
+  },
+  {
+    module: "Customer & Vendor Directories",
+    category: "Master Data",
+    description: "Manage client party profiles, GSTINs, supplier purchase ledgers and balances",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: true,
+    agent: false,
+  },
+  {
+    module: "Inventory & Stock Adjustments",
+    category: "Operations",
+    description: "Add new products, modify selling/cost prices, adjust warehouse counts and barcodes",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: false,
+    agent: false,
+  },
+  {
+    module: "Staff Attendance & Daily Entries",
+    category: "Back Office",
+    description: "Mark attendance check-in/out and record daily business income and expenses",
+    admin: true,
+    manager: true,
+    supervisor: true,
+    staff: true,
+    agent: false,
+  },
+  {
+    module: "Staff Payroll & Wage Payouts",
+    category: "Back Office",
+    description: "Compute monthly employee salaries, issue cash advances, and generate salary slips",
+    admin: true,
+    manager: true,
+    supervisor: false,
+    staff: false,
+    agent: false,
+  },
+  {
+    module: "Accounting, Ledgers & Cashbook",
+    category: "Finance",
+    description: "Inspect P&L cashbook, GSTR filing reconciliation, audit logs, and bank accounts",
+    admin: true,
+    manager: false,
+    supervisor: false,
+    staff: false,
+    agent: false,
+  },
+  {
+    module: "OS Settings & Role Configuration",
+    category: "System",
+    description: "Configure business branding, payment gateways, thermal printers, and RBAC matrix",
+    admin: true,
+    manager: false,
+    supervisor: false,
+    staff: false,
+    agent: false,
+  },
+];
+
+export type RbacMatrixStore = Record<string, Record<string, boolean>>;
+
+/**
+ * Normalizes a role name to a safe object key, e.g. "Manager" -> "manager", "Field Agent" -> "field_agent"
+ */
+export function normalizeRoleKey(roleName: string): string {
+  return String(roleName || "").trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+/**
+ * Checks whether an admin cell is strictly locked to prevent owner self-lockout
+ */
+export function isRbacRoleLocked(moduleName: string, roleKey: string): boolean {
+  const normalizedKey = normalizeRoleKey(roleKey);
+  if (normalizedKey !== "admin") return false;
+  const lowerMod = moduleName.toLowerCase();
+  return lowerMod.includes("os settings") || lowerMod.includes("dashboard");
+}
+
+/**
+ * Resolves the effective permission for a given module and role
+ */
+export function resolveEffectivePermission(
+  customMatrix: RbacMatrixStore | null | undefined,
+  moduleName: string,
+  roleKey: string
+): boolean {
+  const normKey = normalizeRoleKey(roleKey);
+
+  // Locked admin roles always remain granted to prevent tenant lockout
+  if (isRbacRoleLocked(moduleName, normKey)) {
+    return true;
+  }
+
+  // Check saved custom matrix first
+  if (customMatrix && customMatrix[moduleName] && typeof customMatrix[moduleName][normKey] === "boolean") {
+    return customMatrix[moduleName][normKey];
+  }
+
+  // Fallback to default matrix
+  const defaultRule = DEFAULT_RBAC_MATRIX.find((r) => r.module === moduleName);
+  if (defaultRule) {
+    if (typeof (defaultRule as any)[normKey] === "boolean") {
+      return (defaultRule as any)[normKey];
+    }
+    if (normKey === "admin") return defaultRule.admin;
+    if (normKey === "manager") return defaultRule.manager;
+    if (normKey === "supervisor") return defaultRule.supervisor;
+    if (normKey === "staff") return defaultRule.staff;
+    if (normKey === "agent") return defaultRule.agent;
+  }
+
+  // Default fallback for custom roles: false unless admin
+  return normKey === "admin";
+}
+
+/**
+ * Immutably updates the RBAC matrix with a new permission value
+ */
+export function updateRbacPermission(
+  currentMatrix: RbacMatrixStore | null | undefined,
+  moduleName: string,
+  roleKey: string,
+  nextValue: boolean
+): RbacMatrixStore {
+  const normKey = normalizeRoleKey(roleKey);
+  const nextMatrix: RbacMatrixStore = { ...(currentMatrix || {}) };
+  nextMatrix[moduleName] = {
+    ...(nextMatrix[moduleName] || {}),
+    [normKey]: nextValue,
+  };
+  return nextMatrix;
+}
+

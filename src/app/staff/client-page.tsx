@@ -647,7 +647,7 @@ export default function StaffManagementPage() {
                 asChild
                 className="h-10 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs"
               >
-                <Link href="/settings?tab=users">
+                <Link href="/team">
                   <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Add member
                 </Link>
               </Button>

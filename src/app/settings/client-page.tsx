@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, Suspense } from "react";
 import {
   Settings,
   ShieldAlert,
+  ShieldCheck,
   Building2,
   Percent,
   Wallet,
@@ -39,7 +40,7 @@ import { GeneralTab } from "./components/GeneralTab";
 import { MasterDataTab } from "./components/MasterDataTab";
 import { TaxGstTab } from "./components/TaxGstTab";
 import { PaymentsTab } from "./components/PaymentsTab";
-import { UsersTab } from "./components/UsersTab";
+import { RolesTab } from "./components/RolesTab";
 import { HardwareTab } from "./components/HardwareTab";
 import { MobileUiTab } from "./components/MobileUiTab";
 import { BannerTab } from "./components/BannerTab";
@@ -94,6 +95,8 @@ function SettingsContent() {
     const tab = searchParams.get("tab");
     if (tab === "integrations" || tab === "eway") {
       setActiveTab("tax");
+    } else if (tab === "users") {
+      setActiveTab("roles");
     } else if (tab) {
       setActiveTab(tab);
     }
@@ -216,10 +219,10 @@ function SettingsContent() {
                 <Wallet className="h-3.5 w-3.5" /> Payments
               </TabsTrigger>
               <TabsTrigger
-                value="users"
+                value="roles"
                 className="text-xs font-semibold px-3.5 py-2 gap-1.5 rounded-lg whitespace-nowrap shrink-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
               >
-                <Users className="h-3.5 w-3.5" /> Team
+                <ShieldCheck className="h-3.5 w-3.5" /> Roles & Access
               </TabsTrigger>
               <TabsTrigger
                 value="mobile-ui"
@@ -280,16 +283,23 @@ function SettingsContent() {
           />
         </TabsContent>
 
-        <TabsContent value="users" className="mt-0 outline-none">
-          <UsersTab
-            businessId={businessId}
+        <TabsContent value="roles" className="mt-0 outline-none">
+          <RolesTab
             business={sanitizedBusiness}
             businessRef={businessRef}
             businessUsers={businessUsers}
-            currentUser={currentUser}
             isAdmin={isAdmin}
             isTrialExpired={isTrialExpired}
-            currencySymbol={currencySymbol}
+          />
+        </TabsContent>
+
+        <TabsContent value="users" className="mt-0 outline-none">
+          <RolesTab
+            business={sanitizedBusiness}
+            businessRef={businessRef}
+            businessUsers={businessUsers}
+            isAdmin={isAdmin}
+            isTrialExpired={isTrialExpired}
           />
         </TabsContent>
 
