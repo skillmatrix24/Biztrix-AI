@@ -199,11 +199,26 @@ export async function saveCustomer(input: SaveCustomerInput) {
       basePayload.events = input.events;
     }
 
+    if (input.loyaltyTier !== undefined) {
+      basePayload.loyaltyTier = input.loyaltyTier;
+    } else if (!docExists) {
+      basePayload.loyaltyTier = "Standard";
+    }
+
+    if (input.rewardPoints !== undefined) {
+      basePayload.rewardPoints = Number(input.rewardPoints) || 0;
+    } else if (!docExists) {
+      basePayload.rewardPoints = 0;
+    }
+
+    if (input.walletBalance !== undefined) {
+      basePayload.walletBalance = Number(input.walletBalance) || 0;
+    } else if (!docExists) {
+      basePayload.walletBalance = 0;
+    }
+
     if (!docExists) {
       basePayload.createdBy = input.userId;
-      basePayload.loyaltyTier = input.loyaltyTier || "Standard";
-      basePayload.rewardPoints = input.rewardPoints || 0;
-      basePayload.walletBalance = input.walletBalance || 0;
     }
 
     const customerPath = `businesses/${input.businessId}/customers/${customerId}`;
@@ -580,7 +595,15 @@ export async function fetchCustomerDetailsAndOrders(input: {
 
     orderDocs.forEach((ord, index) => {
       const status = ord.status || 'created';
-      const amt = parseFloat(ord.amount) || 0;
+      const isPaiseOrder = 
+        Boolean(ord.tierId) || 
+        ord.unit === "paise" || 
+        (typeof ord.id === "string" && ord.id.startsWith("order_")) ||
+        (typeof ord.razorpayOrderId === "string" && ord.razorpayOrderId === ord.id) ||
+        Boolean(ord.amountInPaise && ord.amountInPaise === parseFloat(ord.amount));
+      
+      const rawAmt = parseFloat(ord.amount) || 0;
+      const amt = isPaiseOrder ? rawAmt / 100 : rawAmt;
 
       if (index === 0) {
         lastOrderDate = ord.createdAt?.toDate ? ord.createdAt.toDate().toISOString() : ord.createdAt;

@@ -29,7 +29,35 @@ export type ReportLedgerTab =
   | 'inventory'
   | 'balances'
   | 'crm'
-  | 'operations';
+  | 'operations'
+  | 'solar'
+  | 'property';
+
+export type ReportModuleKey =
+  | 'all'
+  | 'billing'
+  | 'cashbook'
+  | 'inventory'
+  | 'balances'
+  | 'crm'
+  | 'operations'
+  | 'solar'
+  | 'property';
+
+export interface ActiveModulesResolution {
+  isPro: boolean;
+  hasBilling: boolean;
+  hasCashbook: boolean;
+  hasInventory: boolean;
+  hasBalances: boolean;
+  hasCustomers: boolean;
+  hasVendors: boolean;
+  hasCrm: boolean;
+  hasOperations: boolean;
+  hasSolar: boolean;
+  hasProperty: boolean;
+  availableModules: Array<{ id: ReportModuleKey; label: string }>;
+}
 
 export interface ExecutiveReportInput {
   cashbook?: any[];
@@ -48,6 +76,8 @@ export interface ExecutiveReportInput {
   realEstateLeads?: any[];
   activeAddonIds?: string[];
   businessStatus?: string;
+  selectedModuleFilter?: ReportModuleKey;
+  enabledModules?: ReportModuleKey[];
 }
 
 export interface CashflowSeriesPoint {
@@ -81,6 +111,21 @@ export interface DepartmentSummaryRow {
 
 export interface ExecutiveReportOutput {
   range: ReportDateRange;
+  selectedModule: ReportModuleKey;
+  activeModules: {
+    isPro: boolean;
+    hasBilling: boolean;
+    hasCashbook: boolean;
+    hasInventory: boolean;
+    hasBalances: boolean;
+    hasCustomers: boolean;
+    hasVendors: boolean;
+    hasCrm: boolean;
+    hasOperations: boolean;
+    hasSolar: boolean;
+    hasProperty: boolean;
+  };
+  availableModuleOptions: Array<{ id: ReportModuleKey; label: string }>;
   grossSales: number;
   salesTxnCount: number;
   totalInflow: number;
@@ -108,6 +153,12 @@ export interface ExecutiveReportOutput {
   activeMembershipsCount: number;
   openTasksCount: number;
   openComplaintsCount: number;
+  solarInquiriesCount: number;
+  solarInstallationsCount: number;
+  solarQuotesCount: number;
+  solarQuotesValue: number;
+  propertiesCount: number;
+  realEstateLeadsCount: number;
   cashflowChart: CashflowSeriesPoint[];
   categoryBreakdown: CategoryBreakdownRow[];
   departmentRows: DepartmentSummaryRow[];
@@ -136,6 +187,22 @@ export interface ExecutiveReportOutput {
     owner: string;
     priority: string;
     status: string;
+    href: string;
+  }>;
+  solarRows: Array<{
+    id: string;
+    title: string;
+    type: 'Site' | 'Inquiry';
+    status: string;
+    details: string;
+    href: string;
+  }>;
+  propertyRows: Array<{
+    id: string;
+    title: string;
+    type: 'Property' | 'Inquiry';
+    status: string;
+    details: string;
     href: string;
   }>;
 }
@@ -198,6 +265,109 @@ function toNum(val: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+export function resolveActiveReportModules(
+  activeAddonIds: string[] = [],
+  businessStatus?: string,
+  enabledModulesOverride?: ReportModuleKey[]
+): ActiveModulesResolution {
+  const isPro = (businessStatus || '').toLowerCase() === 'pro';
+  const addons = new Set(activeAddonIds || []);
+
+  if (enabledModulesOverride && enabledModulesOverride.length > 0) {
+    const set = new Set(enabledModulesOverride);
+    const hasBilling = set.has('billing');
+    const hasCashbook = set.has('cashbook');
+    const hasInventory = set.has('inventory');
+    const hasBalances = set.has('balances');
+    const hasCrm = set.has('crm');
+    const hasOperations = set.has('operations');
+    const hasSolar = set.has('solar');
+    const hasProperty = set.has('property');
+
+    const availableModules: Array<{ id: ReportModuleKey; label: string }> = [
+      { id: 'all', label: 'All Active Modules' },
+    ];
+    if (hasBilling) availableModules.push({ id: 'billing', label: 'Billing & Store Orders' });
+    if (hasCashbook) availableModules.push({ id: 'cashbook', label: 'Cashbook & Expenses' });
+    if (hasInventory) availableModules.push({ id: 'inventory', label: 'Master Inventory' });
+    if (hasBalances) availableModules.push({ id: 'balances', label: 'Udhaar & Payables' });
+    if (hasCrm) availableModules.push({ id: 'crm', label: 'CRM & Quotations' });
+    if (hasOperations) availableModules.push({ id: 'operations', label: 'Tasks & Support SLA' });
+    if (hasSolar) availableModules.push({ id: 'solar', label: 'Solar Business OS' });
+    if (hasProperty) availableModules.push({ id: 'property', label: 'Property Pro Suite' });
+
+    return {
+      isPro,
+      hasBilling,
+      hasCashbook,
+      hasInventory,
+      hasBalances,
+      hasCustomers: hasBalances,
+      hasVendors: hasBalances,
+      hasCrm,
+      hasOperations,
+      hasSolar,
+      hasProperty,
+      availableModules,
+    };
+  }
+
+  const hasSolar =
+    isPro ||
+    addons.has('suite_solar') ||
+    activeAddonIds.some((id) => id.startsWith('feat_solar'));
+
+  const hasProperty =
+    isPro ||
+    addons.has('suite_property') ||
+    addons.has('feat_re_catalog') ||
+    addons.has('feat_realestate_catalog');
+
+  // Core business features are active by default for standard merchants on Free/Trial/Active/Pro
+  // If a vertical suite is active alone without core restriction, core features remain active.
+  const hasCashbook = true;
+  const hasBilling = true;
+  const hasInventory = true;
+  const hasCustomers = true;
+  const hasVendors = true;
+  const hasBalances = true;
+  const hasCrm = true;
+  const hasOperations = true;
+
+  const availableModules: Array<{ id: ReportModuleKey; label: string }> = [
+    { id: 'all', label: 'All Active Modules' },
+    { id: 'billing', label: 'Billing & Store Orders' },
+    { id: 'cashbook', label: 'Cashbook & Expenses' },
+    { id: 'inventory', label: 'Master Inventory' },
+    { id: 'balances', label: 'Udhaar & Payables' },
+    { id: 'crm', label: 'CRM & Quotations' },
+    { id: 'operations', label: 'Tasks & Support SLA' },
+  ];
+
+  if (hasSolar) {
+    availableModules.push({ id: 'solar', label: 'Solar Business OS' });
+  }
+
+  if (hasProperty) {
+    availableModules.push({ id: 'property', label: 'Property Pro Suite' });
+  }
+
+  return {
+    isPro,
+    hasBilling,
+    hasCashbook,
+    hasInventory,
+    hasBalances,
+    hasCustomers,
+    hasVendors,
+    hasCrm,
+    hasOperations,
+    hasSolar,
+    hasProperty,
+    availableModules,
+  };
+}
+
 export function computeExecutiveReport(
   input: ExecutiveReportInput,
   range: ReportDateRange = 'month',
@@ -205,6 +375,16 @@ export function computeExecutiveReport(
   now: Date = new Date(),
   customBounds?: CustomDateBounds
 ): ExecutiveReportOutput {
+  const selectedModule: ReportModuleKey = input.selectedModuleFilter || 'all';
+  const activeAddonIds = input.activeAddonIds || [];
+  const businessStatus = input.businessStatus;
+
+  const activeModules = resolveActiveReportModules(
+    activeAddonIds,
+    businessStatus,
+    input.enabledModules
+  );
+
   const cashbookAll = input.cashbook || [];
   const ordersAll = input.orders || [];
   const products = (input.products || []).filter((p) => !p?.isArchived);
@@ -215,8 +395,10 @@ export function computeExecutiveReport(
   const tasksAll = input.tasks || [];
   const complaintsAll = input.complaints || [];
   const membershipsAll = input.memberships || [];
-  const activeAddonIds = input.activeAddonIds || [];
-  const isPro = (input.businessStatus || '').toLowerCase() === 'pro';
+  const solarInquiriesAll = input.solarInquiries || [];
+  const solarInstallationsAll = input.solarInstallations || [];
+  const propertiesAll = input.properties || [];
+  const realEstateLeadsAll = input.realEstateLeads || [];
 
   const filteredTransactions = cashbookAll
     .filter((entry) => isDateInReportRange(entry?.date || entry?.createdAt, range, now, customBounds))
@@ -345,6 +527,15 @@ export function computeExecutiveReport(
     (c) => !['resolved', 'closed'].includes(String(c?.status || '').toLowerCase())
   );
 
+  // Solar specifics
+  const solarQuotes = quotationsAll.filter((q) =>
+    String(q?.type || q?.quotationType || '').toLowerCase().includes('solar')
+  );
+  const solarQuotesValue = solarQuotes.reduce(
+    (sum, q) => sum + Math.max(0, toNum(q?.grandTotal ?? q?.total ?? q?.amount)),
+    0
+  );
+
   const cashflowChart: CashflowSeriesPoint[] = Object.values(dailyMap)
     .sort((a, b) => a.timestamp - b.timestamp)
     .map(({ name, dateKey, inflow, outflow }) => ({
@@ -373,7 +564,8 @@ export function computeExecutiveReport(
     })
     .sort((a, b) => b.totalVolume - a.totalVolume);
 
-  const departmentRows: DepartmentSummaryRow[] = [
+  // Raw candidate department rows
+  const allCandidateDepartments: DepartmentSummaryRow[] = [
     {
       id: 'billing',
       department: 'Billing & Store Orders',
@@ -459,41 +651,54 @@ export function computeExecutiveReport(
     },
   ];
 
-  if (isPro || activeAddonIds.includes('suite_solar')) {
-    const solarInqs = input.solarInquiries || [];
-    const solarInstalls = input.solarInstallations || [];
-    departmentRows.push({
+  if (activeModules.hasSolar) {
+    allCandidateDepartments.push({
       id: 'solar',
       department: 'Solar Business OS',
       primaryLabel: 'Active Installations',
-      primaryValue: `${solarInstalls.length} sites`,
+      primaryValue: `${solarInstallationsAll.length} sites`,
       secondaryLabel: 'Solar Inquiries',
-      secondaryValue: `${solarInqs.length} pipeline leads`,
-      statusText: solarInstalls.length > 0 ? 'In Execution' : 'Pipeline Open',
+      secondaryValue: `${solarInquiriesAll.length} pipeline leads`,
+      statusText: solarInstallationsAll.length > 0 ? 'In Execution' : 'Pipeline Open',
       statusTone: 'nominal',
       href: '/solar/operations',
     });
   }
 
-  if (
-    isPro ||
-    activeAddonIds.includes('suite_property') ||
-    activeAddonIds.includes('feat_realestate_catalog')
-  ) {
-    const props = input.properties || [];
-    const reLeads = input.realEstateLeads || [];
-    departmentRows.push({
+  if (activeModules.hasProperty) {
+    allCandidateDepartments.push({
       id: 'property',
       department: 'Property Pro Suite',
       primaryLabel: 'Listed Assets',
-      primaryValue: `${props.length} units`,
+      primaryValue: `${propertiesAll.length} units`,
       secondaryLabel: 'Property Inquiries',
-      secondaryValue: `${reLeads.length} active buyers`,
-      statusText: props.length > 0 ? 'Catalog Live' : 'Ready',
+      secondaryValue: `${realEstateLeadsAll.length} active buyers`,
+      statusText: propertiesAll.length > 0 ? 'Catalog Live' : 'Ready',
       statusTone: 'nominal',
       href: '/properties',
     });
   }
+
+  // Filter department rows strictly by active modules and selectedModuleFilter
+  const departmentRows = allCandidateDepartments.filter((dept) => {
+    // First, verify module is active
+    if (dept.id === 'billing' && !activeModules.hasBilling) return false;
+    if (dept.id === 'cashbook' && !activeModules.hasCashbook) return false;
+    if (dept.id === 'inventory' && !activeModules.hasInventory) return false;
+    if (dept.id === 'crm' && !activeModules.hasCrm) return false;
+    if (dept.id === 'customers' && !activeModules.hasCustomers) return false;
+    if (dept.id === 'vendors' && !activeModules.hasVendors) return false;
+    if (dept.id === 'operations' && !activeModules.hasOperations) return false;
+    if (dept.id === 'solar' && !activeModules.hasSolar) return false;
+    if (dept.id === 'property' && !activeModules.hasProperty) return false;
+
+    // Second, if selectedModuleFilter is set to a specific module, filter to that scope
+    if (selectedModule === 'all') return true;
+    if (selectedModule === 'balances') {
+      return dept.id === 'customers' || dept.id === 'vendors';
+    }
+    return dept.id === selectedModule;
+  });
 
   const inventoryRows = [...products]
     .sort((a, b) => {
@@ -501,7 +706,7 @@ export function computeExecutiveReport(
       const ratioB = toNum(b?.stock) - toNum(b?.minThreshold);
       return ratioA - ratioB;
     })
-    .slice(0, 25);
+    .slice(0, 30);
 
   const balanceRows = [
     ...udhaarCustomers.map((c) => ({
@@ -523,7 +728,7 @@ export function computeExecutiveReport(
   ].sort((a, b) => b.amount - a.amount);
 
   const crmRows = [
-    ...leadsAll.slice(0, 15).map((l) => ({
+    ...leadsAll.slice(0, 20).map((l) => ({
       id: `lead_${l.id}`,
       title: l.name || 'Lead',
       kind: 'Lead' as const,
@@ -531,7 +736,7 @@ export function computeExecutiveReport(
       metric: `${toNum(l.intentScore)}% intent`,
       href: '/leads',
     })),
-    ...quotationsAll.slice(0, 15).map((q) => ({
+    ...quotationsAll.slice(0, 20).map((q) => ({
       id: `quote_${q.id}`,
       title: q.customerName || q.quoteNumber || 'Quotation',
       kind: 'Quotation' as const,
@@ -562,8 +767,49 @@ export function computeExecutiveReport(
     })),
   ];
 
+  const solarRows = [
+    ...solarInstallationsAll.map((s) => ({
+      id: `solar_inst_${s.id}`,
+      title: s.projectName || s.customerName || `Site #${String(s.id).slice(0, 6)}`,
+      type: 'Site' as const,
+      status: String(s.status || 'in_progress'),
+      details: `${s.capacityKw ? `${s.capacityKw} kW · ` : ''}${s.city || 'On-site'}`,
+      href: '/solar/installations',
+    })),
+    ...solarInquiriesAll.map((q) => ({
+      id: `solar_inq_${q.id}`,
+      title: q.name || q.customerName || 'Solar Inquiry',
+      type: 'Inquiry' as const,
+      status: String(q.stage || q.status || 'lead'),
+      details: `${q.sanctionedLoad ? `${q.sanctionedLoad} kW Load · ` : ''}${q.phone || '-'}`,
+      href: '/solar/inquiries',
+    })),
+  ];
+
+  const propertyRows = [
+    ...propertiesAll.map((p) => ({
+      id: `prop_${p.id}`,
+      title: p.title || p.name || 'Property Unit',
+      type: 'Property' as const,
+      status: String(p.status || 'available'),
+      details: `${p.type || 'Unit'} · ${currencySymbol}${toNum(p.price).toLocaleString('en-IN')}`,
+      href: '/properties',
+    })),
+    ...realEstateLeadsAll.map((r) => ({
+      id: `re_lead_${r.id}`,
+      title: r.name || 'Property Buyer',
+      type: 'Inquiry' as const,
+      status: String(r.status || 'new'),
+      details: `${r.budget ? `Budget: ${currencySymbol}${toNum(r.budget).toLocaleString('en-IN')}` : r.phone || '-'}`,
+      href: '/properties/leads',
+    })),
+  ];
+
   return {
     range,
+    selectedModule,
+    activeModules,
+    availableModuleOptions: activeModules.availableModules,
     grossSales,
     salesTxnCount,
     totalInflow,
@@ -591,6 +837,12 @@ export function computeExecutiveReport(
     activeMembershipsCount,
     openTasksCount: openTasks.length,
     openComplaintsCount: openComplaints.length,
+    solarInquiriesCount: solarInquiriesAll.length,
+    solarInstallationsCount: solarInstallationsAll.length,
+    solarQuotesCount: solarQuotes.length,
+    solarQuotesValue,
+    propertiesCount: propertiesAll.length,
+    realEstateLeadsCount: realEstateLeadsAll.length,
     cashflowChart,
     categoryBreakdown,
     departmentRows,
@@ -599,6 +851,8 @@ export function computeExecutiveReport(
     balanceRows,
     crmRows,
     operationsRows,
+    solarRows,
+    propertyRows,
   };
 }
 
@@ -610,7 +864,157 @@ function csvEscape(value: unknown): string {
   return s;
 }
 
-export function buildExecutiveReportCsv(
+export type ReportExportMode = 'consolidated' | 'summary' | 'current_tab';
+
+export function buildCurrentTabCsv(
+  report: ExecutiveReportOutput,
+  activeTab: ReportLedgerTab,
+  businessName: string,
+  currencySymbol = '₹',
+  customBounds?: CustomDateBounds
+): string {
+  const periodLabel =
+    report.range === 'custom'
+      ? `${customBounds?.startDate || '...'} to ${customBounds?.endDate || '...'}`
+      : report.range;
+
+  const lines: string[] = [];
+
+  if (activeTab === 'transactions') {
+    lines.push(['Transaction ID', 'Date', 'Particulars', 'Category', 'Type', `Credit Amount (${currencySymbol})`, `Debit Amount (${currencySymbol})`, `Net Amount (${currencySymbol})`].map(csvEscape).join(','));
+    for (const tx of report.filteredTransactions) {
+      const d = parseReportDate(tx?.date || tx?.createdAt);
+      const isCredit = tx.type === 'credit';
+      const amt = toNum(tx.amount);
+      lines.push(
+        [
+          tx.id || '',
+          d ? format(d, 'yyyy-MM-dd') : '',
+          tx.particulars || tx.note || 'Cashbook Entry',
+          tx.category || 'General',
+          isCredit ? 'Credit' : 'Debit',
+          isCredit ? amt : '',
+          !isCredit ? amt : '',
+          isCredit ? amt : -amt,
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  if (activeTab === 'inventory') {
+    lines.push(['SKU', 'Product Name', 'Category', 'Current Stock', 'Unit', `Unit Cost (${currencySymbol})`, `Unit Retail Price (${currencySymbol})`, `Total Cost Valuation (${currencySymbol})`, 'Stock Status'].map(csvEscape).join(','));
+    for (const p of report.inventoryRows) {
+      const stock = toNum(p?.stock);
+      const cost = toNum(p?.cost || p?.price);
+      const price = toNum(p?.price);
+      const min = toNum(p?.minThreshold);
+      const isLow = stock <= min;
+      const status = stock <= 0 ? 'Out of Stock' : isLow ? 'Low Stock' : 'Healthy';
+      lines.push(
+        [
+          p.sku || '',
+          p.name || '',
+          p.category || 'General',
+          stock,
+          p.unit || 'pcs',
+          cost,
+          price,
+          Math.round(stock * cost),
+          status,
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  if (activeTab === 'balances') {
+    lines.push(['Account Name', 'Phone Number', 'Party Type', `Pending Balance (${currencySymbol})`, 'Status'].map(csvEscape).join(','));
+    for (const b of report.balanceRows) {
+      lines.push(
+        [
+          b.name,
+          b.phone,
+          b.role,
+          b.amount,
+          b.amount > 0 ? (b.role === 'Customer Udhaar' ? 'Pending Collection' : 'Pending Settlement') : 'Cleared',
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  if (activeTab === 'crm') {
+    lines.push(['Record Title', 'Record Type', 'Pipeline Stage', 'Intent Score / Amount', 'Action Route'].map(csvEscape).join(','));
+    for (const r of report.crmRows) {
+      lines.push(
+        [
+          r.title,
+          r.kind,
+          r.stage,
+          r.metric,
+          r.href,
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  if (activeTab === 'operations') {
+    lines.push(['Subject / Task', 'Record Type', 'Assignee / Customer', 'Priority', 'Status', 'Action Route'].map(csvEscape).join(','));
+    for (const op of report.operationsRows) {
+      lines.push(
+        [
+          op.subject,
+          op.kind,
+          op.owner,
+          op.priority,
+          op.status,
+          op.href,
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  if (activeTab === 'solar') {
+    lines.push(['Project / Contact Name', 'Record Type', 'Stage / Status', 'System Capacity / Sanctioned Load', 'Location / Phone', 'Action Route'].map(csvEscape).join(','));
+    for (const s of report.solarRows) {
+      lines.push(
+        [
+          s.title,
+          s.type,
+          s.status,
+          s.details,
+          s.details,
+          s.href,
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  if (activeTab === 'property') {
+    lines.push(['Asset / Buyer Title', 'Record Type', 'Listing / Lead Stage', 'Property Type / Budget', 'Price / Contact', 'Action Route'].map(csvEscape).join(','));
+    for (const pr of report.propertyRows) {
+      lines.push(
+        [
+          pr.title,
+          pr.type,
+          pr.status,
+          pr.details,
+          pr.details,
+          pr.href,
+        ].map(csvEscape).join(',')
+      );
+    }
+    return lines.join('\n');
+  }
+
+  return lines.join('\n');
+}
+
+export function buildExecutiveSummaryCsv(
   report: ExecutiveReportOutput,
   businessName: string,
   currencySymbol = '₹',
@@ -620,34 +1024,184 @@ export function buildExecutiveReportCsv(
     report.range === 'custom'
       ? `${customBounds?.startDate || '...'} to ${customBounds?.endDate || '...'}`
       : report.range;
+
+  const moduleMeta = report.availableModuleOptions.find((m) => m.id === report.selectedModule);
+  const moduleLabel = moduleMeta ? moduleMeta.label : 'All Active Modules';
+
   const lines: string[] = [];
-  lines.push(['Business', businessName, 'Period', periodLabel].map(csvEscape).join(','));
+  lines.push(['REPORT', 'Executive Business Health & KPI Summary', 'Generated', format(new Date(), 'yyyy-MM-dd HH:mm')].map(csvEscape).join(','));
+  lines.push(['Business', businessName, 'Period', periodLabel, 'Scope', moduleLabel].map(csvEscape).join(','));
   lines.push('');
-  lines.push(['EXECUTIVE SUMMARY', 'Primary Metric', 'Secondary Metric', 'Status'].map(csvEscape).join(','));
+
+  // 1. Executive KPIs table
+  lines.push(['# SECTION: EXECUTIVE FINANCIAL & OPERATIONAL KPIS'].map(csvEscape).join(','));
+  lines.push(['Category', 'Metric Name', 'Raw Value', `Formatted Value (${currencySymbol})`, 'Operational Context', 'Status'].map(csvEscape).join(','));
+
+  lines.push(['Revenue', 'Gross Sales Revenue', report.grossSales, `${currencySymbol}${report.grossSales.toLocaleString('en-IN')}`, `${report.salesTxnCount} sales · ${report.ordersCount} store orders`, report.grossSales > 0 ? 'Active' : 'No Sales Yet'].map(csvEscape).join(','));
+  lines.push(['Cashflow', 'Total Inflow (Receipts)', report.totalInflow, `${currencySymbol}${report.totalInflow.toLocaleString('en-IN')}`, 'Cashbook credit collections', 'Surplus'].map(csvEscape).join(','));
+  lines.push(['Cashflow', 'Total Outflow (Expenses)', report.totalOutflow, `${currencySymbol}${report.totalOutflow.toLocaleString('en-IN')}`, 'Operating payouts & vendor bills', 'Recorded'].map(csvEscape).join(','));
+  lines.push(['Cashflow', 'Net Cash Surplus / Deficit', report.netCashflow, `${report.netCashflow < 0 ? '-' : ''}${currencySymbol}${Math.abs(report.netCashflow).toLocaleString('en-IN')}`, `Operating cash margin: ${report.profitMarginPct}%`, report.netCashflow >= 0 ? 'Surplus' : 'Deficit'].map(csvEscape).join(','));
+  lines.push(['Receivables', 'Customer Udhaar Dues', report.totalUdhaar, `${currencySymbol}${report.totalUdhaar.toLocaleString('en-IN')}`, `${report.udhaarCustomerCount} pending customer accounts`, report.totalUdhaar > 0 ? 'Pending Collection' : 'All Settled'].map(csvEscape).join(','));
+  lines.push(['Payables', 'Vendor Payables Due', report.totalPayable, `${currencySymbol}${report.totalPayable.toLocaleString('en-IN')}`, `${report.payableVendorCount} unpaid supplier accounts`, report.totalPayable > 0 ? 'Settlement Due' : 'Cleared'].map(csvEscape).join(','));
+  lines.push(['Inventory', 'Stock Cost Valuation', Math.round(report.inventoryCostValue), `${currencySymbol}${Math.round(report.inventoryCostValue).toLocaleString('en-IN')}`, `${report.activeSkuCount} SKUs · ${report.lowStockItems.length} low stock`, report.outOfStockCount > 0 ? `${report.outOfStockCount} Out of Stock` : 'Healthy'].map(csvEscape).join(','));
+  lines.push(['CRM', 'Open Quotations Value', report.openQuotesValue, `${currencySymbol}${report.openQuotesValue.toLocaleString('en-IN')}`, `${report.openQuotesCount} quotes · ${report.totalLeadsCount} leads`, 'Pipeline Open'].map(csvEscape).join(','));
+  lines.push(['Operations', 'Open Queue Items', report.openTasksCount + report.openComplaintsCount, `${report.openTasksCount + report.openComplaintsCount} items`, `${report.openTasksCount} tasks · ${report.openComplaintsCount} tickets`, report.openComplaintsCount > 0 ? 'Tickets Open' : 'Clear'].map(csvEscape).join(','));
+
+  if (report.activeModules.hasSolar) {
+    lines.push(['Solar', 'Active Installations', report.solarInstallationsCount, `${report.solarInstallationsCount} sites`, `${report.solarInquiriesCount} pipeline leads · ${currencySymbol}${report.solarQuotesValue.toLocaleString('en-IN')} quotes`, report.solarInstallationsCount > 0 ? 'In Execution' : 'Pipeline Open'].map(csvEscape).join(','));
+  }
+  if (report.activeModules.hasProperty) {
+    lines.push(['Property', 'Listed Portfolio Assets', report.propertiesCount, `${report.propertiesCount} units`, `${report.realEstateLeadsCount} active buyer inquiries`, 'Catalog Live'].map(csvEscape).join(','));
+  }
+  lines.push('');
+
+  // 2. Department Breakdown
+  lines.push(['# SECTION: DEPARTMENT HEALTH MATRIX'].map(csvEscape).join(','));
+  lines.push(['Department', 'Primary Metric Name', 'Primary Value', 'Secondary Metric Name', 'Secondary Value', 'Health Status'].map(csvEscape).join(','));
   for (const row of report.departmentRows) {
     lines.push(
-      [row.department, `${row.primaryLabel}: ${row.primaryValue}`, `${row.secondaryLabel}: ${row.secondaryValue}`, row.statusText]
-        .map(csvEscape)
-        .join(',')
+      [
+        row.department,
+        row.primaryLabel,
+        row.primaryValue,
+        row.secondaryLabel,
+        row.secondaryValue,
+        row.statusText,
+      ].map(csvEscape).join(',')
+    );
+  }
+
+  return lines.join('\n');
+}
+
+export function buildExecutiveReportCsv(
+  report: ExecutiveReportOutput,
+  businessName: string,
+  currencySymbol = '₹',
+  customBounds?: CustomDateBounds,
+  exportMode: ReportExportMode = 'consolidated',
+  activeTab?: ReportLedgerTab
+): string {
+  if (exportMode === 'current_tab' && activeTab) {
+    return buildCurrentTabCsv(report, activeTab, businessName, currencySymbol, customBounds);
+  }
+  if (exportMode === 'summary') {
+    return buildExecutiveSummaryCsv(report, businessName, currencySymbol, customBounds);
+  }
+
+  const periodLabel =
+    report.range === 'custom'
+      ? `${customBounds?.startDate || '...'} to ${customBounds?.endDate || '...'}`
+      : report.range;
+
+  const moduleMeta = report.availableModuleOptions.find((m) => m.id === report.selectedModule);
+  const moduleLabel = moduleMeta ? moduleMeta.label : 'All Active Modules';
+
+  const lines: string[] = [];
+  lines.push(['# ALL-IN-ONE BUSINESS EXECUTIVE REPORT'].map(csvEscape).join(','));
+  lines.push(['Business', businessName, 'Period', periodLabel, 'Scope', moduleLabel, 'Exported On', format(new Date(), 'yyyy-MM-dd HH:mm')].map(csvEscape).join(','));
+  lines.push('');
+
+  // 1. Department Summary Section
+  lines.push(['# SECTION: DEPARTMENT SUMMARY'].map(csvEscape).join(','));
+  lines.push(['Department', 'Primary Metric', 'Primary Value', 'Secondary Metric', 'Secondary Value', 'Status'].map(csvEscape).join(','));
+  for (const row of report.departmentRows) {
+    lines.push(
+      [
+        row.department,
+        row.primaryLabel,
+        row.primaryValue,
+        row.secondaryLabel,
+        row.secondaryValue,
+        row.statusText,
+      ].map(csvEscape).join(',')
     );
   }
   lines.push('');
-  lines.push(['TRANSACTIONS', 'Date', 'Particulars', 'Category', 'Type', `Amount (${currencySymbol})`].map(csvEscape).join(','));
-  for (const tx of report.filteredTransactions) {
-    const d = parseReportDate(tx?.date || tx?.createdAt);
-    lines.push(
-      [
-        tx.id || '',
-        d ? format(d, 'yyyy-MM-dd') : '',
-        tx.particulars || tx.note || '',
-        tx.category || '',
-        tx.type || '',
-        toNum(tx.amount),
-      ]
-        .map(csvEscape)
-        .join(',')
-    );
+
+  // 2. Transactions Section
+  const showTransactions = ['all', 'cashbook', 'billing'].includes(report.selectedModule);
+  if (showTransactions && report.filteredTransactions.length > 0) {
+    lines.push(['# SECTION: TRANSACTIONS'].map(csvEscape).join(','));
+    lines.push(['Transaction ID', 'Date', 'Particulars', 'Category', 'Type', `Amount (${currencySymbol})`].map(csvEscape).join(','));
+    for (const tx of report.filteredTransactions) {
+      const d = parseReportDate(tx?.date || tx?.createdAt);
+      lines.push(
+        [
+          tx.id || '',
+          d ? format(d, 'yyyy-MM-dd') : '',
+          tx.particulars || tx.note || 'Cashbook Entry',
+          tx.category || 'General',
+          tx.type || '',
+          toNum(tx.amount),
+        ].map(csvEscape).join(',')
+      );
+    }
+    lines.push('');
   }
+
+  // 3. Inventory Section
+  const showInventory = ['all', 'inventory'].includes(report.selectedModule);
+  if (showInventory && report.inventoryRows.length > 0) {
+    lines.push(['# SECTION: INVENTORY VALUATION'].map(csvEscape).join(','));
+    lines.push(['SKU', 'Product Name', 'Category', 'Stock Quantity', 'Unit', `Cost Valuation (${currencySymbol})`].map(csvEscape).join(','));
+    for (const p of report.inventoryRows) {
+      const stock = toNum(p?.stock);
+      const cost = toNum(p?.cost || p?.price);
+      lines.push(
+        [
+          p.sku || '',
+          p.name || '',
+          p.category || 'General',
+          stock,
+          p.unit || 'pcs',
+          Math.round(stock * cost),
+        ].map(csvEscape).join(',')
+      );
+    }
+    lines.push('');
+  }
+
+  // 4. Balances Section
+  const showBalances = ['all', 'balances'].includes(report.selectedModule);
+  if (showBalances && report.balanceRows.length > 0) {
+    lines.push(['# SECTION: BALANCES LEDGER'].map(csvEscape).join(','));
+    lines.push(['Account Name', 'Phone Number', 'Ledger Type', `Pending Amount (${currencySymbol})`].map(csvEscape).join(','));
+    for (const b of report.balanceRows) {
+      lines.push(
+        [
+          b.name,
+          b.phone,
+          b.role,
+          b.amount,
+        ].map(csvEscape).join(',')
+      );
+    }
+    lines.push('');
+  }
+
+  // 5. Solar Section
+  const showSolar = ['all', 'solar'].includes(report.selectedModule) && report.activeModules.hasSolar;
+  if (showSolar && report.solarRows.length > 0) {
+    lines.push(['# SECTION: SOLAR SITES & PIPELINE'].map(csvEscape).join(','));
+    lines.push(['Record Title', 'Record Type', 'Status', 'Details'].map(csvEscape).join(','));
+    for (const s of report.solarRows) {
+      lines.push([s.title, s.type, s.status, s.details].map(csvEscape).join(','));
+    }
+    lines.push('');
+  }
+
+  // 6. Property Section
+  const showProperty = ['all', 'property'].includes(report.selectedModule) && report.activeModules.hasProperty;
+  if (showProperty && report.propertyRows.length > 0) {
+    lines.push(['# SECTION: PROPERTY PORTFOLIO'].map(csvEscape).join(','));
+    lines.push(['Asset Title', 'Record Type', 'Status', 'Details'].map(csvEscape).join(','));
+    for (const pr of report.propertyRows) {
+      lines.push([pr.title, pr.type, pr.status, pr.details].map(csvEscape).join(','));
+    }
+    lines.push('');
+  }
+
   return lines.join('\n');
 }
 
@@ -659,5 +1213,7 @@ export function resolveReportActionHref(actionType: string): string {
   if (normalized.includes('pay') || normalized.includes('udhaar') || normalized.includes('customer')) return '/customers';
   if (normalized.includes('quote')) return '/quotations';
   if (normalized.includes('bill') || normalized.includes('sale')) return '/billing';
+  if (normalized.includes('solar')) return '/solar/operations';
+  if (normalized.includes('prop')) return '/properties';
   return '/ai-insights';
 }

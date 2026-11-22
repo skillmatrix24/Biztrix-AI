@@ -25,6 +25,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Table, 
   TableBody, 
@@ -46,7 +53,7 @@ import {
   useUser, 
   useDoc 
 } from "@/firebase";
-import { collection, query, where, orderBy, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, orderBy, doc, serverTimestamp, limit } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -74,11 +81,11 @@ function ProjectsPageContent() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<any>(userProfileRef);
   const businessId = userProfile?.businessId;
 
-  const projectsQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'projects'), orderBy('createdAt', 'desc')) : null, [firestore, businessId]);
+  const projectsQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'projects'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore, businessId]);
   const { data: projectsData, isLoading: isProjectsLoading } = useCollection<Project>(projectsQuery);
   const projects = projectsData || [];
 
-  const tasksQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'tasks') : null, [firestore, businessId]);
+  const tasksQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'tasks'), limit(150)) : null, [firestore, businessId]);
   const { data: tasksData } = useCollection<Task>(tasksQuery);
   const tasks = tasksData || [];
 
@@ -86,16 +93,17 @@ function ProjectsPageContent() {
   const { data: businessUsersData } = useCollection<any>(staffQuery);
   const businessUsers = businessUsersData || [];
 
-  const customersQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'customers') : null, [firestore, businessId]);
+  const customersQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'customers'), limit(100)) : null, [firestore, businessId]);
   const { data: customersListData } = useCollection<Customer>(customersQuery);
   const customersList = customersListData || [];
 
-  const leadsQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'leads') : null, [firestore, businessId]);
+  const leadsQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'leads'), limit(100)) : null, [firestore, businessId]);
   const { data: leadsListData } = useCollection<Lead>(leadsQuery);
   const leadsList = leadsListData || [];
 
   const [activeTab, setActiveTab] = useState("board");
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [prefillLead, setPrefillLead] = useState<Lead | null>(null);
   const hydratedLeadRef = useRef<string | null>(null);
@@ -110,7 +118,15 @@ function ProjectsPageContent() {
     }
   }, [incomingLeadId, leadsList]);
 
-  const filteredProjects = useMemo(() => projects.filter(p => p.title?.toLowerCase().includes(searchTerm.toLowerCase()) || p.clientName?.toLowerCase().includes(searchTerm.toLowerCase())), [projects, searchTerm]);
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      const matchesSearch =
+        p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.clientName?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [projects, searchTerm, statusFilter]);
 
   const stats = useMemo(() => {
     const total = projects.length;
@@ -225,26 +241,44 @@ function ProjectsPageContent() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-9 space-y-6 min-w-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-            <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4">
-              <TabsList className="bg-white border border-slate-200 h-11 p-1 rounded-xl w-full xl:w-auto overflow-x-auto scrollbar-hide flex">
-                <TabsTrigger value="board" className="flex-1 text-xs font-semibold px-5 rounded-lg gap-2 whitespace-nowrap">
+            <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3.5 pb-1">
+              <TabsList className="bg-slate-100/90 border border-slate-300 h-10 p-1 rounded-xl w-full xl:w-auto overflow-x-auto scrollbar-hide flex shadow-xs">
+                <TabsTrigger value="board" className="h-8 flex-1 text-xs font-semibold px-4 rounded-lg gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all">
                   <FolderKanban className="h-4 w-4" /> Board
                 </TabsTrigger>
-                <TabsTrigger value="list" className="flex-1 text-xs font-semibold px-5 rounded-lg gap-2 whitespace-nowrap">
+                <TabsTrigger value="list" className="h-8 flex-1 text-xs font-semibold px-4 rounded-lg gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all">
                   <LayoutList className="h-4 w-4" /> Table
                 </TabsTrigger>
-                <TabsTrigger value="analytics" className="flex-1 text-xs font-semibold px-5 rounded-lg gap-2 whitespace-nowrap">
+                <TabsTrigger value="analytics" className="h-8 flex-1 text-xs font-semibold px-4 rounded-lg gap-2 whitespace-nowrap data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xs transition-all">
                   <BarChart3 className="h-4 w-4" /> Analytics
                 </TabsTrigger>
               </TabsList>
-              <div className="relative w-full xl:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                  placeholder="Search project or client..." 
-                  className="h-10 pl-9 text-xs bg-white border-slate-200 rounded-xl w-full" 
-                  value={searchTerm} 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
-                />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full xl:w-auto">
+                <div className="w-full sm:w-44">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-10 rounded-xl bg-white border border-slate-300 text-xs shadow-xs font-semibold hover:border-slate-400 focus:ring-1 focus:ring-slate-900">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+                      <SelectItem value="all" className="text-xs font-medium">All Statuses</SelectItem>
+                      {(Object.keys(STATUS_CONFIG) as ProjectStatus[]).map((s) => (
+                        <SelectItem key={s} value={s} className="text-xs">
+                          {STATUS_CONFIG[s].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                  <Input 
+                    placeholder="Search project or client..." 
+                    className="h-10 pl-9 text-xs bg-white border border-slate-300 rounded-xl w-full shadow-xs hover:border-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900" 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                  />
+                </div>
               </div>
             </div>
 
@@ -256,13 +290,19 @@ function ProjectsPageContent() {
                 return (
                   <div key={status} className="space-y-4 text-left">
                     <div className="flex items-center gap-3 px-1">
-                      <div className={cn("h-2.5 w-2.5 rounded-full", STATUS_CONFIG[status].color.replace('text-', 'bg-'))} />
-                      <h3 className="text-xs font-semibold text-slate-700">{STATUS_CONFIG[status].label}</h3>
-                      <Badge variant="secondary" className="text-xs font-mono tabular-nums px-2 h-5 bg-slate-100 text-slate-600">{statusProjects.length}</Badge>
+                      <div className={cn("h-3 w-3 rounded-full", STATUS_CONFIG[status].color.replace('text-', 'bg-'))} />
+                      <h3 className="text-xs font-bold text-slate-900">{STATUS_CONFIG[status].label}</h3>
+                      <Badge variant="secondary" className="text-xs font-mono font-bold tabular-nums px-2.5 h-5 bg-slate-100 text-slate-700 border border-slate-200">{statusProjects.length}</Badge>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                         {statusProjects.map(p => (
-                          <ProjectCard key={p.id} project={p} stats={getProjectStats(p.id)} onClick={() => handleNavigateToProject(p.id)} />
+                          <ProjectCard
+                            key={p.id}
+                            project={p}
+                            stats={getProjectStats(p.id)}
+                            onClick={() => handleNavigateToProject(p.id)}
+                            businessUsers={businessUsers}
+                          />
                         ))}
                     </div>
                   </div>
@@ -282,12 +322,12 @@ function ProjectsPageContent() {
                 <div className="overflow-x-auto scrollbar-hide">
                   <Table className="min-w-[900px]">
                     <TableHeader>
-                      <TableRow className="bg-slate-50/70 hover:bg-slate-50/70">
-                        <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11">Project Name</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-600 h-11">Client</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-600 text-center h-11">Status</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-600 text-center h-11">Progress</TableHead>
-                        <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11">Target Date</TableHead>
+                      <TableRow className="bg-slate-100 border-b border-slate-200">
+                        <TableHead className="pl-6 text-xs font-bold text-slate-800 h-11">Project Name</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-800 h-11">Client</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-800 text-center h-11">Status</TableHead>
+                        <TableHead className="text-xs font-bold text-slate-800 text-center h-11">Progress</TableHead>
+                        <TableHead className="text-right pr-6 text-xs font-bold text-slate-800 h-11">Target Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -301,28 +341,28 @@ function ProjectsPageContent() {
                         const projStats = getProjectStats(p.id);
                         const statusInfo = STATUS_CONFIG[p.status] || STATUS_CONFIG['planning'];
                         return (
-                          <TableRow key={p.id} className="group hover:bg-slate-50/60 transition-colors cursor-pointer" onClick={() => handleNavigateToProject(p.id)}>
+                          <TableRow key={p.id} className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100" onClick={() => handleNavigateToProject(p.id)}>
                             <TableCell className="pl-6 py-4">
-                              <span className="text-sm font-semibold text-slate-900 group-hover:text-primary group-hover:underline">{p.title}</span>
+                              <span className="text-sm font-bold text-slate-900 group-hover:text-primary group-hover:underline">{p.title}</span>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-col">
-                                <span className="text-xs font-medium text-slate-800">{p.clientName}</span>
-                                <span className="text-xs text-slate-500 capitalize">{p.clientType}</span>
+                                <span className="text-xs font-semibold text-slate-900">{p.clientName}</span>
+                                <span className="text-xs text-slate-600 capitalize font-medium">{p.clientType}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              <Badge variant="outline" className={cn("text-xs font-medium mx-auto", statusInfo.bg, statusInfo.color)}>
+                              <Badge variant="outline" className={cn("text-xs font-semibold mx-auto border px-2.5 py-0.5", statusInfo.bg, statusInfo.color)}>
                                 {statusInfo.label}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="text-xs font-mono tabular-nums font-semibold text-slate-700">{projStats.progress}%</span>
-                                <Progress value={projStats.progress} className="h-1.5 w-20" />
+                              <div className="flex flex-col items-center gap-1.5">
+                                <span className="text-xs font-mono tabular-nums font-bold text-slate-900">{projStats.progress}%</span>
+                                <Progress value={projStats.progress} className="h-2 w-28 bg-slate-200" />
                               </div>
                             </TableCell>
-                            <TableCell className="pr-6 text-right text-xs font-mono tabular-nums text-slate-500">{p.deadline || '-'}</TableCell>
+                            <TableCell className="pr-6 text-right text-xs font-mono font-semibold tabular-nums text-slate-700">{p.deadline || '-'}</TableCell>
                           </TableRow>
                         );
                       })}

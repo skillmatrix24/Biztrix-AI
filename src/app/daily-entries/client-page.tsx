@@ -173,7 +173,7 @@ export default function DailyEntriesPage() {
   };
 
   const vendorsQuery = useMemoFirebase(() => 
-    businessId ? collection(firestore, 'businesses', businessId, 'vendors') : null
+    businessId ? query(collection(firestore, 'businesses', businessId, 'vendors'), limit(100)) : null
   , [firestore, businessId]);
 
   const { data: vendorsDataRaw } = useCollection<any>(vendorsQuery);
@@ -246,12 +246,13 @@ export default function DailyEntriesPage() {
     }
   };
 
-  // Historical data for balance calculation
+  // Historical data for balance calculation (Bounded to 300 recent entries to protect Firestore quota)
   const historicalEntriesQuery = useMemoFirebase(() => {
     if (!businessId) return null;
     return query(
       collection(firestore, 'businesses', businessId, 'cashbook'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(300)
     );
   }, [firestore, businessId]);
   const { data: historicalEntriesData } = useCollection<any>(historicalEntriesQuery);

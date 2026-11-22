@@ -245,7 +245,7 @@ export default function EcommerceManagerPage() {
   const { data: websiteData, isLoading: isWebsiteLoading } = useDoc<any>(websiteRef);
 
   const productsQuery = useMemoFirebase(() => 
-    businessId ? collection(firestore, 'businesses', businessId, 'products') : null
+    businessId ? query(collection(firestore, 'businesses', businessId, 'products'), limit(150)) : null
   , [firestore, businessId]);
   const { data: dbProducts = [], isLoading: isProductsLoading } = useCollection<any>(productsQuery);
 

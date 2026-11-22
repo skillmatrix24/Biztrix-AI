@@ -13,6 +13,7 @@ function resolveApiKey(): string {
       key !== 'MY_GEMINI_API_KEY' &&
       !key.startsWith('YOUR_') &&
       !key.includes('placeholder') &&
+      key !== 'your_gemini_api_key_here' &&
       key.trim().length > 10
     ) {
       return key.trim();
@@ -23,7 +24,14 @@ function resolveApiKey(): string {
     if (fs.existsSync('/app/.dev.env.json')) {
       const devEnv = JSON.parse(fs.readFileSync('/app/.dev.env.json', 'utf8'));
       for (const k of [devEnv.GEMINI_API_KEY, devEnv.GOOGLE_GENAI_API_KEY]) {
-        if (k && k !== 'MY_GEMINI_API_KEY' && !k.startsWith('YOUR_') && k.trim().length > 10) {
+        if (
+          k &&
+          k !== 'MY_GEMINI_API_KEY' &&
+          !k.startsWith('YOUR_') &&
+          !k.includes('placeholder') &&
+          k !== 'your_gemini_api_key_here' &&
+          k.trim().length > 10
+        ) {
           return k.trim();
         }
       }
@@ -32,13 +40,17 @@ function resolveApiKey(): string {
     // Ignore error in environments where filesystem read is restricted
   }
 
-  return process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || '';
+  return '';
 }
 
 const apiKey = resolveApiKey();
 
+export function hasValidGeminiKey(): boolean {
+  return Boolean(apiKey && apiKey.length > 10);
+}
+
 export const ai = genkit({
-  plugins: [googleAI({ apiKey })],
+  plugins: [googleAI({ apiKey: apiKey || undefined })],
   model: googleAI.model('gemini-2.5-flash'),
 });
 

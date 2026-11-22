@@ -124,6 +124,12 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
   );
   const { data: business } = useDoc<any>(businessRef);
 
+  const projectsQuery = useMemoFirebase(
+    () => (businessId ? query(collection(firestore, "businesses", businessId, "projects"), orderBy("createdAt", "desc")) : null),
+    [firestore, businessId]
+  );
+  const { data: projects = [] } = useCollection<any>(projectsQuery);
+
   const [newStepText, setNewStepText] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -308,11 +314,33 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
       <PageHeader
         breadcrumb={`Task Manager · #${taskId.slice(-8).toUpperCase()}`}
         title={task.title}
-        description={task.projectName || "Standalone Business Task"}
+        description={
+          task.projectId ? (
+            <Link
+              href={`/projects/${task.projectId}`}
+              className="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900 underline decoration-slate-300 font-medium"
+            >
+              <Briefcase className="h-3.5 w-3.5 text-slate-500 shrink-0" /> Project: {task.projectName || "View Project"}
+            </Link>
+          ) : (
+            "Standalone Business Task"
+          )
+        }
         backHref="/notes"
         backLabel="Back to Task Manager"
         actions={
           <>
+            {task.projectId && (
+              <Button
+                asChild
+                variant="outline"
+                className="h-10 px-4 rounded-xl bg-white border-slate-200 text-slate-800 hover:bg-slate-50 font-semibold text-xs gap-1.5"
+              >
+                <Link href={`/projects/${task.projectId}`}>
+                  <Briefcase className="h-4 w-4 text-slate-500 shrink-0" /> View Project
+                </Link>
+              </Button>
+            )}
             {whatsAppPingHref ? (
               <Button
                 asChild
@@ -413,13 +441,13 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                         Assigned Specialist
                       </Label>
                       <Select value={task.assignedTo || ""} onValueChange={handleUpdateAssignee}>
-                        <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-sm font-medium">
+                        <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white text-sm font-semibold shadow-xs">
                           <SelectValue placeholder="Pick a specialist" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
                           {businessUsers.map((s: any) => (
-                            <SelectItem key={s.id} value={s.id} className="text-sm">
-                              {s.name}
+                            <SelectItem key={s.id} value={s.id} className="text-sm font-medium">
+                              {s.name} ({s.role || "Staff"})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -433,9 +461,10 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                       >
                         <SelectTrigger
                           className={cn(
-                            "h-10 rounded-xl border-slate-200 text-sm font-semibold",
+                            "h-10 rounded-xl border text-sm font-bold shadow-xs",
                             STATUS_CONFIG[task.status]?.bg,
-                            STATUS_CONFIG[task.status]?.color
+                            STATUS_CONFIG[task.status]?.color,
+                            task.status === "completed" ? "border-emerald-300" : "border-slate-300"
                           )}
                         >
                           <SelectValue />
@@ -455,7 +484,7 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                                   >
                                     <Icon className={cn("h-3.5 w-3.5", cfg.color)} />
                                   </div>
-                                  <span className={cn("text-xs font-semibold", cfg.color)}>
+                                  <span className={cn("text-xs font-bold", cfg.color)}>
                                     {cfg.label}
                                   </span>
                                 </div>
@@ -478,9 +507,10 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                       >
                         <SelectTrigger
                           className={cn(
-                            "h-10 rounded-xl border-slate-200 text-sm font-semibold",
+                            "h-10 rounded-xl border text-sm font-bold shadow-xs",
                             PRIORITY_CONFIG[task.priority]?.bg,
-                            PRIORITY_CONFIG[task.priority]?.color
+                            PRIORITY_CONFIG[task.priority]?.color,
+                            task.priority === "urgent" || task.priority === "emergency" ? "border-rose-300" : "border-slate-300"
                           )}
                         >
                           <SelectValue />
@@ -500,7 +530,7 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                                   >
                                     <Icon className={cn("h-3.5 w-3.5", cfg.color)} />
                                   </div>
-                                  <span className={cn("text-xs font-semibold", cfg.color)}>
+                                  <span className={cn("text-xs font-bold", cfg.color)}>
                                     {cfg.label}
                                   </span>
                                 </div>
@@ -511,36 +541,70 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-700">
-                        Linked Project
-                      </Label>
-                      <div className="h-10 px-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-                        <Briefcase className="h-4 w-4 text-slate-500 shrink-0" />
-                        <span className="text-sm font-medium text-slate-700 truncate">
-                          {task.projectName || "Standalone Task"}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-slate-700">
+                          Linked Project
+                        </Label>
+                        {task.projectId && (
+                          <Link
+                            href={`/projects/${task.projectId}`}
+                            className="text-[11px] font-bold text-blue-600 hover:underline inline-flex items-center gap-1"
+                          >
+                            Open Project <Briefcase className="h-3 w-3" />
+                          </Link>
+                        )}
                       </div>
+                      <Select
+                        value={task.projectId || "none"}
+                        onValueChange={(val) => {
+                          if (val === "none") {
+                            handleUpdateField("projectId", null);
+                            handleUpdateField("projectName", null);
+                            toast({ title: "Unlinked from project", description: "Task is now standalone." });
+                          } else {
+                            const selectedProj = projects.find((p: any) => p.id === val);
+                            handleUpdateField("projectId", val);
+                            handleUpdateField("projectName", selectedProj?.title || "Project");
+                            toast({ title: "Project Linked", description: `Linked to ${selectedProj?.title}.` });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 text-xs shadow-xs font-semibold">
+                          <Briefcase className="mr-2 h-3.5 w-3.5 text-slate-600 shrink-0" />
+                          <SelectValue placeholder="Standalone Task (No Project)" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="none" className="text-xs font-medium text-slate-500">
+                            Standalone Task (No Project)
+                          </SelectItem>
+                          {projects.map((p: any) => (
+                            <SelectItem key={p.id} value={p.id} className="text-xs font-medium">
+                              Project: {p.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
                   <div className="space-y-2.5">
-                    <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-2">
                       <Activity className="h-4 w-4 text-slate-500" /> Schedule Details
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-slate-500">Target Deadline</p>
-                          <p className="text-sm font-semibold font-mono tabular-nums text-slate-900 mt-0.5">
+                          <p className="text-xs font-medium text-slate-500">Target Deadline</p>
+                          <p className="text-sm font-bold font-mono tabular-nums text-slate-900 mt-0.5">
                             {task.dueDate || "ASAP"}
                           </p>
                         </div>
                         <Calendar className="h-4 w-4 text-slate-400" />
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-slate-500">Created On</p>
-                          <p className="text-sm font-semibold font-mono tabular-nums text-slate-900 mt-0.5">
+                          <p className="text-xs font-medium text-slate-500">Created On</p>
+                          <p className="text-sm font-bold font-mono tabular-nums text-slate-900 mt-0.5">
                             {task.createdAt?.toDate
                               ? format(task.createdAt.toDate(), "dd MMM yy")
                               : "Recently"}
@@ -548,10 +612,10 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                         </div>
                         <Clock className="h-4 w-4 text-slate-400" />
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                      <div className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center justify-between">
                         <div>
-                          <p className="text-xs text-slate-500">Last Sync</p>
-                          <p className="text-sm font-semibold font-mono tabular-nums text-slate-900 mt-0.5">
+                          <p className="text-xs font-medium text-slate-500">Last Sync</p>
+                          <p className="text-sm font-bold font-mono tabular-nums text-slate-900 mt-0.5">
                             {task.lastUpdate?.toDate
                               ? format(task.lastUpdate.toDate(), "HH:mm")
                               : "--:--"}
@@ -570,7 +634,7 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                       value={localProjectDesc}
                       onChange={(e) => setLocalProjectDesc(e.target.value)}
                       onBlur={(e) => handleUpdateField("description", e.target.value)}
-                      className="min-h-[110px] rounded-xl border-slate-200 bg-white p-3.5 text-sm leading-relaxed"
+                      className="min-h-[110px] rounded-xl border-slate-300 bg-white p-3.5 text-sm leading-relaxed shadow-xs focus-visible:ring-1 focus-visible:ring-slate-900 font-medium"
                       placeholder="Special instructions or execution notes..."
                     />
                   </div>
@@ -592,13 +656,13 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                     {task.subtasks?.map((st: any) => (
                       <div
                         key={st.id}
-                        className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 group"
+                        className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition-colors group"
                       >
                         <button
                           type="button"
                           aria-label={st.isCompleted ? "Mark step incomplete" : "Mark step complete"}
                           className={cn(
-                            "h-7 w-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors",
+                            "h-7 w-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors shadow-2xs",
                             st.isCompleted
                               ? "bg-slate-900 border-slate-900 text-white"
                               : "bg-white border-slate-300"
@@ -616,8 +680,8 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                             handleUpdateField("subtasks", updated);
                           }}
                           className={cn(
-                            "h-9 text-sm border-none bg-transparent p-0 focus-visible:ring-0 font-medium flex-1",
-                            st.isCompleted && "line-through text-slate-400"
+                            "h-9 text-sm border-none bg-transparent p-0 focus-visible:ring-0 font-semibold flex-1",
+                            st.isCompleted ? "line-through text-slate-400 font-normal" : "text-slate-900"
                           )}
                         />
                         <Button
@@ -639,14 +703,14 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
                         value={newStepText}
                         onChange={(e) => setNewStepText(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleAddStep()}
-                        className="h-10 rounded-xl border-slate-200 bg-white text-sm"
+                        className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs font-medium focus-visible:ring-1 focus-visible:ring-slate-900"
                       />
                       <Button
                         type="button"
                         size="icon"
                         aria-label="Add checklist step"
                         onClick={handleAddStep}
-                        className="h-10 w-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white shrink-0"
+                        className="h-10 w-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white shrink-0 shadow-xs"
                       >
                         <Plus className="h-5 w-5" />
                       </Button>

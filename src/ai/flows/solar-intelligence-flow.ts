@@ -9,7 +9,7 @@
  * - SolarIntelligenceOutput - Structured business insights.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, hasValidGeminiKey } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const SolarIntelligenceInputSchema = z.object({
@@ -46,8 +46,62 @@ const SolarIntelligenceOutputSchema = z.object({
 
 export type SolarIntelligenceOutput = z.infer<typeof SolarIntelligenceOutputSchema>;
 
+function generateSolarFallback(input: SolarIntelligenceInput): SolarIntelligenceOutput {
+  const m = input.metrics;
+  const inqTotal = m?.inquiries?.total || 0;
+  const inqQual = m?.inquiries?.qualified || 0;
+  const surveysPending = m?.surveys?.pending || 0;
+  const acceptedValue = m?.quotes?.acceptedValue || 0;
+  const pendingValue = m?.quotes?.pendingValue || 0;
+  const activeInst = m?.installations?.active || 0;
+  const totalKw = m?.installations?.totalKw || 0;
+  const claims = m?.warranties?.claims || 0;
+
+  return {
+    summary: `Solar operational summary: ${totalKw} kWp deployed, ₹${acceptedValue.toLocaleString('en-IN')} accepted order pipeline, aur ${surveysPending} site surveys scheduled.`,
+    categories: {
+      sales: {
+        insight: `Pipeline conversion rate: ${inqTotal > 0 ? Math.round((inqQual / inqTotal) * 100) : 0}% qualified inquiry velocity.`,
+        support: `${inqQual}/${inqTotal} inquiries successfully qualified for site survey.`,
+        recommendation: "Focus sales engineers on pending proposals to convert open quotes.",
+        confidence: "high"
+      },
+      operations: {
+        insight: `${surveysPending} site feasibility surveys pending inspection.`,
+        support: `${activeInst} ongoing rooftop installations with ${totalKw} kWp total capacity.`,
+        recommendation: "Fast-track technical site visits to accelerate installation schedule.",
+        confidence: "high"
+      },
+      financials: {
+        insight: `Total accepted pipeline value stands at ₹${acceptedValue.toLocaleString('en-IN')}.`,
+        support: `Pending quotation follow-up value: ₹${pendingValue.toLocaleString('en-IN')}.`,
+        recommendation: "Raise milestone collection invoices as project phases are signed off.",
+        confidence: "medium"
+      },
+      service: {
+        insight: claims > 0 ? `${claims} open warranty or inverter service claims require technician resolution.` : "No critical solar plant service tickets open.",
+        support: `${m?.warranties?.active || 0} active plant warranties in registry.`,
+        recommendation: "Perform scheduled preventive cleaning and inverter health checks.",
+        confidence: "medium"
+      }
+    }
+  };
+}
+
 export async function solarIntelligence(input: SolarIntelligenceInput): Promise<SolarIntelligenceOutput> {
-  return solarIntelligenceFlow(input);
+  try {
+    if (!hasValidGeminiKey()) {
+      return generateSolarFallback(input);
+    }
+    const { output } = await solarIntelligencePrompt(input);
+    if (!output || !output.categories) {
+      return generateSolarFallback(input);
+    }
+    return output;
+  } catch (err: any) {
+    console.warn("[solarIntelligence] Gemini call failed, using heuristic fallback:", err?.message || err);
+    return generateSolarFallback(input);
+  }
 }
 
 const solarIntelligencePrompt = ai.definePrompt({

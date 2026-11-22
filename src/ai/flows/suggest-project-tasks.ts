@@ -6,7 +6,7 @@
  * General purpose business context.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, hasValidGeminiKey } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const SuggestTasksInputSchema = z.object({
@@ -66,6 +66,56 @@ export const suggestProjectTasksFlow = ai.defineFlow(
   }
 );
 
+function generateProjectTasksFallback(input: SuggestTasksInput): SuggestTasksOutput {
+  const title = input.title || "Project";
+  return {
+    tasks: [
+      {
+        title: "Kickoff & Discovery",
+        description: `Define project scope, deliverables, and timeline milestones for ${title}.`,
+        section: "Planning",
+        priority: "high"
+      },
+      {
+        title: "Resource & Material Allocation",
+        description: "Procure required materials, assign staff team members, and set deadlines.",
+        section: "Preparation",
+        priority: "medium"
+      },
+      {
+        title: "Execution & Field Operations",
+        description: `Perform primary operational deliverables for ${title}.`,
+        section: "Execution",
+        priority: "high"
+      },
+      {
+        title: "Quality Inspection & Testing",
+        description: "Audit deliverables against technical benchmarks and client requirements.",
+        section: "Quality Control",
+        priority: "medium"
+      },
+      {
+        title: "Client Handover & Final Settlement",
+        description: "Deliver project assets, generate final settlement billing, and collect review.",
+        section: "Delivery",
+        priority: "medium"
+      }
+    ]
+  };
+}
+
 export async function suggestProjectTasks(input: SuggestTasksInput): Promise<SuggestTasksOutput> {
-  return suggestProjectTasksFlow(input);
+  try {
+    if (!hasValidGeminiKey()) {
+      return generateProjectTasksFallback(input);
+    }
+    const { output } = await suggestTasksPrompt(input);
+    if (!output || !Array.isArray(output.tasks) || output.tasks.length === 0) {
+      return generateProjectTasksFallback(input);
+    }
+    return output;
+  } catch (err: any) {
+    console.warn("[suggestProjectTasks] Gemini call failed, using project template fallback:", err?.message || err);
+    return generateProjectTasksFallback(input);
+  }
 }

@@ -4,7 +4,7 @@
  * Generates scores and segments based on customer transaction and membership data.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, hasValidGeminiKey } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const LoyaltyIntelligenceInputSchema = z.object({
@@ -45,8 +45,68 @@ const LoyaltyIntelligenceOutputSchema = z.object({
 
 export type LoyaltyIntelligenceOutput = z.infer<typeof LoyaltyIntelligenceOutputSchema>;
 
+function generateLoyaltyFallback(input: LoyaltyIntelligenceInput): LoyaltyIntelligenceOutput {
+  const totalSpent = Number(input.stats?.totalSpent) || 0;
+  const visitCount = Number(input.stats?.visitCount) || 1;
+  const lastDays = Number(input.stats?.lastVisitDaysAgo) || 5;
+
+  let segment: LoyaltyIntelligenceOutput['segment'] = 'loyal';
+  let loyalty = 70;
+  let churnRisk = 25;
+  let engagement = 70;
+  let insight = "Regular customer with consistent purchasing activity.";
+  let action = "Send regular WhatsApp promotional offers and seasonal discounts.";
+
+  if (totalSpent > 8000 || visitCount > 8) {
+    segment = 'high-value';
+    loyalty = 90;
+    churnRisk = 15;
+    engagement = 85;
+    insight = "Top-tier loyal spender. High lifetime customer value.";
+    action = "Upgrade to VIP Loyalty tier and offer exclusive preview access.";
+  } else if (lastDays > 40) {
+    segment = 'at-risk';
+    loyalty = 40;
+    churnRisk = 75;
+    engagement = 30;
+    insight = "No purchases in the last 40+ days. Potential customer churn detected.";
+    action = "Send a 'We Miss You' win-back voucher with 15% discount.";
+  } else if (visitCount <= 1) {
+    segment = 'new-prospect';
+    loyalty = 50;
+    churnRisk = 40;
+    engagement = 60;
+    insight = "Recent first-time buyer. High potential for second purchase conversion.";
+    action = "Send post-purchase thank you with 10% coupon for next visit.";
+  }
+
+  return {
+    segment,
+    scores: { loyalty, churnRisk, engagement },
+    insight,
+    recommendation: {
+      action,
+      couponType: "Percentage Discount",
+      discountSuggested: "10%",
+      timing: "Within 48 hours",
+    },
+  };
+}
+
 export async function analyzeLoyalty(input: LoyaltyIntelligenceInput): Promise<LoyaltyIntelligenceOutput> {
-  return loyaltyIntelligenceFlow(input);
+  try {
+    if (!hasValidGeminiKey()) {
+      return generateLoyaltyFallback(input);
+    }
+    const { output } = await loyaltyPrompt(input);
+    if (!output || !output.segment) {
+      return generateLoyaltyFallback(input);
+    }
+    return output;
+  } catch (err: any) {
+    console.warn("[analyzeLoyalty] Gemini call failed, using heuristic fallback:", err?.message || err);
+    return generateLoyaltyFallback(input);
+  }
 }
 
 const loyaltyPrompt = ai.definePrompt({

@@ -7,7 +7,7 @@
  * - OptimizeStockReorderOutput - The return type for the optimizeStockReorder function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, hasValidGeminiKey} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ProductDataSchema = z.object({
@@ -67,10 +67,47 @@ const OptimizeStockReorderOutputSchema = z.object({
 });
 export type OptimizeStockReorderOutput = z.infer<typeof OptimizeStockReorderOutputSchema>;
 
+function generateStockReorderFallback(input: OptimizeStockReorderInput): OptimizeStockReorderOutput {
+  const suggestions = (input.products || []).slice(0, 10).map(p => {
+    const isLow = Number(p.currentStock) <= Number(p.minStockThreshold);
+    const suggestedQty = isLow ? Math.max(20, (p.minStockThreshold || 10) * 2) : 0;
+    const timing = isLow ? "Immediately" : "Monitor (Adequate Stock)";
+    const rationale = isLow 
+      ? `Stock level (${p.currentStock} units) is at or below threshold (${p.minStockThreshold}). Place replenishment purchase to avoid stockouts.`
+      : `Current inventory of ${p.currentStock} units is sufficient for projected sales velocity.`;
+
+    return {
+      productId: p.productId,
+      productName: p.productName,
+      suggestedReorderQuantity: suggestedQty,
+      suggestedReorderTiming: timing,
+      rationale,
+    };
+  });
+
+  const lowCount = suggestions.filter(s => s.suggestedReorderQuantity > 0).length;
+  return {
+    reorderSuggestions: suggestions,
+    overallSummary: `Inventory heuristic analysis evaluated ${suggestions.length} products. ${lowCount} item(s) require immediate vendor purchase orders.`,
+  };
+}
+
 export async function optimizeStockReorder(
   input: OptimizeStockReorderInput
 ): Promise<OptimizeStockReorderOutput> {
-  return optimizeStockReorderFlow(input);
+  try {
+    if (!hasValidGeminiKey()) {
+      return generateStockReorderFallback(input);
+    }
+    const {output} = await optimizeStockReorderPrompt(input);
+    if (!output || !Array.isArray(output.reorderSuggestions) || output.reorderSuggestions.length === 0) {
+      return generateStockReorderFallback(input);
+    }
+    return output;
+  } catch (err: any) {
+    console.warn("[optimizeStockReorder] Gemini call failed, using heuristic fallback:", err?.message || err);
+    return generateStockReorderFallback(input);
+  }
 }
 
 const optimizeStockReorderPrompt = ai.definePrompt({

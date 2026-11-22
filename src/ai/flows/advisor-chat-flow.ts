@@ -4,8 +4,9 @@
  * Handles conversational business intelligence by grounding LLM responses in real-time Firestore data.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, hasValidGeminiKey } from '@/ai/genkit';
 import { z } from 'genkit';
+import { searchPlatformKnowledge } from '@/lib/knowledge-search';
 
 const AdvisorChatInputSchema = z.object({
   message: z.string().describe('The user\'s question or message.'),
@@ -32,16 +33,194 @@ const AdvisorChatOutputSchema = z.object({
     change: z.string().optional(),
   }).optional(),
   actions: z.array(z.object({
-    label: z.string(),
-    type: z.string(),
+    label: z.string().describe('Button label text.'),
+    type: z.string().default('navigate').describe('Action type.'),
+    route: z.string().optional().describe('Direct application route to navigate to.'),
     payload: z.any().optional(),
   })).optional(),
 });
 
 export type AdvisorChatOutput = z.infer<typeof AdvisorChatOutputSchema>;
 
+function generateAdvisorFallback(input: AdvisorChatInput): AdvisorChatOutput {
+  const msg = (input.message || "").toLowerCase();
+  const businessName = input.context?.businessName || "Biztrix Store";
+  const products = Array.isArray(input.context?.products) ? input.context.products : [];
+  const leads = Array.isArray(input.context?.leads) ? input.context.leads : [];
+  const tasks = Array.isArray(input.context?.tasks) ? input.context.tasks : [];
+  const projects = Array.isArray(input.context?.projects) ? input.context.projects : [];
+
+  // 1. Check if the query is asking about live business data (stock levels, leads, tasks)
+  const isLiveBizDataQuery = 
+    msg.includes("khatam") ||
+    msg.includes("kaunsa") ||
+    msg.includes("kaun si") ||
+    msg.includes("mera") ||
+    msg.includes("meri") ||
+    msg.includes("hamara") ||
+    msg.includes("hamare") ||
+    msg.includes("pending") ||
+    msg.includes("urgent") ||
+    msg.includes("kitna") ||
+    msg.includes("kitne") ||
+    msg.includes("status");
+
+  // 2. Check if user is asking how to use, configure, or troubleshoot any Biztrix website feature
+  const platformMatch = searchPlatformKnowledge(input.message);
+  const isFeatureQuery = 
+    msg.includes("kaise") || 
+    msg.includes("how") || 
+    msg.includes("kaha") || 
+    msg.includes("where") || 
+    msg.includes("setting") || 
+    msg.includes("setup") || 
+    msg.includes("problem") || 
+    msg.includes("error") || 
+    msg.includes("printer") || 
+    msg.includes("barcode") || 
+    msg.includes("bill") || 
+    msg.includes("pos") || 
+    msg.includes("role") || 
+    msg.includes("attendance") || 
+    msg.includes("payroll") || 
+    msg.includes("qr") || 
+    msg.includes("loyalty") || 
+    msg.includes("solar") || 
+    msg.includes("property") || 
+    msg.includes("domain") || 
+    msg.includes("sop") ||
+    msg.includes("guide");
+
+  if (platformMatch.matched && platformMatch.score >= 8 && isFeatureQuery) {
+    return {
+      content: platformMatch.answerHinglish,
+      data: platformMatch.guide ? {
+        label: platformMatch.guide.title,
+        metric: platformMatch.guide.route,
+        change: platformMatch.guide.group,
+      } : undefined,
+      actions: platformMatch.actions.map(act => ({
+        label: act.label,
+        type: 'navigate',
+        route: act.route,
+        payload: { route: act.route }
+      }))
+    };
+  }
+
+  // 2. Business Data Intent: Stock & Inventory
+  if (msg.includes("stock") || msg.includes("inventory") || msg.includes("maal") || msg.includes("product") || msg.includes("reorder")) {
+    const lowStock = products.filter(p => (Number(p.stock) || 0) <= (Number(p.minThreshold) || 10));
+    if (lowStock.length > 0) {
+      const names = lowStock.slice(0, 4).map(p => `${p.name} (${p.stock} units bachi hain)`).join(", ");
+      return {
+        content: `Aapke catalog me ${lowStock.length} items low stock threshold par hain: ${names}. Out-of-stock hone se bachne ke liye naya vendor order place karein.`,
+        data: { label: "Low Stock Items", metric: `${lowStock.length} products`, change: "Alert" },
+        actions: [
+          { label: "Open Inventory", type: "navigate", route: "/inventory", payload: { route: "/inventory" } },
+          { label: "Purchase Bills", type: "navigate", route: "/inventory", payload: { route: "/inventory" } }
+        ]
+      };
+    }
+    return {
+      content: `Aapke catalog me ${products.length} products listed hain aur filhal sabhi ka stock level threshold se upar hai.`,
+      data: { label: "Catalog Count", metric: `${products.length} items`, change: "Healthy" },
+      actions: [
+        { label: "Open Inventory", type: "navigate", route: "/inventory", payload: { route: "/inventory" } }
+      ]
+    };
+  }
+
+  // 3. Business Data Intent: Leads & CRM
+  if (msg.includes("lead") || msg.includes("crm") || msg.includes("customer") || msg.includes("grahak") || msg.includes("inquiry")) {
+    const hotLeads = leads.filter(l => (Number(l.intentScore) || 0) >= 80);
+    if (hotLeads.length > 0) {
+      const names = hotLeads.slice(0, 3).map(l => l.name).join(", ");
+      return {
+        content: `Aapke CRM me ${hotLeads.length} hot leads hain: ${names}. Unhe follow-up call karein ya WhatsApp automated sequence trigger karein.`,
+        data: { label: "High Intent Leads", metric: `${hotLeads.length} leads`, change: "+Hot" },
+        actions: [
+          { label: "Customer Registry", type: "navigate", route: "/customers", payload: { route: "/customers" } },
+          { label: "WhatsApp Automation", type: "navigate", route: "/whatsapp-automation", payload: { route: "/whatsapp-automation" } }
+        ]
+      };
+    }
+    return {
+      content: `Aapke paas ${leads.length} leads registered hain. New prospect acquisition ke liye WhatsApp campaigns use karein.`,
+      data: { label: "Total Leads", metric: `${leads.length} records`, change: "Active" },
+      actions: [
+        { label: "Customer Registry", type: "navigate", route: "/customers", payload: { route: "/customers" } }
+      ]
+    };
+  }
+
+  // 4. Business Data Intent: Tasks & Projects
+  if (msg.includes("task") || msg.includes("kaam") || msg.includes("project") || msg.includes("pending")) {
+    const pendingTasks = tasks.filter(t => t.status !== "completed");
+    const urgent = pendingTasks.filter(t => t.priority === "urgent" || t.priority === "high");
+    if (urgent.length > 0) {
+      const sample = urgent.slice(0, 3).map(t => `${t.title} (${t.assignedName || "Team"})`).join(", ");
+      return {
+        content: `Aapke paas ${urgent.length} urgent tasks pending hain: ${sample}. Inhe priority par complete karwayein.`,
+        data: { label: "Urgent Tasks", metric: `${urgent.length} pending`, change: "Priority" },
+        actions: [
+          { label: "View Task Board", type: "navigate", route: "/notes", payload: { route: "/notes" } },
+          { label: "Staff & Attendance", type: "navigate", route: "/staff", payload: { route: "/staff" } }
+        ]
+      };
+    }
+    return {
+      content: `Aapke total ${tasks.length} tasks aur ${projects.length} ongoing projects active hain.`,
+      data: { label: "Tasks In Progress", metric: `${pendingTasks.length} pending`, change: "Normal" },
+      actions: [
+        { label: "View Task Board", type: "navigate", route: "/notes", payload: { route: "/notes" } }
+      ]
+    };
+  }
+
+  // 5. If matched any platform knowledge even loosely, deliver the guide
+  if (platformMatch.matched) {
+    return {
+      content: platformMatch.answerHinglish,
+      data: platformMatch.guide ? {
+        label: platformMatch.guide.title,
+        metric: platformMatch.guide.route,
+        change: platformMatch.guide.group,
+      } : undefined,
+      actions: platformMatch.actions.map(act => ({
+        label: act.label,
+        type: 'navigate',
+        route: act.route,
+        payload: { route: act.route }
+      }))
+    };
+  }
+
+  return {
+    content: `Namaste! Mai aapka Biztrix Strategy Advisor hoon. Business "${businessName}" ka live data connected hai.\n\nAap mujhse kisi bhi platform feature ka step-by-step SOP (e.g. thermal printer, GST bill, loyalty points, payroll, solar proposals) ya live business data (stock, hot leads, pending tasks) ke bare me pooch sakte hain.`,
+    data: { label: "Advisor Status", metric: "Active", change: "Ready" },
+    actions: [
+      { label: "Billing POS", type: "navigate", route: "/billing", payload: { route: "/billing" } },
+      { label: "Customer Registry", type: "navigate", route: "/customers", payload: { route: "/customers" } },
+      { label: "OS Settings", type: "navigate", route: "/settings", payload: { route: "/settings" } }
+    ]
+  };
+}
+
 export async function advisorChat(input: AdvisorChatInput): Promise<AdvisorChatOutput> {
-  return advisorChatFlow(input);
+  try {
+    if (!hasValidGeminiKey()) {
+      return generateAdvisorFallback(input);
+    }
+    const { output } = await advisorChatPrompt(input);
+    if (!output || !output.content) {
+      return generateAdvisorFallback(input);
+    }
+    return output;
+  } catch (err: any) {
+    console.warn("[advisorChat] Gemini Genkit call failed, falling back to local business heuristic:", err?.message || err);
+    return generateAdvisorFallback(input);
+  }
 }
 
 const advisorChatPrompt = ai.definePrompt({
@@ -49,9 +228,27 @@ const advisorChatPrompt = ai.definePrompt({
   input: { schema: AdvisorChatInputSchema },
   output: { schema: AdvisorChatOutputSchema },
   prompt: `You are the "Biztrix AI Advisor", a highly intelligent and dynamic business consultant for an Indian entrepreneur. 
-Your goal is to provide specific, data-backed advice using the real-time business data provided below.
+Your goal is to provide specific, data-backed advice using the real-time business data provided below, OR provide detailed, step-by-step SOPs and navigation links if the user asks how to use, configure, or troubleshoot any feature on the website.
 
-**CRITICAL RULE:** DO NOT use a fixed template for every answer. Analyze the user's specific question first and answer accordingly. 
+**CRITICAL RULE:** DO NOT use a fixed template for every answer. Analyze the user's specific question first:
+- If user asks about **Website / Platform Features / SOPs** (e.g. Thermal printer, GST bill, barcode scanner, loyalty QR, staff roles, daily cashbook, solar EPC):
+  Provide exact, step-by-step SOP instructions, identify the relevant controls, and return actionable navigation buttons with 'route' (e.g. { label: "Open Settings", route: "/settings", type: "navigate" }).
+- If user asks about **Live Business Data** (stock, leads, tasks, projects):
+  Ground your answer directly in the numbers and names from the live data below.
+
+---
+**AUTHORITATIVE PLATFORM BLUEPRINT & ROUTES:**
+- Billing POS: \`/billing\` (A4/thermal bills, split payments, barcode, tax)
+- Daily Cashbook: \`/daily-entries\` (income/expense entries, dual ledger)
+- Customers & Udhaar: \`/customers\` (customer ledger, credit balance, loyalty tier)
+- Vendors & Purchases: \`/vendors\` (supplier bills, payables)
+- Staff & Payroll: \`/staff\`, \`/staff/payroll\` (attendance, salary slips)
+- Inventory & Stock: \`/inventory\` (products, threshold alerts, purchase OCR)
+- WhatsApp Automation: \`/whatsapp-automation\` (broadcasts, auto-followups)
+- Solar EPC Vertical: \`/solar\` (site surveys, PV sizing, rooftop proposals)
+- Real Estate Vertical: \`/real-estate\` (property inventory, developer leads)
+- Digital Loyalty Pass: \`/loyalty/track-member\` (member QR, cashback wallet)
+- OS Settings & RBAC: \`/settings\`, \`/settings/roles\` (printers, gateways, roles)
 
 ---
 **LIVE BUSINESS DATA:**
@@ -74,25 +271,14 @@ Your goal is to provide specific, data-backed advice using the real-time busines
 {{/if}}
 ---
 
-**INSTRUCTIONS FOR DYNAMIC RESPONSES:**
-
-1. **Identify the Intent:**
-   - If user asks about **Tasks/Projects**: Provide a summary of ongoing work. Identify "Urgent" or "High" priority tasks that are not done. Mention agents by name.
-   - If user asks about **Inventory**: Focus on specific product names below threshold.
-   - If user asks about **Leads**: Identify "Hot Leads" (Intent Score > 80%).
-   - If data for the requested area is missing (e.g. they ask for project summary but context.projects is empty), politely ask them to add that data in the respective module first.
-
-2. **Grounding in Data:**
-   - Mention specific names from the lists (e.g. "Sanjay ka kaam pending hai" or "Plot 12 project on-hold hai").
-   - Use numbers: "Aapke paas {{{context.tasks.length}}} active tasks hain."
-
-3. **Tone & Language:**
-   - Professional, friendly, and expert. Use "Hinglish" naturally.
+**TONE & LANGUAGE:**
+- Professional, friendly, and expert. Use natural Hinglish.
+- Always include helpful navigation actions with 'route' when recommending a page.
 
 **Response Structure (Return JSON):**
-- 'content': The main advice in Hinglish.
-- 'data': (Optional) A key metric mentioned in the chat.
-- 'actions': (Optional) Buttons for the user to click.`,
+- 'content': The main advice or SOP in Hinglish.
+- 'data': (Optional) A key metric or route mentioned.
+- 'actions': (Optional) Array of navigation buttons with { label, route, type: 'navigate' }.`,
 });
 
 const advisorChatFlow = ai.defineFlow(

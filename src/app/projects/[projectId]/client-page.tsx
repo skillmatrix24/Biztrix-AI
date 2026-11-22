@@ -29,6 +29,7 @@ import {
   Activity,
   User,
   ShieldAlert,
+  ListTodo,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -192,8 +193,58 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
   const [selectedAiTaskIds, setSelectedAiTaskIds] = useState<string[]>([]);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
+  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+  const [quickTaskTitle, setQuickTaskTitle] = useState("");
+  const [quickTaskAssignee, setQuickTaskAssignee] = useState("unassigned");
+  const [quickTaskPriority, setQuickTaskPriority] = useState<string>("medium");
+  const [quickTaskDueDate, setQuickTaskDueDate] = useState(new Date().toISOString().split("T")[0]);
+  const [quickTaskSection, setQuickTaskSection] = useState("Execution");
+
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+
+  const handleQuickAddTask = () => {
+    if (!quickTaskTitle.trim() || !businessId || !projectId) return;
+    const effectiveAssignee = quickTaskAssignee === "unassigned" ? "" : quickTaskAssignee;
+    const assignedUser = effectiveAssignee
+      ? businessUsers.find((u: any) => u.id === effectiveAssignee)
+      : null;
+    const tasksRef = collection(firestore, "businesses", businessId, "tasks");
+
+    addDocumentNonBlocking(tasksRef, {
+      title: quickTaskTitle.trim(),
+      status: "pending",
+      priority: quickTaskPriority,
+      dueDate: quickTaskDueDate,
+      section: quickTaskSection || "Execution",
+      projectId,
+      projectName: project?.title || "Project",
+      assignedTo: effectiveAssignee || project?.team?.[0] || "",
+      assignedName:
+        assignedUser?.name ||
+        businessUsers.find((u: any) => u.id === project?.team?.[0])?.name ||
+        "Unassigned",
+      businessId,
+      createdAt: serverTimestamp(),
+    });
+
+    if (effectiveAssignee) {
+      addDocumentNonBlocking(collection(firestore, "businesses", businessId, "notifications"), {
+        businessId,
+        recipientId: effectiveAssignee,
+        title: "New Project Task Assigned",
+        message: `Task assigned in ${project?.title}: ${quickTaskTitle.trim()}`,
+        type: "task",
+        projectId,
+        isRead: false,
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    setQuickTaskTitle("");
+    setIsAddTaskOpen(false);
+    toast({ title: "Task Added to Project", description: quickTaskTitle.trim() });
+  };
 
   const finStats = useMemo(() => {
     if (!project)
@@ -531,7 +582,7 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
                 title="Execution Timeline"
                 description="Track project tasks, assignees, and deadlines."
                 headerRight={
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button
                       type="button"
                       variant="outline"
@@ -547,9 +598,20 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
                       )}
                       Suggest Tasks
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setQuickTaskAssignee(project?.team?.[0] || "");
+                        setIsAddTaskOpen(true);
+                      }}
+                      className="h-9 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add Task
+                    </Button>
                     <Button asChild variant="outline" size="sm" className="h-9 rounded-xl text-xs font-semibold">
-                      <Link href="/notes">
-                        <Plus className="h-3.5 w-3.5 mr-1" /> New Task
+                      <Link href={`/notes?projectId=${projectId}`}>
+                        <ListTodo className="h-3.5 w-3.5 mr-1" /> Task Manager
                       </Link>
                     </Button>
                   </div>
@@ -562,52 +624,79 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
                     description="Create tasks or generate a project checklist to track execution."
                   />
                 ) : (
-                  <div className="space-y-2.5">
-                    {projectTasks.map((task: any) => (
-                      <button
-                        key={task.id}
-                        type="button"
-                        onClick={() => router.push(`/notes/${task.id}`)}
-                        className="w-full text-left p-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors flex items-center justify-between gap-3 group"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div
-                            className={cn(
-                              "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border",
-                              task.status === "completed"
-                                ? "bg-emerald-600 border-emerald-600 text-white"
-                                : "bg-slate-50 border-slate-200 text-slate-400"
-                            )}
-                          >
-                            {task.status === "completed" ? (
-                              <CheckCircle2 className="h-4 w-4" />
-                            ) : (
-                              <Circle className="h-4 w-4" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p
+                  <div className="space-y-3">
+                    {projectTasks.map((task: any) => {
+                      const priorityColor =
+                        task.priority === "urgent"
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : task.priority === "high"
+                            ? "bg-amber-50 text-amber-800 border-amber-200"
+                            : task.priority === "low"
+                              ? "bg-slate-100 text-slate-700 border-slate-200"
+                              : "bg-sky-50 text-sky-800 border-sky-200";
+
+                      return (
+                        <button
+                          key={task.id}
+                          type="button"
+                          onClick={() => router.push(`/notes/${task.id}`)}
+                          className="w-full text-left p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs transition-all flex items-center justify-between gap-3 group"
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                            <div
                               className={cn(
-                                "text-sm font-semibold text-slate-900 truncate",
-                                task.status === "completed" && "line-through text-slate-400"
+                                "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border",
+                                task.status === "completed"
+                                  ? "bg-emerald-600 border-emerald-600 text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-500"
                               )}
                             >
-                              {task.title}
-                            </p>
-                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                              <span>{task.assignedName || "Unassigned"}</span>
-                              {task.dueDate && (
-                                <>
-                                  <span>·</span>
-                                  <span className="font-mono tabular-nums">{task.dueDate}</span>
-                                </>
+                              {task.status === "completed" ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : (
+                                <Circle className="h-4 w-4" />
                               )}
                             </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p
+                                  className={cn(
+                                    "text-sm font-bold text-slate-900 group-hover:text-primary transition-colors truncate",
+                                    task.status === "completed" && "line-through text-slate-500"
+                                  )}
+                                >
+                                  {task.title}
+                                </p>
+                                {task.section && (
+                                  <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                    {task.section}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-slate-600 mt-1 flex-wrap">
+                                <span className="font-medium text-slate-700">{task.assignedName || "Unassigned"}</span>
+                                {task.dueDate && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="font-mono tabular-nums font-semibold text-slate-600 flex items-center gap-1">
+                                      <Clock className="h-3 w-3 text-slate-400" />
+                                      {task.dueDate}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-900 shrink-0" />
-                      </button>
-                    ))}
+
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <Badge variant="outline" className={cn("text-[11px] font-bold capitalize border px-2 py-0.5", priorityColor)}>
+                              {task.priority || "Normal"}
+                            </Badge>
+                            <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-slate-900 transition-colors" />
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </SectionCard>
@@ -925,32 +1014,185 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
           </div>
 
           <div className="lg:col-span-4 space-y-6">
-            <SectionCard title="Client Context">
+            <SectionCard title="Client Details">
               <div className="flex items-center gap-3.5">
-                <div className="h-11 w-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-semibold text-slate-700 text-base shrink-0">
+                <div className="h-11 w-11 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-2xs">
                   {project.clientName?.charAt(0) || "C"}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-900 truncate">
                     {project.clientName}
                   </p>
-                  <p className="text-xs text-slate-500 capitalize">
-                    {project.clientType || "Customer"}
+                  <p className="text-xs text-slate-600 font-medium capitalize mt-0.5">
+                    {project.clientType || "Direct Client"}
                   </p>
                 </div>
               </div>
             </SectionCard>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-2">
-              <p className="text-xs font-semibold text-slate-700">Project Progress</p>
-              <Progress value={taskStats.progress} className="h-2" />
-              <p className="text-xs font-mono tabular-nums text-slate-500">
+            <SectionCard title="Schedule & Scope">
+              <div className="space-y-4 text-xs">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="font-medium text-slate-600 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-slate-500" /> Deadline
+                  </span>
+                  <span className={cn(
+                    "font-mono font-bold tabular-nums px-2 py-0.5 rounded",
+                    project.deadline && new Date(project.deadline) < new Date() && project.status !== "completed"
+                      ? "text-rose-700 bg-rose-50 border border-rose-200"
+                      : "text-slate-900"
+                  )}>
+                    {project.deadline || "Open-ended"}
+                  </span>
+                </div>
+
+                {project.description && (
+                  <div className="space-y-1">
+                    <p className="text-slate-500 font-medium">Scope Summary</p>
+                    <p className="text-slate-800 leading-relaxed bg-slate-50/70 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                      {project.description}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-slate-500 font-medium">Assigned Specialists</p>
+                  <div className="space-y-1.5">
+                    {(project.team || []).length === 0 ? (
+                      <p className="text-slate-400 italic">No team assigned yet.</p>
+                    ) : (
+                      (project.team || []).map((uid: string) => {
+                        const member = businessUsers.find((u: any) => u.id === uid);
+                        return (
+                          <div key={uid} className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                            <div className="h-6 w-6 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                              {(member?.name || "M").charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-semibold text-slate-800 truncate flex-1">
+                              {member?.name || uid}
+                            </span>
+                            <span className="text-[10px] text-slate-500 capitalize">
+                              {member?.role || "Staff"}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-700">Project Progress</span>
+                <span className="font-mono tabular-nums font-bold text-slate-900">{taskStats.progress}%</span>
+              </div>
+              <Progress value={taskStats.progress} className="h-2.5 bg-slate-100" />
+              <p className="text-xs font-mono font-medium tabular-nums text-slate-600 pt-0.5">
                 {taskStats.completed} / {taskStats.total} deliverables finalized
               </p>
             </div>
           </div>
         </div>
       </Tabs>
+
+      <Dialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen}>
+        <DialogContent className="sm:max-w-[440px] rounded-2xl border border-slate-200 bg-white p-0 overflow-hidden text-left shadow-lg">
+          <DialogHeader className="p-6 bg-slate-900 text-white text-left">
+            <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
+              <Plus className="h-5 w-5" /> Add Project Task
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-slate-700">Task Title *</Label>
+              <Input
+                placeholder="e.g. Design Wireframes, Procure Hardware..."
+                value={quickTaskTitle}
+                onChange={(e) => setQuickTaskTitle(e.target.value)}
+                className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs focus-visible:ring-1 focus-visible:ring-slate-900 font-medium"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Assignee</Label>
+                <Select value={quickTaskAssignee} onValueChange={setQuickTaskAssignee}>
+                  <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 text-xs shadow-xs font-medium">
+                    <SelectValue placeholder="Select Member" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="unassigned" className="text-xs">Unassigned</SelectItem>
+                    {businessUsers.map((u: any) => (
+                      <SelectItem key={u.id} value={u.id} className="text-xs">
+                        {u.name || u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Priority</Label>
+                <Select value={quickTaskPriority} onValueChange={setQuickTaskPriority}>
+                  <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 text-xs shadow-xs font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="low" className="text-xs">Low / Routine</SelectItem>
+                    <SelectItem value="medium" className="text-xs">Medium</SelectItem>
+                    <SelectItem value="high" className="text-xs font-semibold text-amber-800">High Focus</SelectItem>
+                    <SelectItem value="urgent" className="text-xs font-bold text-rose-700">Urgent (24h)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Target Date</Label>
+                <Input
+                  type="date"
+                  value={quickTaskDueDate}
+                  onChange={(e) => setQuickTaskDueDate(e.target.value)}
+                  className="h-10 rounded-xl border-slate-300 bg-white font-mono text-xs shadow-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700">Section / Phase</Label>
+                <Input
+                  placeholder="e.g. Planning, Execution"
+                  value={quickTaskSection}
+                  onChange={(e) => setQuickTaskSection(e.target.value)}
+                  className="h-10 rounded-xl border-slate-300 bg-white text-xs shadow-xs font-medium"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="p-4 bg-slate-50 border-t border-slate-100 flex flex-row items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddTaskOpen(false)}
+              className="h-9 rounded-xl text-xs font-semibold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleQuickAddTask}
+              disabled={!quickTaskTitle.trim()}
+              className="h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4"
+            >
+              Add Task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
         <DialogContent className="sm:max-w-[420px] rounded-2xl border border-slate-200 bg-white p-0 overflow-hidden text-left">
@@ -963,7 +1205,8 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
               <Input
                 value={expenseParticulars}
                 onChange={(e) => setExpenseParticulars(e.target.value)}
-                className="h-10 rounded-xl border-slate-200 bg-white text-sm"
+                placeholder="e.g. Travel, Cement, Server hosting..."
+                className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs font-medium"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -973,13 +1216,14 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
                   type="number"
                   value={expenseAmount}
                   onChange={(e) => setExpenseAmount(e.target.value)}
-                  className="h-10 rounded-xl border-slate-200 bg-white font-mono text-sm"
+                  placeholder="0"
+                  className="h-10 rounded-xl border-slate-300 bg-white font-mono text-sm shadow-xs font-bold"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-700">Category</Label>
                 <Select value={expenseCategory} onValueChange={setExpenseCategory}>
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium">
+                  <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white text-xs font-medium shadow-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
@@ -1003,7 +1247,7 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
               type="button"
               onClick={handleRecordExpense}
               disabled={!expenseAmount}
-              className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl"
+              className="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-xs"
             >
               Commit Entry
             </Button>
@@ -1012,7 +1256,7 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
       </Dialog>
 
       <Dialog open={isAddMilestoneOpen} onOpenChange={setIsAddMilestoneOpen}>
-        <DialogContent className="sm:max-w-[420px] rounded-2xl border border-slate-200 bg-white p-0 overflow-hidden text-left">
+        <DialogContent className="sm:max-w-[420px] rounded-2xl border border-slate-200 bg-white p-0 overflow-hidden text-left shadow-lg">
           <DialogHeader className="p-6 bg-slate-900 text-white text-left">
             <DialogTitle className="text-lg font-bold text-white">
               Define Payment Stage
@@ -1024,7 +1268,8 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
               <Input
                 value={milestoneLabel}
                 onChange={(e) => setMilestoneLabel(e.target.value)}
-                className="h-10 rounded-xl border-slate-200 bg-white text-sm"
+                placeholder="e.g. 50% Advance, Site Handover..."
+                className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs font-medium"
               />
             </div>
             <div className="space-y-1.5">
@@ -1033,7 +1278,8 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
                 type="number"
                 value={milestoneAmount}
                 onChange={(e) => setMilestoneAmount(e.target.value)}
-                className="h-10 rounded-xl border-slate-200 bg-white font-mono text-sm"
+                placeholder="0"
+                className="h-10 rounded-xl border-slate-300 bg-white font-mono text-sm shadow-xs font-bold"
               />
             </div>
           </div>

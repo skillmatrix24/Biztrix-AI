@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Minus, Maximize2 } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, Minus, Maximize2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,9 +12,16 @@ import { cn } from "@/lib/utils";
 import { useUser } from "@/firebase";
 import { shouldShowGlobalChatbot, hasMobileBottomShell } from "@/lib/responsive-shell";
 
+type Action = {
+  label: string;
+  route: string;
+  type?: string;
+};
+
 type Message = {
   role: 'user' | 'ai';
   content: string;
+  actions?: Action[];
 };
 
 export function GlobalChatbot() {
@@ -59,7 +67,11 @@ export function GlobalChatbot() {
         }),
       });
       const response = await res.json();
-      setMessages(prev => [...prev, { role: 'ai', content: response.content || "Mafi chahta hoon, koi jawab nahi mila." }]);
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        content: response.content || "Mafi chahta hoon, koi jawab nahi mila.",
+        actions: response.actions || []
+      }]);
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { role: 'ai', content: "Mafi chahta hoon, mera server abhi busy hai. Kripya thodi der baad koshish karein." }]);
@@ -164,11 +176,28 @@ export function GlobalChatbot() {
                       )}>
                         {m.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                       </div>
-                      <div className={cn(
-                        "p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-left",
-                        m.role === 'user' ? "bg-primary text-white rounded-tr-none" : "bg-white border border-slate-200 rounded-tl-none text-slate-700 font-medium"
-                      )}>
-                        {m.content}
+                      <div className="space-y-2 max-w-full">
+                        <div className={cn(
+                          "p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap text-left",
+                          m.role === 'user' ? "bg-primary text-white rounded-tr-none" : "bg-white border border-slate-200 rounded-tl-none text-slate-700 font-medium"
+                        )}>
+                          {m.content}
+                        </div>
+                        {m.actions && m.actions.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {m.actions.map((act, actIdx) => (
+                              <Link
+                                key={actIdx}
+                                href={act.route}
+                                onClick={() => setIsOpen(false)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs"
+                              >
+                                <span>{act.label}</span>
+                                <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -186,7 +215,14 @@ export function GlobalChatbot() {
               </ScrollArea>
               
               <div className="px-4 py-2 bg-white border-t border-slate-200 overflow-x-auto scrollbar-hide flex gap-2 shrink-0">
-                {["Billing setup?", "WhatsApp automation?", "AI Scanner?", "Marketplace fees?"].map((q, i) => (
+                {[
+                  "Billing POS setup?", 
+                  "Thermal printer connect?", 
+                  "Staff attendance & payroll?", 
+                  "Customer udhaar ledger?", 
+                  "Digital loyalty pass?", 
+                  "Solar EPC proposals?"
+                ].map((q, i) => (
                   <button 
                     key={i} 
                     type="button"

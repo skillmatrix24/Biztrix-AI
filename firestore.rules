@@ -487,6 +487,32 @@ service cloud.firestore {
         allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
       }
 
+      // BACK OFFICE: PROJECTS & TASK MANAGEMENT
+      match /projects/{projectId} {
+        // Allow public read if the project is enabled for client tracking
+        allow get: if resource.data.sharePublic == true || isBusinessMember(businessId) || isPlatformOwner();
+        allow list: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) || isPlatformOwner() ||
+          // Allow client milestone approval on publicly shared projects
+          (resource.data.sharePublic == true && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['milestones', 'lastClientUpdate']));
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+
+        match /clientMessages/{msgId} {
+          allow read, create: if true;
+          allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
+        }
+      }
+
+      match /tasks/{taskId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner() ||
+          (resource.data.projectId != null &&
+           exists(/databases/$(database)/documents/businesses/$(businessId)/projects/$(resource.data.projectId)) &&
+           get(/databases/$(database)/documents/businesses/$(businessId)/projects/$(resource.data.projectId)).data.sharePublic == true);
+        allow create, update: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
       // BUSINESS DEFAULT CATCH-ALL
       match /{allPaths=**} {
         allow read: if isBusinessMember(businessId) || isPlatformOwner();

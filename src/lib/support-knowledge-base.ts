@@ -628,6 +628,261 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
       { label: "Agent Performance", route: "/properties/rewards" }
     ],
     searchKeywords: ["property", "real estate", "khet", "plot", "building", "farmhouse", "acre", "guntha", "bigha", "agent", "crm", "lead", "masking"]
+  },
+  {
+    id: "customers_loyalty",
+    title: "Customer Registry, Udhaar Ledger & Loyalty Points",
+    group: "Customers & Loyalty",
+    route: "/customers",
+    iconName: "Users",
+    summary: "Manage customer profiles, udhaar credit balances, loyalty tier perks, Excel import/export, and purchase history.",
+    summaryHindi: "Grahak ka record, udhaar khata, loyalty tier points, Excel import-export, aur khareedari ka hisaab rakhne ke liye.",
+    customerJourney: [
+      "Customer registry me grahak ka naam, phone number aur address record hota hai.",
+      "Har billing transaction par points aur cashback wallet balance live update hota hai.",
+      "Udhaar / Credit khate me balance automatic judta hai aur settlement receipt banti hai.",
+      "OS Role Manager permissions ke mutabik customer data edit ya export kiya jata hai."
+    ],
+    keyFrontendControls: [
+      { label: "New Customer Button", actionDescription: "Opens 4-tab registration modal with General, Credit Ledger, Loyalty, and Address tabs." },
+      { label: "Excel Export/Import", actionDescription: "Download complete client list to Excel or bulk upload via spreadsheet." },
+      { label: "Udhaar Quick Settle", actionDescription: "Records cash/UPI payment against customer's pending credit balance." },
+      { label: "WhatsApp Statement", actionDescription: "Sends one-click payment reminder and khata statement on WhatsApp." }
+    ],
+    commonIssues: [
+      {
+        id: "cust_points_not_showing",
+        symptom: "Customer made purchase but loyalty points or cashback did not reflect",
+        symptomHindi: "Customer ne khareedari ki par loyalty reward points nahi dikh rahe",
+        rootCause: "Phone number was entered with leading zeroes/country code or loyalty program toggle was inactive during checkout.",
+        agentSteps: [
+          "Check customer registry in /customers using exact 10-digit mobile number.",
+          "Check loyalty tier rules in /loyalty/rules to ensure bill amount exceeded minimum spend threshold.",
+          "If missing, use Edit Customer dialog -> Loyalty tab to credit manual adjustment points."
+        ],
+        customerScript: "Namaste {customer_name}! Aapka points balance verify karne ke liye humne customer ledger check kiya hai. Points update ho gaye hain aur aap /loyalty/track-member par apna digital card dekh sakte hain.",
+        settingsPath: "/customers",
+        tags: ["customer", "loyalty", "points", "grahak", "reward", "tier", "udhaar", "ledger", "excel"],
+        severity: "medium"
+      }
+    ],
+    relatedPages: [
+      { label: "Digital Loyalty Pass", route: "/loyalty/track-member" },
+      { label: "Loyalty Program Rules", route: "/loyalty/rules" },
+      { label: "Billing POS", route: "/billing" }
+    ],
+    searchKeywords: ["customer", "grahak", "udhaar", "credit", "ledger", "loyalty", "points", "tier", "gold", "silver", "cashback", "wallet", "qr card", "track member", "excel", "import", "export"]
+  },
+  {
+    id: "loyalty_member_pass",
+    title: "Digital Loyalty QR Pass & Member Hub",
+    group: "Customers & Loyalty",
+    route: "/loyalty/track-member",
+    iconName: "Sparkles",
+    summary: "Customer-facing live loyalty pass displaying QR membership code, tier status, wallet cashback, and past purchases.",
+    summaryHindi: "Grahak ka digital membership card, live points balance, wallet cashback aur QR code dekhne ke liye.",
+    customerJourney: [
+      "Customer visits /loyalty/track-member and enters registered 10-digit mobile number.",
+      "Instant animated digital membership card renders showing current tier (Bronze, Silver, Gold, Platinum).",
+      "Customer displays the digital QR card at the store billing counter.",
+      "Cashier scans QR or enters phone to apply discounts and redeem points balance."
+    ],
+    keyFrontendControls: [
+      { label: "Phone Lookup Input", actionDescription: "Fetches live member profile, points balance, and loyalty tier." },
+      { label: "Digital QR Code", actionDescription: "Unique customer QR token ready for cashier scanner at checkout." },
+      { label: "Wallet Balance Tag", actionDescription: "Displays available rupee cashback ready to redeem against bills." }
+    ],
+    commonIssues: [
+      {
+        id: "loyalty_member_not_found",
+        symptom: "Customer enters phone number on /loyalty/track-member but sees 'Member Not Found'",
+        symptomHindi: "Customer phone number dalne par 'Member Not Found' error aa raha hai",
+        rootCause: "Customer was billed as generic walk-in or phone number was registered under a different country code prefix.",
+        agentSteps: [
+          "Verify phone number in /customers registry.",
+          "Ensure standard 10-digit Indian mobile format without spaces or +91.",
+          "Add customer in /customers registry if not previously registered."
+        ],
+        customerScript: "Aapka mobile number Biztrix Member Hub me verify kar liya gaya hai. Kripya apna 10-digit mobile number /loyalty/track-member par enter karein, aapka digital QR card turant load ho jayega.",
+        settingsPath: "/customers",
+        tags: ["member", "loyalty pass", "qr", "track member", "points", "membership", "tier"],
+        severity: "low"
+      }
+    ],
+    relatedPages: [
+      { label: "Customer Registry", route: "/customers" },
+      { label: "Loyalty Program Rules", route: "/loyalty/rules" }
+    ],
+    searchKeywords: ["loyalty pass", "qr pass", "track member", "membership", "points balance", "reward card", "redeem points", "gold tier", "cashback wallet"]
+  },
+  {
+    id: "staff_roles_payroll",
+    title: "Staff Directory, Attendance & OS Role Manager",
+    group: "Team & HR",
+    route: "/staff",
+    iconName: "ShieldCheck",
+    summary: "Manage employee profiles, daily attendance, biometric check-in, payroll salary slips, and OS Role Manager permissions (RBAC).",
+    summaryHindi: "Karmchari attendance, salary slip, payroll hisaab, aur OS Role Manager se software rights manage karne ke liye.",
+    customerJourney: [
+      "Admin creates staff profile with designation, monthly salary, and role.",
+      "Staff members mark daily attendance (Present, Absent, Half-Day, Overtime).",
+      "Month-end payroll engine computes working days, deductions, advances, and net payable.",
+      "OS Role Manager (/settings/roles) restricts POS discounts, inventory delete, or export rights."
+    ],
+    keyFrontendControls: [
+      { label: "Check In / Out Button", actionDescription: "Logs timestamped attendance with optional selfie or location stamp." },
+      { label: "OS Role Manager Stepper", actionDescription: "Controls permissions for Cashier, Manager, Accountant, and Admin." },
+      { label: "Generate Salary Slip", actionDescription: "Calculates net wages and generates printable/WhatsApp salary vouchers." }
+    ],
+    commonIssues: [
+      {
+        id: "role_permission_denied",
+        symptom: "Staff member sees 'Permission Denied' or cannot view /customers or /billing",
+        symptomHindi: "Staff ko 'Permission Denied' dikh raha hai aur module open nahi ho raha",
+        rootCause: "Assigned staff role in OS Role Manager has that specific module access turned OFF.",
+        agentSteps: [
+          "Open /settings/roles as Business Owner/Admin.",
+          "Select the staff member's role (e.g. Cashier, Sales Agent).",
+          "Toggle ON the desired module switch (e.g. Customer Registry, Reports).",
+          "Click 'Save Role Permissions' and ask staff member to refresh the page."
+        ],
+        customerScript: "Aapke software access permissions update kar diye gaye hain. Kripya browser refresh karein, ab aap desired page access kar payenge.",
+        settingsPath: "/settings/roles",
+        tags: ["staff", "role manager", "rbac", "permission", "attendance", "payroll", "salary", "karmchari"],
+        severity: "high"
+      }
+    ],
+    relatedPages: [
+      { label: "OS Role Manager", route: "/settings/roles" },
+      { label: "Payroll Calculator", route: "/staff/payroll" },
+      { label: "Task Manager", route: "/notes" }
+    ],
+    searchKeywords: ["staff", "employee", "team", "attendance", "payroll", "salary", "wages", "roles", "role manager", "rbac", "permissions", "absent", "present", "check in"]
+  },
+  {
+    id: "solar_epc_vertical",
+    title: "Solar EPC Rooftop Survey & Quotation Engine",
+    group: "Vertical Solutions",
+    route: "/solar",
+    iconName: "Sun",
+    summary: "End-to-end solar engineering: site feasibility survey, shadow analysis, PV system sizing (kW), DISCOM net metering, and 1-click proposal generation.",
+    summaryHindi: "Solar plant feasibility survey, shadow analysis, PV sizing, DISCOM net metering, aur customer proposal banane ke liye.",
+    customerJourney: [
+      "Solar surveyor captures client electricity bill units and Sanctioned Load (kW).",
+      "Site survey tool logs rooftop area (sq.m), roof type (RCC/Tin Shed), and shadow obstacles.",
+      "Engineering logic calculates recommended system size, estimated annual generation (kWh), and PM Surya Ghar subsidy.",
+      "Generates customized financial ROI proposal with 25-year savings projection."
+    ],
+    keyFrontendControls: [
+      { label: "Site Survey Wizard", actionDescription: "Step-by-step checklist for roof dimensions, cable length, and DISCOM meter specs." },
+      { label: "PV Sizing Calculator", actionDescription: "Auto-recommends panel count, inverter capacity, and estimated generation units." },
+      { label: "Proposal PDF Generator", actionDescription: "Produces commercial solar project proposal with subsidy and payback years." }
+    ],
+    commonIssues: [
+      {
+        id: "solar_subsidy_mismatch",
+        symptom: "Estimated solar subsidy calculation differs from PM Surya Ghar portal",
+        symptomHindi: "Solar proposal me subsidy amount PM Surya Ghar se alag dikh raha hai",
+        rootCause: "Residential rooftop subsidy caps at 3kW (Rs. 78,000 max), while commercial systems do not receive central residential capital subsidy.",
+        agentSteps: [
+          "Check connection category: Residential vs Commercial/Industrial.",
+          "Verify sanctioned load: 1kW (Rs 30k), 2kW (Rs 60k), 3kW+ (Rs 78k max cap for residential).",
+          "Ensure proposal settings reflect current MNRE central portal guidelines."
+        ],
+        customerScript: "PM Surya Ghar Muft Bijli Yojana ke tahat 1kW par ₹30,000, 2kW par ₹60,000 aur 3kW ya usse adhik par maximum ₹78,000 ki residential subsidy milti hai. Commercial connections par subsidy nahi milti balki Accelerated Depreciation ka fayda milta hai.",
+        settingsPath: "/solar",
+        tags: ["subsidy", "surya ghar", "mismatch", "calculation", "portal", "differ", "subsidy alag", "wrong subsidy"],
+        severity: "medium"
+      }
+    ],
+    relatedPages: [
+      { label: "Solar Survey Tool", route: "/solar" },
+      { label: "Billing POS", route: "/billing" }
+    ],
+    searchKeywords: ["solar", "epc", "pv", "kw", "inverter", "rooftop", "subsidy", "net metering", "survey", "proposal", "quotation", "panel", "discom", "surya ghar", "solar management", "management system", "solar management system", "solar system"]
+  },
+  {
+    id: "daily_cashbook",
+    title: "Daily Cashbook & Expense Ledger",
+    group: "Finance & Accounts",
+    route: "/daily-entries",
+    iconName: "Wallet",
+    summary: "Dual-entry cashbook for daily shop income and expense recording, opening balance reconciliation, and petty cash tracking.",
+    summaryHindi: "Dukaan ka rozana jama-kharch (income/expense), opening balance milan, aur cash in hand hisaab ke liye.",
+    customerJourney: [
+      "Store manager sets morning Opening Cash balance.",
+      "Daily retail sales from POS auto-sync as Cash In entries.",
+      "Expenses (tea, diesel, courier, supplier petty cash) are logged with category tags.",
+      "Closing balance verifies exact drawer cash vs software records."
+    ],
+    keyFrontendControls: [
+      { label: "Quick Entry Modal", actionDescription: "One-click toggle between Income (Cash In) and Expense (Cash Out)." },
+      { label: "Category Filter", actionDescription: "Filter by Utilities, Vendor Advance, Shop Rent, or Counter Sales." },
+      { label: "Day Closing Button", actionDescription: "Reconciles actual drawer cash with software closing balance." }
+    ],
+    commonIssues: [
+      {
+        id: "cash_mismatch_closing",
+        symptom: "Physical cash in hand does not match cashbook closing balance",
+        symptomHindi: "Galle ka cash software ke closing balance se match nahi ho raha",
+        rootCause: "Unrecorded cash expense or manual bill payment made without logging into daily entries.",
+        agentSteps: [
+          "Open /daily-entries and review all transactions of the selected date.",
+          "Verify POS cash collections from /billing for that day.",
+          "Add any missed petty cash expense with description to balance the daybook."
+        ],
+        customerScript: "Dukaan closing par cash match karne ke liye /daily-entries me check karein ki koi chhota kharcha (jaise tea/delivery) enter karna toh nahi chhoot gaya. POS ka cash total aur expense match hote hi closing balance sahi dikhayega.",
+        settingsPath: "/daily-entries",
+        tags: ["cashbook", "khata", "jama", "kharch", "income", "expense", "galla", "opening balance"],
+        severity: "medium"
+      }
+    ],
+    relatedPages: [
+      { label: "Billing POS", route: "/billing" },
+      { label: "Vendor Directory", route: "/vendors" }
+    ],
+    searchKeywords: ["daily entries", "cashbook", "khata", "jama", "kharch", "income", "expense", "opening balance", "petty cash", "galla", "daybook"]
+  },
+  {
+    id: "task_manager",
+    title: "Team Tasks & Operations Sprint",
+    group: "Operations",
+    route: "/notes",
+    iconName: "ListTodo",
+    summary: "Assign team tasks, track execution checklists, monitor overdue items, and sprint workload balance.",
+    summaryHindi: "Team ko kaam assign karne, checklist track karne, aur deadline hisaab ke liye.",
+    customerJourney: [
+      "Admin or manager creates a task with priority, due date, and assigned team member.",
+      "Assigned staff receives notification and works through subtask checklists.",
+      "Task moves from To Do -> Working -> Done.",
+      "Manager reviews completion % and activity audit trail."
+    ],
+    keyFrontendControls: [
+      { label: "New Task Dialog", actionDescription: "Create task with checklists, priority, linked project, and assignee." },
+      { label: "Board / List Switcher", actionDescription: "Switch between visual Kanban column board and tabular list." },
+      { label: "AI Sprint Assistant", actionDescription: "Chat advisor for workload bottlenecks and delegation." }
+    ],
+    commonIssues: [
+      {
+        id: "task_notification_unseen",
+        symptom: "Staff member didn't receive task assignment notification",
+        symptomHindi: "Staff ko task assignment ka alert nahi mila",
+        rootCause: "Staff was unassigned or logged in with a different account email.",
+        agentSteps: [
+          "Check task details in /notes to confirm assigned staff name.",
+          "Confirm staff user ID exists in /staff registry."
+        ],
+        customerScript: "Task assign hote hi staff ke notifications me alert chala jata hai. Kripya /notes me jaakar task ka assigned member check karein.",
+        settingsPath: "/notes",
+        tags: ["task", "todo", "sprint", "checklist", "assign", "karyabhara"],
+        severity: "low"
+      }
+    ],
+    relatedPages: [
+      { label: "Staff Directory", route: "/staff" },
+      { label: "Projects Pipeline", route: "/projects" }
+    ],
+    searchKeywords: ["task", "kaam", "notes", "todo", "sprint", "delegation", "subtask", "deadline", "urgent", "checklist"]
   }
 ];
 

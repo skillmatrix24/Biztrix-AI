@@ -583,16 +583,28 @@ export default function PropertyManagementPage() {
     setSearchTerm("");
   };
 
+  const isFiltered = Boolean(
+    filters.type !== "all" ||
+    filters.agentId !== "all" ||
+    filters.facing !== "all" ||
+    filters.sizeUnit !== "all" ||
+    filters.minPrice ||
+    filters.maxPrice ||
+    filters.minSize ||
+    filters.maxSize ||
+    searchTerm
+  );
+
   const renderFilterPanel = () => (
     <div className="space-y-6 text-left">
-      <div className="flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
           <SlidersHorizontal className="h-4 w-4 text-slate-600" /> Filters
         </h3>
         <button
           type="button"
           onClick={resetFilters}
-          className="text-xs font-medium text-slate-500 hover:text-slate-900"
+          className="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
         >
           Reset All
         </button>
@@ -607,11 +619,11 @@ export default function PropertyManagementPage() {
             value={filters.agentId}
             onValueChange={(v) => setFilters({ ...filters, agentId: v })}
           >
-            <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium">
+            <SelectTrigger className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-medium shadow-xs hover:border-slate-400">
               <SelectValue placeholder="All Members" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">
+            <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+              <SelectItem value="all" className="text-xs font-medium">
                 All Members
               </SelectItem>
               {(teamMembers || []).map((member: any) => (
@@ -623,33 +635,28 @@ export default function PropertyManagementPage() {
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-slate-700">
             Asset Type
           </Label>
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button
-              type="button"
-              variant={filters.type === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilters({ ...filters, type: "all" })}
-              className="h-8 rounded-lg text-xs font-medium"
-            >
-              All Types
-            </Button>
-            {assetCategories.map((type: string) => (
-              <Button
-                type="button"
-                key={type}
-                variant={filters.type === type ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilters({ ...filters, type })}
-                className="h-8 truncate rounded-lg text-xs font-medium"
-              >
-                {type}
-              </Button>
-            ))}
-          </div>
+          <Select
+            value={filters.type}
+            onValueChange={(v) => setFilters({ ...filters, type: v })}
+          >
+            <SelectTrigger className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-medium shadow-xs hover:border-slate-400">
+              <SelectValue placeholder="All Asset Types" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+              <SelectItem value="all" className="text-xs font-medium">
+                All Types
+              </SelectItem>
+              {assetCategories.map((type: string) => (
+                <SelectItem key={type} value={type} className="text-xs">
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
@@ -664,9 +671,9 @@ export default function PropertyManagementPage() {
               onChange={(e) =>
                 setFilters({ ...filters, minPrice: e.target.value })
               }
-              className="h-9 rounded-xl border-slate-200 bg-white text-xs"
+              className="h-10 rounded-xl border border-slate-300 bg-white text-xs shadow-xs hover:border-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900"
             />
-            <span className="text-slate-400">-</span>
+            <span className="text-slate-400 font-bold">-</span>
             <Input
               type="number"
               placeholder="Max"
@@ -674,7 +681,7 @@ export default function PropertyManagementPage() {
               onChange={(e) =>
                 setFilters({ ...filters, maxPrice: e.target.value })
               }
-              className="h-9 rounded-xl border-slate-200 bg-white text-xs"
+              className="h-10 rounded-xl border border-slate-300 bg-white text-xs shadow-xs hover:border-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900"
             />
           </div>
         </div>
@@ -691,9 +698,9 @@ export default function PropertyManagementPage() {
               onChange={(e) =>
                 setFilters({ ...filters, minSize: e.target.value })
               }
-              className="h-9 rounded-xl border-slate-200 bg-white text-xs"
+              className="h-10 rounded-xl border border-slate-300 bg-white text-xs shadow-xs hover:border-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900"
             />
-            <span className="text-slate-400">-</span>
+            <span className="text-slate-400 font-bold">-</span>
             <Input
               type="number"
               placeholder="Max"
@@ -701,18 +708,18 @@ export default function PropertyManagementPage() {
               onChange={(e) =>
                 setFilters({ ...filters, maxSize: e.target.value })
               }
-              className="h-9 rounded-xl border-slate-200 bg-white text-xs"
+              className="h-10 rounded-xl border border-slate-300 bg-white text-xs shadow-xs hover:border-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900"
             />
           </div>
           <Select
             value={filters.sizeUnit}
             onValueChange={(v) => setFilters({ ...filters, sizeUnit: v })}
           >
-            <SelectTrigger className="h-9 rounded-xl border-slate-200 bg-white text-xs">
+            <SelectTrigger className="h-10 rounded-xl border border-slate-300 bg-white text-xs shadow-xs hover:border-slate-400">
               <SelectValue placeholder="All Units" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">
+            <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+              <SelectItem value="all" className="text-xs font-medium">
                 All Units
               </SelectItem>
               {areaUnits.map((u: string) => (
@@ -730,11 +737,11 @@ export default function PropertyManagementPage() {
             value={filters.facing}
             onValueChange={(v) => setFilters({ ...filters, facing: v })}
           >
-            <SelectTrigger className="h-9 rounded-xl border-slate-200 bg-white text-xs">
+            <SelectTrigger className="h-10 rounded-xl border border-slate-300 bg-white text-xs shadow-xs hover:border-slate-400">
               <SelectValue placeholder="Select Facing" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">
+            <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+              <SelectItem value="all" className="text-xs font-medium">
                 All Directions
               </SelectItem>
               {facingDirections.map((d) => (
@@ -768,13 +775,13 @@ export default function PropertyManagementPage() {
             <Button
               onClick={handleExport}
               variant="outline"
-              className="h-9 rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700"
+              className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:border-slate-400"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" /> Export CSV
             </Button>
             <Button
               asChild
-              className="h-9 rounded-xl bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800"
+              className="h-10 rounded-xl bg-slate-900 text-xs font-semibold text-white hover:bg-slate-800 shadow-xs"
             >
               <Link href="/properties/new">
                 <Plus className="mr-1.5 h-4 w-4" /> Add Property
@@ -790,63 +797,112 @@ export default function PropertyManagementPage() {
         </div>
 
         <div className="space-y-5 lg:col-span-9">
-          <Card className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="flex items-center gap-2">
-                <div className="flex shrink-0 gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1">
-                  <Button
-                    type="button"
-                    variant={activeView === "card" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setActiveView("card")}
-                    className="h-8 rounded-lg px-3 text-xs font-medium"
-                  >
-                    <LayoutGrid className="mr-1.5 h-3.5 w-3.5" /> Grid
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={activeView === "list" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setActiveView("list")}
-                    className="h-8 rounded-lg px-3 text-xs font-medium"
-                  >
-                    <LayoutList className="mr-1.5 h-3.5 w-3.5" /> List
-                  </Button>
+          <Card className="rounded-2xl border border-slate-300 bg-white p-4 shadow-xs">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex shrink-0 gap-1 rounded-xl border border-slate-300 bg-slate-100/90 p-1 shadow-xs">
+                    <Button
+                      type="button"
+                      variant={activeView === "card" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setActiveView("card")}
+                      className="h-8 rounded-lg px-3 text-xs font-semibold"
+                    >
+                      <LayoutGrid className="mr-1.5 h-3.5 w-3.5" /> Grid
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={activeView === "list" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setActiveView("list")}
+                      className="h-8 rounded-lg px-3 text-xs font-semibold"
+                    >
+                      <LayoutList className="mr-1.5 h-3.5 w-3.5" /> List
+                    </Button>
+                  </div>
+
+                  {/* Asset Type Dropdown Filter */}
+                  <div className="w-full sm:w-44">
+                    <Select value={filters.type} onValueChange={(v) => setFilters({ ...filters, type: v })}>
+                      <SelectTrigger className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-semibold shadow-xs hover:border-slate-400 focus:ring-1 focus:ring-slate-900">
+                        <BuildingIcon className="mr-2 h-3.5 w-3.5 text-slate-600 shrink-0" />
+                        <SelectValue placeholder="All Asset Types" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+                        <SelectItem value="all" className="text-xs font-medium">All Types</SelectItem>
+                        {assetCategories.map((type: string) => (
+                          <SelectItem key={type} value={type} className="text-xs">
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Property Agent Dropdown Filter */}
+                  <div className="w-full sm:w-44">
+                    <Select value={filters.agentId} onValueChange={(v) => setFilters({ ...filters, agentId: v })}>
+                      <SelectTrigger className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-semibold shadow-xs hover:border-slate-400 focus:ring-1 focus:ring-slate-900">
+                        <UserCog className="mr-2 h-3.5 w-3.5 text-slate-600 shrink-0" />
+                        <SelectValue placeholder="All Agents" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border border-slate-300 shadow-md">
+                        <SelectItem value="all" className="text-xs font-medium">All Agents</SelectItem>
+                        {(teamMembers || []).map((member: any) => (
+                          <SelectItem key={member.id} value={member.id} className="text-xs">
+                            {member.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Sheet>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:border-slate-400"
+                      >
+                        <SlidersHorizontal className="mr-1.5 h-3.5 w-3.5" /> All Filters
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
+                      <SheetHeader className="border-b border-slate-800 bg-slate-900 p-6 text-left text-white">
+                        <SheetTitle className="text-lg font-semibold text-white">
+                          Property Filters
+                        </SheetTitle>
+                        <SheetDescription className="text-xs text-slate-300">
+                          Refine listings by type, price, size, facing, and agent
+                        </SheetDescription>
+                      </SheetHeader>
+                      <ScrollArea className="h-full p-6 pb-28">
+                        {renderFilterPanel()}
+                      </ScrollArea>
+                    </SheetContent>
+                  </Sheet>
+
+                  {isFiltered && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={resetFilters}
+                      className="h-10 px-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl"
+                    >
+                      <X className="mr-1.5 h-3.5 w-3.5" /> Clear
+                    </Button>
+                  )}
                 </div>
 
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="h-10 rounded-xl border-slate-200 bg-white text-xs font-semibold lg:hidden"
-                    >
-                      <Filter className="mr-1.5 h-3.5 w-3.5" /> Filters
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
-                    <SheetHeader className="border-b border-slate-800 bg-slate-900 p-6 text-left text-white">
-                      <SheetTitle className="text-lg font-semibold text-white">
-                        Property Filters
-                      </SheetTitle>
-                      <SheetDescription className="text-xs text-slate-300">
-                        Refine listings by type, price, size, and agent
-                      </SheetDescription>
-                    </SheetHeader>
-                    <ScrollArea className="h-full p-6 pb-28">
-                      {renderFilterPanel()}
-                    </ScrollArea>
-                  </SheetContent>
-                </Sheet>
-              </div>
-
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Search by title or asset ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-10 rounded-xl border-slate-200 bg-slate-50 pl-9 text-xs"
-                />
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Search by title, location, or asset ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-10 rounded-xl border border-slate-300 bg-white pl-9 text-xs shadow-xs hover:border-slate-400 focus-visible:ring-1 focus-visible:ring-slate-900"
+                  />
+                </div>
               </div>
             </div>
           </Card>
@@ -880,12 +936,12 @@ export default function PropertyManagementPage() {
                   return (
                     <Card
                       key={prop.id}
-                      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-colors hover:border-slate-300"
+                      className="group flex flex-col overflow-hidden rounded-2xl border border-slate-300 bg-white transition-all shadow-xs hover:shadow-md hover:border-slate-400"
                     >
                       <button
                         type="button"
                         onClick={() => handleOpenDetail(prop)}
-                        className="relative aspect-[4/3] w-full overflow-hidden border-b border-slate-100 bg-slate-100 text-left"
+                        className="relative aspect-[4/3] w-full overflow-hidden border-b border-slate-200 bg-slate-100 text-left"
                       >
                         {validImg ? (
                           <img
@@ -903,7 +959,7 @@ export default function PropertyManagementPage() {
                           </div>
                         )}
                         <div className="absolute left-3 top-3">
-                          <Badge className="border-none bg-slate-900/85 text-[11px] font-medium text-white">
+                          <Badge className="border-none bg-slate-900/85 text-[11px] font-medium text-white shadow-xs">
                             {prop.type}
                           </Badge>
                         </div>
@@ -915,7 +971,7 @@ export default function PropertyManagementPage() {
                           onClick={() => handleOpenDetail(prop)}
                           className="space-y-1 text-left"
                         >
-                          <h3 className="truncate text-sm font-semibold text-slate-900 hover:underline">
+                          <h3 className="truncate text-sm font-bold text-slate-900 group-hover:text-primary transition-colors">
                             {prop.title}
                           </h3>
                           <div className="flex items-center gap-1 text-slate-500">
@@ -964,8 +1020,8 @@ export default function PropertyManagementPage() {
                           )}
                         </div>
 
-                        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
-                          <span className="text-xs text-slate-500">
+                        <div className="mt-auto flex items-center justify-between border-t border-slate-200 pt-3">
+                          <span className="text-xs text-slate-600 font-medium truncate max-w-[140px]">
                             Agent: {prop.agentName || "Open"}
                           </span>
                           <div className="flex items-center gap-1">
@@ -1011,7 +1067,7 @@ export default function PropertyManagementPage() {
                     variant="outline"
                     size="icon"
                     aria-label="Previous page"
-                    className="h-9 w-9 rounded-xl"
+                    className="h-9 w-9 rounded-xl border border-slate-300 shadow-xs"
                     disabled={currentPage === 1}
                     onClick={() => setCurrentPage((p) => p - 1)}
                   >
@@ -1021,9 +1077,9 @@ export default function PropertyManagementPage() {
                     <Button
                       key={i}
                       type="button"
-                      variant={currentPage === i + 1 ? "default" : "ghost"}
+                      variant={currentPage === i + 1 ? "default" : "outline"}
                       size="sm"
-                      className="h-9 w-9 rounded-xl font-mono text-xs"
+                      className="h-9 w-9 rounded-xl font-mono text-xs border border-slate-300 shadow-xs"
                       onClick={() => setCurrentPage(i + 1)}
                     >
                       {i + 1}
@@ -1034,7 +1090,7 @@ export default function PropertyManagementPage() {
                     variant="outline"
                     size="icon"
                     aria-label="Next page"
-                    className="h-9 w-9 rounded-xl"
+                    className="h-9 w-9 rounded-xl border border-slate-300 shadow-xs"
                     disabled={currentPage === totalPages}
                     onClick={() => setCurrentPage((p) => p + 1)}
                   >
@@ -1045,27 +1101,27 @@ export default function PropertyManagementPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <Card className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-xs">
                 <div className="overflow-x-auto">
                   <Table className="min-w-[820px]">
                     <TableHeader>
-                      <TableRow className="border-slate-100 bg-slate-50/70">
-                        <TableHead className="h-11 pl-6 text-xs font-semibold text-slate-600">
+                      <TableRow className="border-b border-slate-200 bg-slate-100">
+                        <TableHead className="h-11 pl-6 text-xs font-bold text-slate-800">
                           Asset & Location
                         </TableHead>
-                        <TableHead className="h-11 text-xs font-semibold text-slate-600">
+                        <TableHead className="h-11 text-xs font-bold text-slate-800">
                           Market Rate
                         </TableHead>
-                        <TableHead className="h-11 text-xs font-semibold text-slate-600">
+                        <TableHead className="h-11 text-xs font-bold text-slate-800">
                           Company Rate
                         </TableHead>
-                        <TableHead className="h-11 text-center text-xs font-semibold text-slate-600">
+                        <TableHead className="h-11 text-center text-xs font-bold text-slate-800">
                           Type
                         </TableHead>
-                        <TableHead className="h-11 text-xs font-semibold text-slate-600">
+                        <TableHead className="h-11 text-xs font-bold text-slate-800">
                           Assigned Agent
                         </TableHead>
-                        <TableHead className="h-11 w-28 pr-6 text-right text-xs font-semibold text-slate-600">
+                        <TableHead className="h-11 w-28 pr-6 text-right text-xs font-bold text-slate-800">
                           Actions
                         </TableHead>
                       </TableRow>
@@ -1079,12 +1135,12 @@ export default function PropertyManagementPage() {
                         return (
                           <TableRow
                             key={prop.id}
-                            className="cursor-pointer border-slate-100 transition-colors hover:bg-slate-50/60"
+                            className="cursor-pointer border-b border-slate-200/80 transition-colors hover:bg-slate-50/70"
                             onClick={() => handleOpenDetail(prop)}
                           >
                             <TableCell className="py-4 pl-6">
                               <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-slate-400">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-300 bg-slate-100 text-slate-400">
                                   {validImg ? (
                                     <img
                                       src={validImg}

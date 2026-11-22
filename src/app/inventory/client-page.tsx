@@ -172,7 +172,7 @@ export default function InventoryPage() {
   const { data: rawProducts, isLoading } = useCollection<Product>(productsQuery);
   const productList = useMemo(() => (Array.isArray(rawProducts) ? rawProducts : []), [rawProducts]);
 
-  const vendorsQuery = useMemoFirebase(() => businessId ? collection(firestore, 'businesses', businessId, 'vendors') : null, [firestore, businessId]);
+  const vendorsQuery = useMemoFirebase(() => businessId ? query(collection(firestore, 'businesses', businessId, 'vendors'), limit(100)) : null, [firestore, businessId]);
   const { data: vendorListData } = useCollection<Vendor>(vendorsQuery);
   const vendorList = vendorListData || [];
 

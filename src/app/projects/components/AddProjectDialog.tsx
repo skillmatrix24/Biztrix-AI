@@ -236,20 +236,20 @@ export function AddProjectDialog({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-slate-700">Project Name *</Label>
               <Input
-                placeholder="e.g. Office Renovation"
+                placeholder="e.g. Office Renovation, Solar Installation..."
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="h-10 rounded-xl border-slate-200 bg-white text-sm"
+                className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Description</Label>
+              <Label className="text-xs font-semibold text-slate-700">Description / Scope Notes</Label>
               <Textarea
-                placeholder="Scope, key milestones, or client notes..."
+                placeholder="Scope, key milestones, deliverables, or client notes..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="min-h-[84px] rounded-xl border-slate-200 bg-white p-3.5 text-sm"
+                className="min-h-[84px] rounded-xl border-slate-300 bg-white p-3.5 text-sm shadow-xs"
               />
             </div>
           </div>
@@ -321,10 +321,10 @@ export function AddProjectDialog({
                           <div
                             key={task.id}
                             className={cn(
-                              "flex items-start gap-3 p-3 rounded-xl border transition-colors",
+                              "flex items-start gap-3 p-3.5 rounded-xl border transition-all",
                               selectedTaskIds.includes(task.id)
-                                ? "bg-white border-slate-300"
-                                : "bg-white/60 border-slate-200 opacity-60"
+                                ? "bg-white border-slate-900/40 shadow-xs ring-1 ring-slate-900/10"
+                                : "bg-white border-slate-200 hover:border-slate-300"
                             )}
                           >
                             <Checkbox
@@ -363,51 +363,89 @@ export function AddProjectDialog({
 
           <Separator />
 
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-slate-700">Client Category</Label>
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, clientType: "customer", clientId: "" }))}
+                className={cn(
+                  "py-2 text-xs font-semibold rounded-lg transition-all",
+                  formData.clientType === "customer"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                    : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                Existing Customer ({customersList?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, clientType: "lead", clientId: "" }))}
+                className={cn(
+                  "py-2 text-xs font-semibold rounded-lg transition-all",
+                  formData.clientType === "lead"
+                    ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                    : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                Inbound Lead ({leadsList?.length || 0})
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Client *</Label>
+              <Label className="text-xs font-semibold text-slate-700">
+                {formData.clientType === "customer" ? "Customer *" : "Lead *"}
+              </Label>
               <Select
                 value={formData.clientId}
                 onValueChange={(v) => setFormData({ ...formData, clientId: v })}
               >
-                <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-sm">
-                  <SelectValue placeholder="Pick Client" />
+                <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs font-medium">
+                  <SelectValue placeholder={activeClientList.length > 0 ? "Select Client" : "No records found"} />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  {activeClientList.map((item) => (
-                    <SelectItem key={item.id} value={item.id} className="text-xs">
-                      {item.name}
-                    </SelectItem>
-                  ))}
+                  {activeClientList.length === 0 ? (
+                    <div className="p-3 text-xs text-slate-500 text-center">
+                      No {formData.clientType === "customer" ? "customers" : "leads"} found in CRM.
+                    </div>
+                  ) : (
+                    activeClientList.map((item) => (
+                      <SelectItem key={item.id} value={item.id} className="text-xs">
+                        {item.name} {item.phone ? `(${item.phone})` : ""}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-slate-700">Deadline *</Label>
+              <Label className="text-xs font-semibold text-slate-700">Target Deadline *</Label>
               <Input
                 type="date"
                 value={formData.deadline}
                 onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="h-10 rounded-xl border-slate-200 bg-white font-mono text-sm"
+                className="h-10 rounded-xl border-slate-300 bg-white font-mono text-sm shadow-xs"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-slate-700">
-              Assign Responsible Staff *
+              Responsible Team Owner *
             </Label>
             <Select
               value={formData.team[0] || ""}
               onValueChange={(v) => setFormData({ ...formData, team: [v] })}
             >
-              <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-white text-sm">
-                <SelectValue placeholder="Select Staff" />
+              <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs font-medium">
+                <SelectValue placeholder="Select Staff Member" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
                 {businessUsers.map((s) => (
                   <SelectItem key={s.id} value={s.id} className="text-xs">
-                    {s.name} ({s.role})
+                    {s.name} ({s.role || "Staff"})
                   </SelectItem>
                 ))}
               </SelectContent>

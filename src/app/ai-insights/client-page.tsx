@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import Link from "next/link";
 import { 
   Sparkles, 
   TrendingUp, 
@@ -33,7 +34,8 @@ import {
   MapPin,
   ListChecks,
   Loader2,
-  Search
+  Search,
+  ExternalLink
 } from "lucide-react";
 import { PageHeader, SectionCard } from "@/components/ui/editorial";
 import { Button } from "@/components/ui/button";
@@ -64,7 +66,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection, useMemoFirebase, useUser, addDocumentNonBlocking, useDoc } from "@/firebase";
-import { collection, query, where, orderBy, Timestamp, serverTimestamp, doc } from "firebase/firestore";
+import { collection, query, where, orderBy, Timestamp, serverTimestamp, doc, limit } from "firebase/firestore";
 
 const trendData = [
   { name: "Mon", sales: 4000 },
@@ -76,11 +78,12 @@ const trendData = [
   { name: "Sun", sales: 3490 },
 ];
 
-type ActionType = 'reorder' | 'discount' | 'whatsapp' | 'report' | 'price' | 'map' | 'plan';
+type ActionType = 'reorder' | 'discount' | 'whatsapp' | 'report' | 'price' | 'map' | 'plan' | 'navigate';
 
 type MessageAction = {
   label: string;
-  type: ActionType;
+  type: string;
+  route?: string;
   payload?: any;
 };
 
@@ -111,22 +114,22 @@ export default function AIInsightsPage() {
   , [firestore, businessId]);
   const { data: business } = useDoc<any>(businessRef);
 
-  // Real-time Firestore Collections with Dynamic IDs
+  // Real-time Firestore Collections with Dynamic IDs (Bounded with limits)
   const productsQuery = useMemoFirebase(() => 
-    businessId ? collection(firestore, 'businesses', businessId, 'products') : null, 
+    businessId ? query(collection(firestore, 'businesses', businessId, 'products'), limit(100)) : null, 
     [firestore, businessId]
   );
   const { data: productListData } = useCollection<Product>(productsQuery);
   const productList = productListData || [];
 
   const leadsQuery = useMemoFirebase(() => 
-    businessId ? collection(firestore, 'businesses', businessId, 'leads') : null, 
+    businessId ? query(collection(firestore, 'businesses', businessId, 'leads'), limit(100)) : null, 
     [firestore, businessId]
   );
   const { data: leadsListData } = useCollection<Lead>(leadsQuery);
   const leadsList = leadsListData || [];
 
-  // Chat History Query (Filter: Last 30 days)
+  // Chat History Query (Filter: Last 30 days, capped to 50 recent messages)
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid || !businessId) return null;
     const thirtyDaysAgo = new Date();
@@ -135,7 +138,8 @@ export default function AIInsightsPage() {
     return query(
       collection(firestore, 'businesses', businessId, 'users', user.uid, 'chatMessages'),
       where('createdAt', '>', Timestamp.fromDate(thirtyDaysAgo)),
-      orderBy('createdAt', 'asc')
+      orderBy('createdAt', 'asc'),
+      limit(50)
     );
   }, [firestore, user?.uid, businessId]);
 
@@ -374,22 +378,37 @@ export default function AIInsightsPage() {
 
                           {m.actions && m.actions.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {m.actions.map((action, i) => (
-                                <Button 
-                                  key={i} 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="h-8 rounded-lg text-xs font-semibold bg-white border-slate-200 text-slate-800 hover:bg-slate-100"
-                                  onClick={() => handleAction(action)}
-                                >
-                                  {action.type === 'reorder' && <PackageCheck className="mr-1.5 h-3.5 w-3.5" />}
-                                  {action.type === 'whatsapp' && <MessageSquare className="mr-1.5 h-3.5 w-3.5" />}
-                                  {action.type === 'discount' && <Percent className="mr-1.5 h-3.5 w-3.5" />}
-                                  {action.type === 'plan' && <ListChecks className="mr-1.5 h-3.5 w-3.5" />}
-                                  {action.type === 'report' && <BarChart3 className="mr-1.5 h-3.5 w-3.5" />}
-                                  {action.label}
-                                </Button>
-                              ))}
+                              {m.actions.map((action, i) => {
+                                const targetRoute = action.route || action.payload?.route;
+                                if (targetRoute) {
+                                  return (
+                                    <Link
+                                      key={i}
+                                      href={targetRoute}
+                                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 hover:text-slate-900 transition-colors shadow-2xs"
+                                    >
+                                      <span>{action.label}</span>
+                                      <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
+                                    </Link>
+                                  );
+                                }
+                                return (
+                                  <Button 
+                                    key={i} 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-8 rounded-lg text-xs font-semibold bg-white border-slate-200 text-slate-800 hover:bg-slate-100"
+                                    onClick={() => handleAction(action)}
+                                  >
+                                    {action.type === 'reorder' && <PackageCheck className="mr-1.5 h-3.5 w-3.5" />}
+                                    {action.type === 'whatsapp' && <MessageSquare className="mr-1.5 h-3.5 w-3.5" />}
+                                    {action.type === 'discount' && <Percent className="mr-1.5 h-3.5 w-3.5" />}
+                                    {action.type === 'plan' && <ListChecks className="mr-1.5 h-3.5 w-3.5" />}
+                                    {action.type === 'report' && <BarChart3 className="mr-1.5 h-3.5 w-3.5" />}
+                                    {action.label}
+                                  </Button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -417,10 +436,12 @@ export default function AIInsightsPage() {
 
               <div className="px-5 py-2.5 bg-slate-50/70 border-t border-slate-100 flex gap-2 overflow-x-auto scrollbar-hide shrink-0">
                 {[
+                  { label: "Thermal printer kaise setup karein?", icon: Lightbulb },
+                  { label: "Kacha bill kaise banayein?", icon: ShoppingBag },
                   { label: "Kaunsa stock khatam ho raha hai?", icon: AlertTriangle },
-                  { label: "Sales kaise badhayein?", icon: TrendingUp },
-                  { label: "Summary report dikhao", icon: BarChart3 },
                   { label: "Hot leads kaunsi hain?", icon: Users },
+                  { label: "Staff payroll aur attendance SOP", icon: ListChecks },
+                  { label: "Customer loyalty points kaise chalte hain?", icon: Sparkles },
                 ].map((chip, idx) => (
                   <Button 
                     key={idx} 

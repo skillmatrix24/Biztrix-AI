@@ -52,7 +52,11 @@ import {
   RotateCcw,
   ExternalLink,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  FileText
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -84,6 +88,12 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -106,12 +116,19 @@ import {
   useCollection, 
   useMemoFirebase, 
   useUser, 
-  useDoc
+  useDoc,
+  commitBatchNonBlocking
 } from "@/firebase";
-import { collection, doc, query, limit, orderBy } from "firebase/firestore";
+import { collection, doc, query, limit, orderBy, writeBatch, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
 import { format } from "date-fns";
 import { analyzeLoyalty, LoyaltyIntelligenceOutput } from "@/ai/flows/loyalty-intelligence-flow";
+import { CustomerImportDialog } from "./components/CustomerImportDialog";
+import {
+  exportCustomersToExcel,
+  exportCustomersToCsv,
+  CustomerImportRow,
+} from "@/lib/customer-import-export";
 import { 
   saveCustomer, 
   updateCustomerNotes, 
@@ -121,6 +138,7 @@ import {
 import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
 import { evaluateCoreQuota } from "@/lib/marketplace-catalog";
 import { CoreQuotaBanner } from "@/components/quota-upgrade-banner";
+import { isStaffAdminRole, resolveEffectivePermission } from "@/lib/staff-payroll";
 import { PageHeader, KpiStatCard, SectionCard } from "@/components/ui/editorial";
 
 const INDIAN_STATES = [
@@ -131,6 +149,34 @@ const INDIAN_STATES = [
 ];
 
 const CUSTOMER_TYPES = ["Regular", "VIP", "Wholesale", "Risky", "B2B"];
+
+export function normalizeOrderAmount(ord: any): number {
+  if (!ord) return 0;
+  if (typeof ord.finalAmount === "number" && ord.finalAmount > 0) return ord.finalAmount;
+  if (typeof ord.amountInRupees === "number" && ord.amountInRupees > 0) return ord.amountInRupees;
+
+  const raw = typeof ord.amount === "number" ? ord.amount : parseFloat(String(ord.amount || 0));
+  if (isNaN(raw) || raw <= 0) return 0;
+
+  // Razorpay membership or gateway orders where amount was recorded in paise
+  const isPaiseOrder = 
+    Boolean(ord.tierId) || 
+    ord.unit === "paise" || 
+    (typeof ord.id === "string" && ord.id.startsWith("order_")) ||
+    (typeof ord.razorpayOrderId === "string" && ord.razorpayOrderId === ord.id) ||
+    Boolean(ord.amountInPaise && Math.abs(ord.amountInPaise - raw) < 0.01);
+
+  if (isPaiseOrder) {
+    return raw / 100;
+  }
+
+  // Fallback for online payments recorded in paise without item breakdown
+  if (ord.razorpayPaymentId && raw > 1000 && !Array.isArray(ord.items) && !ord.subtotal) {
+    return raw / 100;
+  }
+
+  return raw;
+}
 
 export default function CustomersPage() {
   const firestore = useFirestore();
@@ -186,7 +232,7 @@ export default function CustomersPage() {
       const phone = ord.customerData?.phone;
       const cleanPhone = phone ? normalizePhoneNumber(phone) : null;
       const status = ord.status || 'created';
-      const amt = parseFloat(ord.amount) || 0;
+      const amt = normalizeOrderAmount(ord);
       const dateStr = ord.createdAt?.toDate ? ord.createdAt.toDate().toISOString() : ord.createdAt;
 
       // Check if order counts as paid revenue
@@ -222,10 +268,26 @@ export default function CustomersPage() {
   const [pageSize, setPageSize] = useState(15);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // OS Role Manager Permission Check ("Customer & Vendor Directories" module)
+  const userRole = (userProfile?.role || "staff").trim().toLowerCase();
+  const isPlatformOwner = user?.email?.toLowerCase() === "skillmatrix24@gmail.com" || user?.email?.toLowerCase() === "gw7infra@gmail.com";
+  const isBusinessOwner = Boolean(business?.ownerId && business.ownerId === user?.uid);
+  const isStaffAdmin = isStaffAdminRole(userProfile?.role, user?.email);
+
+  const canEditCustomers = useMemo(() => {
+    if (isPlatformOwner || isBusinessOwner || isStaffAdmin) return true;
+    return resolveEffectivePermission(
+      business?.rbacMatrix,
+      "Customer & Vendor Directories",
+      userRole
+    );
+  }, [isPlatformOwner, isBusinessOwner, isStaffAdmin, business?.rbacMatrix, userRole]);
+
   // Drawer & Modal States
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<any>(null);
   
@@ -442,6 +504,14 @@ export default function CustomersPage() {
   // Save Customer (Create or Edit) via Server Action
   const handleSaveCustomer = () => {
     if (!businessId || !user?.uid) return;
+    if (!canEditCustomers) {
+      toast({
+        variant: "destructive",
+        title: "Permission Denied",
+        description: "Aapke operational role ko Customer Directory edit karne ki permission nahi hai. OS Role Manager (Settings > Roles) me permission configure karein.",
+      });
+      return;
+    }
     if (!customerFormData.id && customerQuota.isReached) {
       toast({
         variant: "destructive",
@@ -470,11 +540,16 @@ export default function CustomersPage() {
         address: customerFormData.address.trim(),
         state: customerFormData.state,
         gstin: customerFormData.gstin.trim(),
-        openingBalance: customerFormData.openingBalance,
-        dob: customerFormData.dob,
-        gender: customerFormData.gender,
+        openingBalance: parseFloat(String(customerFormData.openingBalance)) || 0,
+        dob: customerFormData.dob || "",
+        gender: customerFormData.gender || "Prefer not to say",
         whatsappNumber: customerFormData.whatsappNumber || customerFormData.phone,
-        notes: customerFormData.notes
+        language: customerFormData.language || "English",
+        communicationMode: customerFormData.communicationMode || "WhatsApp",
+        loyaltyTier: customerFormData.loyaltyTier || "Standard",
+        rewardPoints: parseInt(String(customerFormData.rewardPoints), 10) || 0,
+        walletBalance: parseFloat(String(customerFormData.walletBalance)) || 0,
+        notes: customerFormData.notes || ""
       });
 
       if (res.success) {
@@ -513,6 +588,14 @@ export default function CustomersPage() {
 
   const handleOpenEdit = (e: React.MouseEvent, c: any) => {
     e.stopPropagation();
+    if (!canEditCustomers) {
+      toast({
+        variant: "destructive",
+        title: "Permission Denied",
+        description: "Aapke role ko Customer Directory edit karne ki permission nahi hai. OS Role Manager (Settings > Roles) me permission check karein.",
+      });
+      return;
+    }
     setCustomerFormData({
       id: c.id,
       name: c.name || "",
@@ -523,14 +606,16 @@ export default function CustomersPage() {
       address: c.address || "",
       state: c.state || business?.defaultState || "Maharashtra",
       gstin: c.gstin || "",
-      openingBalance: c.creditBalance || 0,
+      openingBalance: Number(c.creditBalance ?? c.openingBalance ?? 0),
       dob: c.dob || "",
       gender: c.gender || "Prefer not to say",
       whatsappNumber: c.whatsappNumber || c.phone || "",
+      language: c.language || "English",
+      communicationMode: c.communicationMode || "WhatsApp",
       notes: c.notes || "",
       loyaltyTier: c.loyaltyTier || "Standard",
-      rewardPoints: c.rewardPoints || 0,
-      walletBalance: c.walletBalance || 0
+      rewardPoints: Number(c.rewardPoints || 0),
+      walletBalance: Number(c.walletBalance || 0)
     });
     setActiveFormTab("basic");
     setIsAddCustomerOpen(true);
@@ -564,6 +649,114 @@ export default function CustomersPage() {
     });
   };
 
+  const remainingCustomerQuota = useMemo(() => {
+    if (customerQuota.limit === null || customerQuota.limit === undefined) return null;
+    return Math.max(0, customerQuota.limit - customerList.length);
+  }, [customerQuota.limit, customerList.length]);
+
+  const handleExportExcel = () => {
+    const targetList = filteredCustomers.length > 0 ? filteredCustomers : customerList;
+    if (targetList.length === 0) {
+      toast({ title: "No Customers to Export", description: "Your customer directory is currently empty." });
+      return;
+    }
+    exportCustomersToExcel({
+      customers: targetList,
+      ordersByCustomer,
+      businessName: business?.name || "Biztrix",
+      currencySymbol,
+    });
+    toast({
+      title: "Excel File Exported",
+      description: `Exported ${targetList.length} customer records to .xlsx file.`,
+    });
+  };
+
+  const handleExportCsv = () => {
+    const targetList = filteredCustomers.length > 0 ? filteredCustomers : customerList;
+    if (targetList.length === 0) {
+      toast({ title: "No Customers to Export", description: "Your customer directory is currently empty." });
+      return;
+    }
+    exportCustomersToCsv({
+      customers: targetList,
+      ordersByCustomer,
+      businessName: business?.name || "Biztrix",
+      currencySymbol,
+    });
+    toast({
+      title: "CSV File Exported",
+      description: `Exported ${targetList.length} customer records to .csv file.`,
+    });
+  };
+
+  const handleBatchImportCustomers = async (rows: CustomerImportRow[], updateExisting: boolean) => {
+    if (!businessId || !user?.uid || rows.length === 0) return;
+
+    let batch = writeBatch(firestore);
+    let ops = 0;
+    let importedCount = 0;
+    let updatedCount = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const cleanPhone = row.normalizedPhone || normalizePhoneNumber(row.phone);
+      const customerId = row.existingCustomerId || `c_${cleanPhone}`;
+
+      const docRef = doc(firestore, "businesses", businessId, "customers", customerId);
+
+      const payload: Record<string, any> = {
+        id: customerId,
+        tenantId: businessId,
+        businessId: businessId,
+        name: row.name,
+        phone: row.phone,
+        normalizedPhone: cleanPhone,
+        email: row.email || "",
+        businessName: row.businessName || "",
+        customerType: row.customerType || "Regular",
+        address: row.address || "",
+        state: row.state || business?.defaultState || business?.state || "Maharashtra",
+        gstin: row.gstin || "",
+        notes: row.notes || "",
+        updatedAt: serverTimestamp(),
+        updatedBy: user.uid,
+      };
+
+      if (row.openingBalance !== undefined && row.openingBalance !== 0) {
+        payload.creditBalance = row.openingBalance;
+      }
+
+      if (!row.isExisting) {
+        payload.createdAt = serverTimestamp();
+        payload.loyaltyTier = "Standard";
+        payload.rewardPoints = 0;
+        payload.walletBalance = 0;
+        importedCount++;
+      } else {
+        updatedCount++;
+      }
+
+      batch.set(docRef, payload, { merge: true });
+      ops++;
+
+      if (ops >= 350) {
+        await commitBatchNonBlocking(batch);
+        batch = writeBatch(firestore);
+        ops = 0;
+      }
+    }
+
+    if (ops > 0) {
+      await commitBatchNonBlocking(batch);
+    }
+
+    toast({
+      title: "Customers Imported Successfully",
+      description: `Imported ${importedCount} new customer profile${importedCount === 1 ? "" : "s"}${updatedCount > 0 ? ` and updated ${updatedCount} existing record${updatedCount === 1 ? "" : "s"}` : ""}.`,
+    });
+  };
+
   if (isProfileLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -586,13 +779,61 @@ export default function CustomersPage() {
         breadcrumb="CRM & Accounts"
         icon={Users}
         actions={
-          <Dialog open={isAddCustomerOpen} onOpenChange={(o) => { setIsAddCustomerOpen(o); if(!o) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button disabled={customerQuota.isReached} className="w-full sm:w-auto bg-primary hover:bg-primary/90 h-10 px-5 font-semibold text-xs rounded-xl text-white">
-                <UserPlus className="mr-1.5 h-4 w-4" /> Add Customer
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[680px] p-0 overflow-hidden rounded-2xl border border-slate-200 w-[95vw] sm:w-full bg-white">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            {/* EXPORT DROPDOWN (EXCEL & CSV) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 px-3.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:border-slate-400 hover:bg-slate-50 transition-colors"
+                >
+                  <Download className="mr-1.5 h-3.5 w-3.5 text-slate-600" />
+                  <span>Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-xl border border-slate-300 bg-white shadow-md p-1">
+                <DropdownMenuItem
+                  onClick={handleExportExcel}
+                  className="text-xs font-medium cursor-pointer rounded-lg py-2.5 px-3 focus:bg-slate-100"
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" />
+                  <span>Export to Excel (.xlsx)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleExportCsv}
+                  className="text-xs font-medium cursor-pointer rounded-lg py-2.5 px-3 focus:bg-slate-100"
+                >
+                  <FileText className="mr-2 h-4 w-4 text-blue-600" />
+                  <span>Export to CSV (.csv)</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* IMPORT BUTTON (EXCEL & CSV) */}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canEditCustomers}
+              title={!canEditCustomers ? "Restricted by OS Role Manager (Settings > Roles)" : "Import customer list from spreadsheet"}
+              onClick={() => setIsImportDialogOpen(true)}
+              className="h-10 px-3.5 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 shadow-xs hover:border-slate-400 hover:bg-slate-50 transition-colors disabled:opacity-50"
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5 text-slate-600" />
+              <span>Import Excel / CSV</span>
+            </Button>
+
+            {/* REGISTER CUSTOMER DIALOG */}
+            <Dialog open={isAddCustomerOpen} onOpenChange={(o) => { setIsAddCustomerOpen(o); if(!o) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button 
+                  disabled={!canEditCustomers || customerQuota.isReached} 
+                  title={!canEditCustomers ? "Restricted by OS Role Manager (Settings > Roles)" : customerQuota.isReached ? "Customer Quota Reached" : undefined}
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 h-10 px-5 font-semibold text-xs rounded-xl text-white shadow-xs disabled:opacity-50"
+                >
+                  <UserPlus className="mr-1.5 h-4 w-4" /> Add Customer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[680px] p-0 overflow-hidden rounded-2xl border border-slate-300 w-[95vw] sm:w-full bg-white shadow-xl">
               <DialogHeader className="p-6 bg-slate-900 text-white text-left">
                 <div className="flex items-center gap-3.5">
                   <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/15 shrink-0">
@@ -610,16 +851,18 @@ export default function CustomersPage() {
               </DialogHeader>
 
               <Tabs value={activeFormTab} onValueChange={setActiveFormTab} className="w-full">
-                <div className="px-6 py-2.5 border-b border-slate-200 bg-slate-50/70">
-                  <TabsList className="w-full sm:w-auto">
-                    <TabsTrigger value="basic">Basic Identity</TabsTrigger>
-                    <TabsTrigger value="billing">Address & GST</TabsTrigger>
-                    <TabsTrigger value="notes">Internal Notes</TabsTrigger>
+                <div className="px-6 py-2.5 border-b border-slate-300 bg-slate-50/80">
+                  <TabsList className="grid grid-cols-4 w-full h-10 rounded-xl bg-slate-100 p-1 border border-slate-200">
+                    <TabsTrigger value="basic" className="text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs">Identity</TabsTrigger>
+                    <TabsTrigger value="billing" className="text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs">Address & GST</TabsTrigger>
+                    <TabsTrigger value="financial" className="text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs">Financial & Loyalty</TabsTrigger>
+                    <TabsTrigger value="notes" className="text-xs font-semibold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs">Notes</TabsTrigger>
                   </TabsList>
                 </div>
 
                 <ScrollArea className="max-h-[60vh]">
                   <div className="p-6 text-left">
+                    {/* TAB 1: BASIC IDENTITY */}
                     <TabsContent value="basic" className="m-0 space-y-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-slate-700">Customer Name *</Label>
@@ -627,7 +870,7 @@ export default function CustomersPage() {
                           value={customerFormData.name} 
                           onChange={(e) => setCustomerFormData({ ...customerFormData, name: e.target.value })} 
                           placeholder="e.g. Rahul Sharma" 
-                          className="h-10 rounded-xl text-sm"
+                          className="h-10 rounded-xl text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
                         />
                       </div>
 
@@ -638,9 +881,21 @@ export default function CustomersPage() {
                             value={customerFormData.phone} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, phone: e.target.value })} 
                             placeholder="e.g. 9876543210" 
-                            className="h-10 rounded-xl font-mono tabular-nums text-sm"
+                            className="h-10 rounded-xl font-mono tabular-nums text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
                           />
                         </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">WhatsApp Number</Label>
+                          <Input 
+                            value={customerFormData.whatsappNumber} 
+                            onChange={(e) => setCustomerFormData({ ...customerFormData, whatsappNumber: e.target.value })} 
+                            placeholder="e.g. 9876543210 (if different)" 
+                            className="h-10 rounded-xl font-mono tabular-nums text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-slate-700">Email Address</Label>
                           <Input 
@@ -648,27 +903,8 @@ export default function CustomersPage() {
                             value={customerFormData.email} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, email: e.target.value })} 
                             placeholder="customer@example.com" 
-                            className="h-10 rounded-xl text-sm"
+                            className="h-10 rounded-xl text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
                           />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-slate-700">Classification</Label>
-                          <Select 
-                            value={customerFormData.customerType} 
-                            onValueChange={(val: any) => setCustomerFormData({ ...customerFormData, customerType: val })}
-                          >
-                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs font-medium">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                              {CUSTOMER_TYPES.map(t => (
-                                <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-slate-700">Company / Business Name</Label>
@@ -676,20 +912,66 @@ export default function CustomersPage() {
                             value={customerFormData.businessName} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, businessName: e.target.value })} 
                             placeholder="Optional enterprise name" 
-                            className="h-10 rounded-xl text-sm"
+                            className="h-10 rounded-xl text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
                           />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Classification</Label>
+                          <Select 
+                            value={customerFormData.customerType} 
+                            onValueChange={(val: any) => setCustomerFormData({ ...customerFormData, customerType: val })}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-300 shadow-md">
+                              {CUSTOMER_TYPES.map(t => (
+                                <SelectItem key={t} value={t} className="text-xs">{t}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Date of Birth</Label>
+                          <Input 
+                            type="date"
+                            value={customerFormData.dob} 
+                            onChange={(e) => setCustomerFormData({ ...customerFormData, dob: e.target.value })} 
+                            className="h-10 rounded-xl text-xs font-mono border-slate-300 shadow-xs focus-visible:ring-slate-900"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Gender</Label>
+                          <Select 
+                            value={customerFormData.gender} 
+                            onValueChange={(val: any) => setCustomerFormData({ ...customerFormData, gender: val })}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-300 shadow-md">
+                              <SelectItem value="Prefer not to say" className="text-xs">Prefer not to say</SelectItem>
+                              <SelectItem value="Male" className="text-xs">Male</SelectItem>
+                              <SelectItem value="Female" className="text-xs">Female</SelectItem>
+                              <SelectItem value="Other" className="text-xs">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </TabsContent>
 
+                    {/* TAB 2: ADDRESS & GST */}
                     <TabsContent value="billing" className="m-0 space-y-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-slate-700">Delivery / Billing Address</Label>
                         <Textarea 
                           value={customerFormData.address} 
                           onChange={(e) => setCustomerFormData({ ...customerFormData, address: e.target.value })} 
-                          placeholder="Complete street address, building, locality, pincode..." 
-                          className="min-h-[84px] rounded-xl border-slate-200 text-xs leading-relaxed"
+                          placeholder="Complete street address, shop/flat number, landmark, locality, pincode..." 
+                          className="min-h-[90px] rounded-xl border-slate-300 shadow-xs text-xs leading-relaxed focus-visible:ring-slate-900"
                         />
                       </div>
 
@@ -700,10 +982,10 @@ export default function CustomersPage() {
                             value={customerFormData.state} 
                             onValueChange={(val) => setCustomerFormData({ ...customerFormData, state: val })}
                           >
-                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-200 text-xs">
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 shadow-xs text-xs">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl">
+                            <SelectContent className="rounded-xl border-slate-300 shadow-md max-h-60">
                               {INDIAN_STATES.map(st => (
                                 <SelectItem key={st} value={st} className="text-xs">{st}</SelectItem>
                               ))}
@@ -712,28 +994,140 @@ export default function CustomersPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-slate-700">GSTIN</Label>
+                          <Label className="text-xs font-semibold text-slate-700">GSTIN Number</Label>
                           <Input 
                             value={customerFormData.gstin} 
                             onChange={(e) => setCustomerFormData({ ...customerFormData, gstin: e.target.value.toUpperCase() })} 
                             placeholder="e.g. 27AABCU9603R1ZN" 
-                            className="h-10 rounded-xl font-mono text-xs uppercase"
+                            className="h-10 rounded-xl font-mono text-xs uppercase border-slate-300 shadow-xs focus-visible:ring-slate-900"
                           />
                         </div>
                       </div>
                     </TabsContent>
 
+                    {/* TAB 3: FINANCIAL & LOYALTY */}
+                    <TabsContent value="financial" className="m-0 space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">
+                            Outstanding Credit Balance / Udhaar ({currencySymbol})
+                          </Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={customerFormData.openingBalance} 
+                            onChange={(e) => setCustomerFormData({ ...customerFormData, openingBalance: e.target.value })} 
+                            placeholder="0.00" 
+                            className="h-10 rounded-xl font-mono tabular-nums text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
+                          />
+                          <p className="text-[11px] text-slate-500">
+                            Positive amount indicates customer pending dues (Udhaar).
+                          </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Loyalty Membership Tier</Label>
+                          <Select 
+                            value={customerFormData.loyaltyTier} 
+                            onValueChange={(val) => setCustomerFormData({ ...customerFormData, loyaltyTier: val })}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-300 shadow-md">
+                              <SelectItem value="Standard" className="text-xs font-medium">Standard</SelectItem>
+                              <SelectItem value="Bronze" className="text-xs font-medium">Bronze</SelectItem>
+                              <SelectItem value="Silver" className="text-xs font-medium">Silver</SelectItem>
+                              <SelectItem value="Gold" className="text-xs font-medium">Gold</SelectItem>
+                              <SelectItem value="Platinum" className="text-xs font-medium">Platinum</SelectItem>
+                              <SelectItem value="VIP" className="text-xs font-medium">VIP Exclusive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Reward Points</Label>
+                          <Input 
+                            type="number"
+                            step="1"
+                            value={customerFormData.rewardPoints} 
+                            onChange={(e) => setCustomerFormData({ ...customerFormData, rewardPoints: e.target.value })} 
+                            placeholder="0" 
+                            className="h-10 rounded-xl font-mono tabular-nums text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Store Wallet Balance ({currencySymbol})</Label>
+                          <Input 
+                            type="number"
+                            step="0.01"
+                            value={customerFormData.walletBalance} 
+                            onChange={(e) => setCustomerFormData({ ...customerFormData, walletBalance: e.target.value })} 
+                            placeholder="0.00" 
+                            className="h-10 rounded-xl font-mono tabular-nums text-sm border-slate-300 shadow-xs focus-visible:ring-slate-900"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Communication Mode</Label>
+                          <Select 
+                            value={customerFormData.communicationMode} 
+                            onValueChange={(val) => setCustomerFormData({ ...customerFormData, communicationMode: val })}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-300 shadow-md">
+                              <SelectItem value="WhatsApp" className="text-xs">WhatsApp</SelectItem>
+                              <SelectItem value="SMS" className="text-xs">SMS</SelectItem>
+                              <SelectItem value="Email" className="text-xs">Email</SelectItem>
+                              <SelectItem value="Phone Call" className="text-xs">Phone Call</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-slate-700">Preferred Language</Label>
+                          <Select 
+                            value={customerFormData.language} 
+                            onValueChange={(val) => setCustomerFormData({ ...customerFormData, language: val })}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-slate-300 shadow-md">
+                              <SelectItem value="English" className="text-xs">English</SelectItem>
+                              <SelectItem value="Hindi" className="text-xs">Hindi</SelectItem>
+                              <SelectItem value="Marathi" className="text-xs">Marathi</SelectItem>
+                              <SelectItem value="Gujarati" className="text-xs">Gujarati</SelectItem>
+                              <SelectItem value="Bengali" className="text-xs">Bengali</SelectItem>
+                              <SelectItem value="Tamil" className="text-xs">Tamil</SelectItem>
+                              <SelectItem value="Telugu" className="text-xs">Telugu</SelectItem>
+                              <SelectItem value="Kannada" className="text-xs">Kannada</SelectItem>
+                              <SelectItem value="Other" className="text-xs">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    {/* TAB 4: INTERNAL NOTES */}
                     <TabsContent value="notes" className="m-0 space-y-4">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-slate-700">Internal Merchant Notes</Label>
                         <Textarea 
                           value={customerFormData.notes} 
                           onChange={(e) => setCustomerFormData({ ...customerFormData, notes: e.target.value })} 
-                          placeholder="Private notes about customer preferences, VIP requirements, special terms..." 
-                          className="min-h-[110px] rounded-xl border-slate-200 text-xs leading-relaxed"
+                          placeholder="Private notes about customer preferences, VIP requirements, special terms, credit agreements..." 
+                          className="min-h-[130px] rounded-xl border-slate-300 shadow-xs text-xs leading-relaxed focus-visible:ring-slate-900"
                         />
                         <p className="text-xs text-slate-500">
-                          Private to your team and never exposed on the storefront.
+                          Private to your team and never exposed on the storefront or to the customer.
                         </p>
                       </div>
                     </TabsContent>
@@ -753,7 +1147,8 @@ export default function CustomersPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        }
+        </div>
+      }
       />
 
       {/* Metrics Banner */}
@@ -789,14 +1184,14 @@ export default function CustomersPage() {
       {/* Main Customers Table Card */}
       <SectionCard bodyClassName="p-0">
         {/* Filters Bar */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70">
+        <div className="p-4 sm:p-5 border-b border-slate-300 bg-slate-50/80">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
             {/* Search */}
             <div className="lg:col-span-4 relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search name, phone, email, business..."
-                className="h-10 pl-10 text-sm bg-white border-slate-200 rounded-xl w-full"
+                className="h-10 pl-10 text-xs sm:text-sm bg-white border-slate-300 shadow-xs rounded-xl w-full focus-visible:ring-1 focus-visible:ring-slate-900"
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               />
@@ -805,10 +1200,10 @@ export default function CustomersPage() {
             {/* Classification Filter */}
             <div className="lg:col-span-2">
               <Select value={classificationFilter} onValueChange={(v) => { setClassificationFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Classification" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
+                <SelectContent className="rounded-xl border-slate-300 shadow-md">
                   <SelectItem value="all" className="text-xs font-medium">All types</SelectItem>
                   {CUSTOMER_TYPES.map(t => (
                     <SelectItem key={t} value={t} className="text-xs font-medium">{t}</SelectItem>
@@ -820,10 +1215,10 @@ export default function CustomersPage() {
             {/* Spending Filter */}
             <div className="lg:col-span-2">
               <Select value={spendingFilter} onValueChange={(v) => { setSpendingFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Spending" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
+                <SelectContent className="rounded-xl border-slate-300 shadow-md">
                   <SelectItem value="all" className="text-xs font-medium">All spending</SelectItem>
                   <SelectItem value="spenders" className="text-xs font-medium text-emerald-700">With purchases</SelectItem>
                   <SelectItem value="high" className="text-xs font-medium text-slate-900">High spenders ({currencySymbol}5K+)</SelectItem>
@@ -834,10 +1229,10 @@ export default function CustomersPage() {
             {/* Orders Count Filter */}
             <div className="lg:col-span-2">
               <Select value={ordersFilter} onValueChange={(v) => { setOrdersFilter(v); setCurrentPage(1); }}>
-                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Orders" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
+                <SelectContent className="rounded-xl border-slate-300 shadow-md">
                   <SelectItem value="all" className="text-xs font-medium">All order counts</SelectItem>
                   <SelectItem value="repeat" className="text-xs font-medium text-indigo-700">Repeat buyers (2+)</SelectItem>
                   <SelectItem value="one_time" className="text-xs font-medium">One-time (1)</SelectItem>
@@ -849,10 +1244,10 @@ export default function CustomersPage() {
             {/* Sort Filter */}
             <div className="lg:col-span-2">
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-200 text-xs font-medium text-slate-700">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-white border-slate-300 shadow-xs text-xs font-medium text-slate-700">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200">
+                <SelectContent className="rounded-xl border-slate-300 shadow-md">
                   <SelectItem value="recent" className="text-xs font-medium">Recent activity</SelectItem>
                   <SelectItem value="name" className="text-xs font-medium">Name (A–Z)</SelectItem>
                   <SelectItem value="orders_high" className="text-xs font-medium">Orders (High to low)</SelectItem>
@@ -977,7 +1372,7 @@ export default function CustomersPage() {
                       <TableCell className="text-right">
                         <div className="flex flex-col items-end">
                           <span className={cn("font-mono tabular-nums font-semibold text-sm", metrics.totalSpent > 0 ? "text-emerald-700" : "text-slate-500")}>
-                            {currencySymbol}{metrics.totalSpent.toLocaleString()}
+                            {currencySymbol}{metrics.totalSpent.toLocaleString("en-IN", { minimumFractionDigits: metrics.totalSpent % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 })}
                           </span>
                           {metrics.paidOrders > 0 && (
                             <span className="text-[11px] text-slate-500 tabular-nums">
@@ -993,8 +1388,9 @@ export default function CustomersPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                            title="Edit Customer"
+                            disabled={!canEditCustomers}
+                            className="h-8 w-8 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={canEditCustomers ? "Edit Customer" : "Restricted by OS Role Manager (Settings > Roles)"}
                             aria-label={`Edit customer ${customer.name}`}
                             onClick={(e) => handleOpenEdit(e, customer)}
                           >
@@ -1003,8 +1399,9 @@ export default function CustomersPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                            title="Delete / Archive Customer"
+                            disabled={!canEditCustomers}
+                            className="h-8 w-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={canEditCustomers ? "Delete / Archive Customer" : "Restricted by OS Role Manager (Settings > Roles)"}
                             aria-label={`Remove customer ${customer.name}`}
                             onClick={(e) => openDeleteConfirm(e, customer)}
                           >
@@ -1173,13 +1570,13 @@ export default function CustomersPage() {
                       />
                       <KpiStatCard
                         label="Paid Revenue"
-                        value={`${currencySymbol}${(customerStats?.totalPaidAmount || 0).toLocaleString()}`}
+                        value={`${currencySymbol}${(customerStats?.totalPaidAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: (customerStats?.totalPaidAmount || 0) % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 })}`}
                         subtext="Excludes unverified"
                         tone="positive"
                       />
                       <KpiStatCard
                         label="Avg Order Value"
-                        value={`${currencySymbol}${(customerStats?.averageOrderValue || 0).toLocaleString()}`}
+                        value={`${currencySymbol}${(customerStats?.averageOrderValue || 0).toLocaleString("en-IN", { minimumFractionDigits: (customerStats?.averageOrderValue || 0) % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 })}`}
                         subtext="Per paid order"
                         className="col-span-2 sm:col-span-1"
                       />
@@ -1210,6 +1607,7 @@ export default function CustomersPage() {
                         <div className="space-y-3">
                           {customerOrders.map((ord) => {
                             const dateStr = ord.createdAt?.toDate ? ord.createdAt.toDate() : new Date(ord.createdAt || Date.now());
+                            const orderAmt = normalizeOrderAmount(ord);
                             return (
                               <div key={ord.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
                                 <div className="flex items-center justify-between gap-2">
@@ -1229,7 +1627,7 @@ export default function CustomersPage() {
                                     </span>
                                   </div>
                                   <span className="font-mono tabular-nums font-semibold text-slate-900 text-sm shrink-0">
-                                    {currencySymbol}{(parseFloat(ord.amount) || 0).toLocaleString()}
+                                    {currencySymbol}{orderAmt.toLocaleString("en-IN", { minimumFractionDigits: orderAmt % 1 !== 0 ? 2 : 0, maximumFractionDigits: 2 })}
                                   </span>
                                 </div>
 
@@ -1416,6 +1814,15 @@ export default function CustomersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* EXCEL & CSV BATCH IMPORT DIALOG */}
+      <CustomerImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        existingCustomers={customerList}
+        remainingQuota={remainingCustomerQuota}
+        onConfirmImport={handleBatchImportCustomers}
+      />
     </div>
   );
 }

@@ -53,16 +53,16 @@ export default function AICommandDashboard() {
     activeAddonIds.includes("suite_property") ||
     activeAddonIds.includes("feat_realestate_catalog");
 
-  // CORE & OPERATIONS REPORT COLLECTIONS
+  // CORE & OPERATIONS REPORT COLLECTIONS (Bounded with limits to prevent runaway Firestore reads)
   const customersQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "customers") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "customers"), limit(100)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: customersDataRaw } = useCollection<any>(customersQuery);
   const customersData = useMemo(() => customersDataRaw || [], [customersDataRaw]);
 
   const vendorsQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "vendors") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "vendors"), limit(100)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: vendorsDataRaw } = useCollection<any>(vendorsQuery);
@@ -73,28 +73,28 @@ export default function AICommandDashboard() {
     return query(
       collection(firestore, "businesses", businessId, "cashbook"),
       orderBy("date", "desc"),
-      limit(250)
+      limit(150)
     );
   }, [firestore, businessId, isProfileValid]);
   const { data: cashbookDataRaw } = useCollection<any>(cashbookQuery);
   const cashbookData = useMemo(() => cashbookDataRaw || [], [cashbookDataRaw]);
 
   const productsQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "products") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "products"), limit(150)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: productsDataRaw } = useCollection<any>(productsQuery);
   const productsData = useMemo(() => productsDataRaw || [], [productsDataRaw]);
 
   const leadsQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "leads") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "leads"), limit(100)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: leadsDataRaw } = useCollection<any>(leadsQuery);
   const leadsData = useMemo(() => leadsDataRaw || [], [leadsDataRaw]);
 
   const quotationsQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "quotations") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "quotations"), limit(50)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: quotationsDataRaw } = useCollection<any>(quotationsQuery);
@@ -102,7 +102,7 @@ export default function AICommandDashboard() {
 
   const ordersQuery = useMemoFirebase(() => {
     if (!isProfileValid) return null;
-    return query(collection(firestore, "businesses", businessId, "orders"), limit(150));
+    return query(collection(firestore, "businesses", businessId, "orders"), limit(100));
   }, [firestore, businessId, isProfileValid]);
   const { data: ordersDataRaw } = useCollection<any>(ordersQuery);
   const ordersData = useMemo(() => ordersDataRaw || [], [ordersDataRaw]);
@@ -122,24 +122,24 @@ export default function AICommandDashboard() {
   const tasksData = useMemo(() => tasksDataRaw || [], [tasksDataRaw]);
 
   const complaintsQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "complaints") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "complaints"), limit(50)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: complaintsDataRaw } = useCollection<any>(complaintsQuery);
   const complaintsData = useMemo(() => complaintsDataRaw || [], [complaintsDataRaw]);
 
   const membershipsQuery = useMemoFirebase(
-    () => (isProfileValid ? collection(firestore, "businesses", businessId, "memberships") : null),
+    () => (isProfileValid ? query(collection(firestore, "businesses", businessId, "memberships"), limit(50)) : null),
     [firestore, businessId, isProfileValid]
   );
   const { data: membershipsDataRaw } = useCollection<any>(membershipsQuery);
   const membershipsData = useMemo(() => membershipsDataRaw || [], [membershipsDataRaw]);
 
-  // CONDITIONAL VERTICAL REPORT COLLECTIONS (SOLAR & PROPERTY)
+  // CONDITIONAL VERTICAL REPORT COLLECTIONS (SOLAR & PROPERTY - bounded with limit 50)
   const solarInquiriesQuery = useMemoFirebase(
     () =>
       isProfileValid && hasSolar
-        ? collection(firestore, "businesses", businessId, "solarInquiries")
+        ? query(collection(firestore, "businesses", businessId, "solarInquiries"), limit(50))
         : null,
     [firestore, businessId, isProfileValid, hasSolar]
   );
@@ -148,7 +148,7 @@ export default function AICommandDashboard() {
   const solarInstallationsQuery = useMemoFirebase(
     () =>
       isProfileValid && hasSolar
-        ? collection(firestore, "businesses", businessId, "solarInstallations")
+        ? query(collection(firestore, "businesses", businessId, "solarInstallations"), limit(50))
         : null,
     [firestore, businessId, isProfileValid, hasSolar]
   );
@@ -157,7 +157,7 @@ export default function AICommandDashboard() {
   const propertiesQuery = useMemoFirebase(
     () =>
       isProfileValid && hasProperty
-        ? collection(firestore, "businesses", businessId, "properties")
+        ? query(collection(firestore, "businesses", businessId, "properties"), limit(50))
         : null,
     [firestore, businessId, isProfileValid, hasProperty]
   );
@@ -166,7 +166,7 @@ export default function AICommandDashboard() {
   const realEstateLeadsQuery = useMemoFirebase(
     () =>
       isProfileValid && hasProperty
-        ? collection(firestore, "businesses", businessId, "realEstateLeads")
+        ? query(collection(firestore, "businesses", businessId, "realEstateLeads"), limit(50))
         : null,
     [firestore, businessId, isProfileValid, hasProperty]
   );
@@ -247,11 +247,27 @@ export default function AICommandDashboard() {
     [customersData]
   );
 
-  // --- MORNING BRIEF LOGIC ---
+  // --- MORNING BRIEF LOGIC (Cached per day + On-Demand only to protect Gemini credits)
   const [brief, setBrief] = useState<MorningBriefOutput | null>(null);
   const [isBriefLoading, setIsBriefLoading] = useState(false);
   const [isBriefDismissed, setIsBriefDismissed] = useState(false);
-  const hasAutoFetchedBrief = useRef(false);
+
+  // Check today's cached brief from localStorage on load (0 API calls on reloads/revisits!)
+  useEffect(() => {
+    if (!isProfileValid || !businessId) return;
+    try {
+      const cacheKey = `biztrix_brief_${businessId}_${todayYmd}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && (parsed.summary || parsed.greeting)) {
+          setBrief(parsed);
+        }
+      }
+    } catch {
+      // Ignore localStorage read errors
+    }
+  }, [isProfileValid, businessId, todayYmd]);
 
   const fetchBrief = useCallback(async () => {
     if (!isProfileValid || !business) return;
@@ -276,14 +292,31 @@ export default function AICommandDashboard() {
         },
       });
       setBrief(result);
+      if (typeof window !== "undefined" && businessId) {
+        try {
+          localStorage.setItem(`biztrix_brief_${businessId}_${todayYmd}`, JSON.stringify(result));
+        } catch {
+          // Ignore localStorage write errors
+        }
+      }
+      toast({
+        title: "AI Brief Ready",
+        description: "Fresh daily strategic summary compiled successfully.",
+      });
     } catch (e) {
       console.error("Briefing Error:", e);
+      toast({
+        title: "Briefing Notice",
+        description: "Could not generate AI morning brief. Please try again later.",
+      });
     } finally {
       setIsBriefLoading(false);
     }
   }, [
     isProfileValid,
     business,
+    businessId,
+    todayYmd,
     userProfile?.name,
     activeAddonIds,
     tasksData,
@@ -291,13 +324,6 @@ export default function AICommandDashboard() {
     leadsData,
     totalUdhaar,
   ]);
-
-  useEffect(() => {
-    if (isProfileValid && business && !hasAutoFetchedBrief.current) {
-      hasAutoFetchedBrief.current = true;
-      fetchBrief();
-    }
-  }, [isProfileValid, business, fetchBrief]);
 
   if (isUserLoading || isProfileLoading || isBusinessLoading) {
     return (
