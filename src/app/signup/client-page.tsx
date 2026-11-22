@@ -40,6 +40,7 @@ import {
   getDocs,
   deleteDoc,
   collection,
+  collectionGroup,
   query,
   where,
   serverTimestamp,
@@ -132,21 +133,59 @@ export default function SignupPage() {
 
     if (existingProfile && businessExists) return;
 
-    const invitedUsersQuery = query(
-      collection(firestore, "users"),
-      where("email", "==", email.toLowerCase()),
-      where("status", "==", "pending")
-    );
-    const invitedSnap = await getDocs(invitedUsersQuery);
+    let invitedProfile: any = null;
+    let bid: string | null = null;
+    let invitedDocId: string | null = null;
+    const cleanEmail = email.toLowerCase().trim();
 
-    if (!invitedSnap.empty) {
-      const invitedDoc = invitedSnap.docs[0];
-      const invitedProfile = invitedDoc.data();
-      const bid = invitedProfile.businessId;
+    try {
+      // 1. Try Collection Group invites
+      const groupQuery = query(
+        collectionGroup(firestore, "invites"),
+        where("email", "==", cleanEmail)
+      );
+      const groupSnap = await getDocs(groupQuery);
+      if (!groupSnap.empty) {
+        const invDoc = groupSnap.docs[0];
+        const invData = invDoc.data();
+        bid = invData.businessId;
+        invitedProfile = {
+          businessId: bid,
+          businessName: invData.businessName || "Workspace",
+          name: invData.name || name || "Team Member",
+          role: invData.role || "Staff",
+          email: cleanEmail,
+        };
+      }
+    } catch (gErr) {
+      console.warn("Signup collectionGroup invite lookup notice:", gErr);
+    }
+
+    if (!invitedProfile) {
+      try {
+        // 2. Fallback to users collection pending search
+        const invitedUsersQuery = query(
+          collection(firestore, "users"),
+          where("email", "==", cleanEmail),
+          where("status", "==", "pending")
+        );
+        const invitedSnap = await getDocs(invitedUsersQuery);
+        if (!invitedSnap.empty) {
+          const invitedDoc = invitedSnap.docs[0];
+          invitedDocId = invitedDoc.id;
+          invitedProfile = invitedDoc.data();
+          bid = invitedProfile.businessId;
+        }
+      } catch (uErr) {
+        console.warn("Signup users pending lookup notice:", uErr);
+      }
+    }
+
+    if (invitedProfile && bid) {
       const profileData = {
         ...invitedProfile,
         id: uid,
-        name: name || invitedProfile.name,
+        name: name || invitedProfile.name || "Team Member",
         status: "active",
         updatedAt: serverTimestamp(),
       };
@@ -156,11 +195,11 @@ export default function SignupPage() {
         profileData,
         { merge: true }
       );
-      if (invitedDoc.id !== uid) {
-        await deleteDoc(doc(firestore, "users", invitedDoc.id)).catch(() => {});
+      if (invitedDocId && invitedDocId !== uid) {
+        await deleteDoc(doc(firestore, "users", invitedDocId)).catch(() => {});
       }
       await deleteDoc(
-        doc(firestore, "businesses", bid, "invites", email.toLowerCase())
+        doc(firestore, "businesses", bid, "invites", cleanEmail)
       ).catch(() => {});
     } else {
       const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;
@@ -225,8 +264,14 @@ export default function SignupPage() {
       );
       router.push("/dashboard");
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to create account.");
+      console.warn("Sign-up attempt notice:", err?.code || err?.message);
+      if (err?.code === 'auth/email-already-in-use') {
+        setError("An account already exists with this email address. Please sign in or reset your password.");
+      } else if (err?.code === 'auth/weak-password') {
+        setError("Password should be at least 6 characters.");
+      } else {
+        setError(err?.message || "Failed to create account.");
+      }
       setLoading(false);
     }
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bot,
   Mail,
@@ -25,6 +25,16 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = (params.get("email") || "").trim();
+      if (emailParam) {
+        setEmail(emailParam);
+      }
+    }
+  }, []);
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -37,11 +47,13 @@ export default function ForgotPasswordPage() {
         description: "Check your inbox for the reset link.",
       });
     } catch (err: any) {
-      console.error(err);
+      console.warn("Password reset notice:", err?.code || err?.message);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to send reset link.",
+        title: "Reset Notice",
+        description: err?.code === 'auth/user-not-found'
+          ? "No account found with this email address. Please sign up first."
+          : err?.message || "Failed to send reset link.",
       });
     } finally {
       setLoading(false);

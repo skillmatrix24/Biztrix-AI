@@ -27,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useFirestore, initiateEmailSignIn, initiateGoogleSignIn, checkRedirectAuthResult, useUser, setupRecaptcha, initiatePhoneSignIn } from "@/firebase";
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, collection, collectionGroup, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { addDays } from "date-fns";
 import { ConfirmationResult } from "firebase/auth";
@@ -53,6 +53,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCredentialError, setIsCredentialError] = useState(false);
   const [mounted, setMounted] = useState(false);
   
   // Phone Auth States
@@ -108,30 +109,67 @@ export default function LoginPage() {
     const identifier = firebaseUser.email?.toLowerCase() || firebaseUser.phoneNumber;
     if (!identifier) return;
 
-    const invitedQuery = query(
-      collection(firestore, 'users'),
-      where('email', '==', identifier),
-      where('status', '==', 'pending')
-    );
-    const invitedSnap = await getDocs(invitedQuery);
+    let invitedProfile: any = null;
+    let bid: string | null = null;
+    let invitedDocId: string | null = null;
 
-    if (!invitedSnap.empty) {
-      const invitedDoc = invitedSnap.docs[0];
-      const invitedProfile = invitedDoc.data();
-      const bid = invitedProfile.businessId;
+    try {
+      // 1. Try collectionGroup('invites') - direct invite marker
+      const groupQuery = query(
+        collectionGroup(firestore, 'invites'),
+        where('email', '==', identifier)
+      );
+      const groupSnap = await getDocs(groupQuery);
+      if (!groupSnap.empty) {
+        const invDoc = groupSnap.docs[0];
+        const invData = invDoc.data();
+        bid = invData.businessId;
+        invitedProfile = {
+          businessId: bid,
+          businessName: invData.businessName || 'Workspace',
+          name: invData.name || firebaseUser.displayName || 'Team Member',
+          role: invData.role || 'Staff',
+          email: identifier,
+          phone: invData.phone || firebaseUser.phoneNumber || null,
+        };
+      }
+    } catch (gErr) {
+      console.warn("Group invites lookup notice:", gErr);
+    }
 
+    if (!invitedProfile) {
+      try {
+        // 2. Query pending user profile
+        const invitedQuery = query(
+          collection(firestore, 'users'),
+          where('email', '==', identifier),
+          where('status', '==', 'pending')
+        );
+        const invitedSnap = await getDocs(invitedQuery);
+        if (!invitedSnap.empty) {
+          const invitedDoc = invitedSnap.docs[0];
+          invitedDocId = invitedDoc.id;
+          invitedProfile = invitedDoc.data();
+          bid = invitedProfile.businessId;
+        }
+      } catch (uErr) {
+        console.warn("Pending user lookup notice:", uErr);
+      }
+    }
+
+    if (invitedProfile && bid) {
       const profileData = {
         ...invitedProfile,
         id: firebaseUser.uid,
-        name: firebaseUser.displayName || invitedProfile.name,
+        name: firebaseUser.displayName || invitedProfile.name || 'Team Member',
         status: 'active',
         updatedAt: serverTimestamp()
       };
 
       await setDoc(userDocRef, profileData, { merge: true });
       await setDoc(doc(firestore, 'businesses', bid, 'users', firebaseUser.uid), profileData, { merge: true });
-      if (invitedDoc.id !== firebaseUser.uid) {
-        await deleteDoc(doc(firestore, 'users', invitedDoc.id)).catch(() => {});
+      if (invitedDocId && invitedDocId !== firebaseUser.uid) {
+        await deleteDoc(doc(firestore, 'users', invitedDocId)).catch(() => {});
       }
       await deleteDoc(doc(firestore, 'businesses', bid, 'invites', identifier)).catch(() => {});
     } else {
@@ -175,18 +213,31 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setIsCredentialError(false);
 
     try {
       const cred = await initiateEmailSignIn(auth, email, password);
       await provisionMissingProfile(cred.user);
       router.push("/dashboard");
     } catch (err: any) {
-    console.error(err);
+      console.warn("Sign-in attempt notice:", err?.code || err?.message);
       setLoading(false);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
-        setError("Invalid email or password.");
+      const errCode = err?.code;
+      if (
+        errCode === "auth/invalid-credential" ||
+        errCode === "auth/user-not-found" ||
+        errCode === "auth/wrong-password"
+      ) {
+        setIsCredentialError(true);
+        setError("Invalid email or password. If you received a team invitation, please create your account or use 'Sign in with Google' with your invited email.");
+      } else if (errCode === "auth/too-many-requests") {
+        setError("Access temporarily blocked due to multiple attempts. Please wait a few minutes or reset your password.");
+      } else if (errCode === "auth/user-disabled") {
+        setError("This account has been disabled. Please contact your workspace administrator.");
+      } else if (errCode === "auth/invalid-email") {
+        setError("Please enter a valid email address.");
       } else {
-        setError(err.message || "An error occurred during sign in.");
+        setError(err?.message || "An error occurred during sign in.");
       }
     }
   };
@@ -199,6 +250,7 @@ export default function LoginPage() {
     
     setLoading(true);
     setError(null);
+    setIsCredentialError(false);
     try {
       const verifier = setupRecaptcha(auth, 'recaptcha-container');
       const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`;
@@ -208,8 +260,8 @@ export default function LoginPage() {
       setTimer(60);
       toast({ title: "OTP Sent", description: "Please check your mobile for the verification code." });
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Could not send OTP. Try again.");
+      console.warn("Phone OTP request notice:", err?.code || err?.message);
+      setError(err?.message || "Could not send OTP. Try again.");
     } finally {
       setLoading(false);
     }
@@ -222,6 +274,7 @@ export default function LoginPage() {
     }
 
     setLoading(true);
+    setIsCredentialError(false);
     try {
       if (confirmationResult) {
         const cred = await confirmationResult.confirm(otp);
@@ -229,7 +282,7 @@ export default function LoginPage() {
         router.push("/dashboard");
       }
     } catch (err: any) {
-    console.error(err);
+      console.warn("Phone OTP verification notice:", err?.code || err?.message);
       setError("Invalid OTP code. Please try again.");
     } finally {
       setLoading(false);
@@ -296,9 +349,28 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent className="p-6 sm:p-8">
               {error && (
-                <Alert variant="destructive" className="rounded-xl border-destructive/20 bg-destructive/5 mb-6 animate-in fade-in slide-in-from-top-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription className="text-xs font-medium">{error}</AlertDescription>
+                <Alert variant="destructive" className="rounded-xl border-destructive/20 bg-destructive/5 mb-6 animate-in fade-in slide-in-from-top-2 flex items-start gap-3">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div className="space-y-2 flex-1">
+                    <AlertDescription className="text-xs font-medium leading-relaxed">{error}</AlertDescription>
+                    {isCredentialError && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1.5 border-t border-destructive/15">
+                        <Link 
+                          href={email ? `/signup?email=${encodeURIComponent(email)}&invite=1` : "/signup"}
+                          className="inline-flex items-center text-[11px] font-semibold text-primary hover:underline gap-1"
+                        >
+                          <ArrowRight className="h-3 w-3" /> Set up password / Accept invite
+                        </Link>
+                        <span className="text-slate-300">·</span>
+                        <Link 
+                          href={email ? `/forgot-password?email=${encodeURIComponent(email)}` : "/forgot-password"}
+                          className="inline-flex items-center text-[11px] font-semibold text-slate-600 hover:text-slate-900 gap-1"
+                        >
+                          Forgot password?
+                        </Link>
+                      </div>
+                    )}
+                  </div>
                 </Alert>
               )}
 
@@ -324,7 +396,10 @@ export default function LoginPage() {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="password" className="text-xs font-semibold text-slate-700">Password</Label>
-                        <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                        <Link 
+                          href={email ? `/forgot-password?email=${encodeURIComponent(email)}` : "/forgot-password"} 
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
                           Forgot password?
                         </Link>
                       </div>
@@ -465,7 +540,7 @@ export default function LoginPage() {
               <Separator className="flex-1" />
             </div>
             <Button asChild variant="outline" className="w-full h-11 rounded-xl border-slate-200 text-slate-800 hover:bg-slate-50 font-semibold text-xs">
-              <Link href="/signup">Create Business Account</Link>
+              <Link href={email ? `/signup?email=${encodeURIComponent(email)}` : "/signup"}>Create Business Account / Accept Invite</Link>
             </Button>
 
             <div className={mounted && user ? "grid grid-cols-2 gap-3 w-full" : "flex justify-center w-full"}>

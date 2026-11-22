@@ -41,6 +41,12 @@ service cloud.firestore {
       allow write: if isPlatformOwner();
     }
 
+    // Platform-wide public config (Branding, App Theme)
+    match /system/config/branding/{docId} {
+      allow read: if true;
+      allow write: if isPlatformOwner();
+    }
+
     match /system/config/{document=**} {
       allow read: if true;
       allow write: if isPlatformOwner();
@@ -55,9 +61,11 @@ service cloud.firestore {
     function isBusinessMember(businessId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       let bizPath = /databases/$(database)/documents/businesses/$(businessId);
+      let memberPath = /databases/$(database)/documents/businesses/$(businessId)/users/$(request.auth.uid);
 
       return isSignedIn() && (
         (exists(userPath) && get(userPath).data.businessId == businessId) ||
+        (exists(memberPath)) ||
         (exists(bizPath) && get(bizPath).data.ownerId == request.auth.uid)
       );
     }
@@ -65,12 +73,15 @@ service cloud.firestore {
     function isBusinessAdmin(businessId) {
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       let bizPath = /databases/$(database)/documents/businesses/$(businessId);
+      let memberPath = /databases/$(database)/documents/businesses/$(businessId)/users/$(request.auth.uid);
 
       return isSignedIn() && (
         (exists(bizPath) && get(bizPath).data.ownerId == request.auth.uid) ||
         (exists(userPath) &&
          get(userPath).data.businessId == businessId &&
-         (get(userPath).data.role.lower() in ['admin', 'manager', 'owner']))
+         (get(userPath).data.role.lower() in ['admin', 'manager', 'owner'])) ||
+        (exists(memberPath) &&
+         (get(memberPath).data.role.lower() in ['admin', 'manager', 'owner']))
       );
     }
 
@@ -92,15 +103,37 @@ service cloud.firestore {
       return request.resource == null || !('stock' in request.resource.data) || request.resource.data.stock >= 0;
     }
 
+    // --- COLLECTION GROUP: INVITES ---
+    match /{path=**}/invites/{inviteEmail} {
+      allow read: if isSignedIn() && (
+        (request.auth.token.email != null && (
+          request.auth.token.email.lower() == inviteEmail.lower() ||
+          request.auth.token.email == inviteEmail
+        )) ||
+        isPlatformOwner()
+      );
+    }
+
     // --- USER RULES ---
 
     match /users/{userId} {
-      allow read: if isPlatformOwner() || (
+      allow get: if isPlatformOwner() || (
         isSignedIn() && (
           request.auth.uid == userId ||
           (resource.data.status == 'pending' &&
            request.auth.token.email != null &&
-           resource.data.email == request.auth.token.email) ||
+           (resource.data.email == request.auth.token.email ||
+            resource.data.email == request.auth.token.email.lower())) ||
+          (resource.data.businessId != null && isBusinessMember(resource.data.businessId))
+        )
+      );
+
+      allow list: if isPlatformOwner() || (
+        isSignedIn() && (
+          (request.auth.token.email != null &&
+           ('email' in resource.data) &&
+           (resource.data.email == request.auth.token.email ||
+            resource.data.email == request.auth.token.email.lower())) ||
           (resource.data.businessId != null && isBusinessMember(resource.data.businessId))
         )
       );
@@ -122,7 +155,8 @@ service cloud.firestore {
            request.resource.data.id == request.auth.uid &&
            request.resource.data.businessId is string &&
            request.auth.token.email != null &&
-           exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)/invites/$(request.auth.token.email)))
+           (exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)/invites/$(request.auth.token.email)) ||
+            exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)/invites/$(request.auth.token.email.lower()))))
         )
       );
 
@@ -132,6 +166,12 @@ service cloud.firestore {
           (request.auth.uid == userId &&
            request.resource.data.businessId == resource.data.businessId &&
            request.resource.data.role == resource.data.role) ||
+          // Invited staff member claiming their invite during login/signup
+          (request.auth.uid == userId &&
+           request.resource.data.businessId is string &&
+           request.auth.token.email != null &&
+           (exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)/invites/$(request.auth.token.email)) ||
+            exists(/databases/$(database)/documents/businesses/$(request.resource.data.businessId)/invites/$(request.auth.token.email.lower())))) ||
           // Business admin updating a staff member in their own business
           (resource.data.businessId != null &&
            isBusinessAdmin(resource.data.businessId) &&
@@ -144,7 +184,8 @@ service cloud.firestore {
           request.auth.uid == userId ||
           (resource.data.status == 'pending' &&
            request.auth.token.email != null &&
-           resource.data.email == request.auth.token.email) ||
+           (resource.data.email == request.auth.token.email ||
+            resource.data.email == request.auth.token.email.lower())) ||
           (resource.data.businessId != null && isBusinessAdmin(resource.data.businessId))
         )
       );
@@ -169,11 +210,17 @@ service cloud.firestore {
       // STAFF INVITE MARKERS
       match /invites/{inviteEmail} {
         allow read: if isBusinessMember(businessId) ||
-          (isSignedIn() && request.auth.token.email == inviteEmail) ||
+          (isSignedIn() && (
+            request.auth.token.email == inviteEmail ||
+            request.auth.token.email.lower() == inviteEmail.lower()
+          )) ||
           isPlatformOwner();
         allow create, update: if isBusinessAdmin(businessId) || isPlatformOwner();
         allow delete: if isBusinessAdmin(businessId) ||
-          (isSignedIn() && request.auth.token.email == inviteEmail) ||
+          (isSignedIn() && (
+            request.auth.token.email == inviteEmail ||
+            request.auth.token.email.lower() == inviteEmail.lower()
+          )) ||
           isPlatformOwner();
       }
 
@@ -182,12 +229,15 @@ service cloud.firestore {
         allow read: if isBusinessMember(businessId) ||
           (isSignedIn() && request.auth.uid == memberUid) ||
           isPlatformOwner();
-        allow create: if isBusinessAdmin(businessId) ||
+        allow create, update: if isBusinessAdmin(businessId) ||
           isPlatformOwner() ||
-          (isSignedIn() && request.auth.uid == memberUid && isBusinessMember(businessId));
-        allow update: if isBusinessAdmin(businessId) ||
-          isPlatformOwner() ||
-          (isSignedIn() && request.auth.uid == memberUid && request.resource.data.role == resource.data.role);
+          (isSignedIn() && request.auth.uid == memberUid && (
+            isBusinessMember(businessId) ||
+            (request.auth.token.email != null && (
+              exists(/databases/$(database)/documents/businesses/$(businessId)/invites/$(request.auth.token.email)) ||
+              exists(/databases/$(database)/documents/businesses/$(businessId)/invites/$(request.auth.token.email.lower()))
+            ))
+          ));
         allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 

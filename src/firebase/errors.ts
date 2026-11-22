@@ -1,5 +1,6 @@
 'use client';
 import { getAuth, type User } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 type SecurityRuleContext = {
   path: string;
@@ -84,15 +85,20 @@ function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
       authObject = buildAuthObject(currentUser);
     }
   } catch (error) {
-    console.error(error);
+    console.warn("Auth object extraction notice:", error);
     // This will catch errors if the Firebase app is not yet initialized.
     // In this case, we'll proceed without auth information.
   }
 
+  const dbId =
+    firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
+      ? firebaseConfig.firestoreDatabaseId
+      : '(default)';
+
   return {
-    auth: authObject,
     method: context.operation,
-    path: `/databases/(default)/documents/${context.path}`,
+    path: `/databases/${dbId}/documents/${context.path}`,
+    auth: authObject,
     resource: context.requestResourceData ? { data: context.requestResourceData } : undefined,
   };
 }
@@ -103,7 +109,7 @@ function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
  * @returns A string containing the error message and the JSON payload.
  */
 function buildErrorMessage(requestObject: SecurityRuleRequest): string {
-  return `Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
+  return `Missing or insufficient permissions: The following request was denied by Firestore Security Rules: [${requestObject.method.toUpperCase()} ${requestObject.path}]
 ${JSON.stringify(requestObject, null, 2)}`;
 }
 

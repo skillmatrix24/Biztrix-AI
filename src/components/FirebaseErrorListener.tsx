@@ -15,6 +15,12 @@ export function FirebaseErrorListener() {
   useEffect(() => {
     // The callback now expects a strongly-typed error, matching the event payload.
     const handleError = (error: FirestorePermissionError) => {
+      // Non-critical background metadata like global branding should never crash the user's workspace
+      const path = error?.request?.path || '';
+      if (path.includes('/system/config/branding/')) {
+        console.warn("[FirebaseErrorListener] Non-critical branding read notice:", path);
+        return;
+      }
       // Set error in state to trigger a re-render.
       setError(error);
     };
