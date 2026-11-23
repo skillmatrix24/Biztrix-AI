@@ -345,11 +345,15 @@ test("team directory invite & re-invite helpers classify members and build share
     name: "Suresh Kumar",
     role: "Manager",
     businessName: "Apex Solar",
+    businessId: "biz_apex_99",
     phone: "09876543210",
   });
   assert.match(links.inviteUrl, /^https:\/\/app\.example\.com\/signup\?/);
   assert.match(links.inviteUrl, /invite=1/);
   assert.match(links.inviteUrl, /email=suresh%40company\.com/);
+  assert.match(links.inviteUrl, /bid=biz_apex_99/);
+  assert.match(links.inviteUrl, /role=Manager/);
+  assert.match(links.loginUrl, /bid=biz_apex_99/);
   assert.match(links.whatsappUrl, /^https:\/\/wa\.me\/919876543210\?text=/);
   assert.match(links.mailtoUrl, /^mailto:suresh%40company\.com\?subject=/);
 

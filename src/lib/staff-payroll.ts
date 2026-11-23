@@ -65,7 +65,7 @@ export const PAYROLL_MONTHS = [
   "December",
 ] as const;
 
-export const DEFAULT_TEAM_ROLES = ["Admin", "Manager", "Staff", "Agent", "Accountant"] as const;
+export const DEFAULT_TEAM_ROLES = ["Staff", "Manager", "Supervisor", "Technician", "Sales Executive", "Agent", "Accountant", "Admin"] as const;
 
 export function parseNonNegativeNumber(value: unknown): number {
   if (typeof value === "number") {
@@ -778,6 +778,7 @@ export function buildTeamInviteLinks(params: {
   name?: string;
   role?: string;
   businessName?: string;
+  businessId?: string;
   phone?: string;
 }): {
   inviteUrl: string;
@@ -791,19 +792,27 @@ export function buildTeamInviteLinks(params: {
   const cleanName = (params.name || "Team Member").trim();
   const cleanRole = (params.role || "Staff").trim();
   const cleanBusiness = (params.businessName || "Workspace").trim();
+  const cleanBusinessId = (params.businessId || "").trim();
 
   const queryParams = new URLSearchParams({
     invite: "1",
     name: cleanName,
     business: cleanBusiness,
+    role: cleanRole,
   });
+  if (cleanBusinessId) {
+    queryParams.set("bid", cleanBusinessId);
+  }
   if (cleanEmail) {
     queryParams.set("email", cleanEmail);
   }
 
   const inviteUrl = `${cleanOrigin}/signup?${queryParams.toString()}`;
-  const loginUrl = cleanEmail
-    ? `${cleanOrigin}/login?email=${encodeURIComponent(cleanEmail)}`
+  const loginParams = new URLSearchParams();
+  if (cleanEmail) loginParams.set("email", cleanEmail);
+  if (cleanBusinessId) loginParams.set("bid", cleanBusinessId);
+  const loginUrl = loginParams.toString()
+    ? `${cleanOrigin}/login?${loginParams.toString()}`
     : `${cleanOrigin}/login`;
 
   const inviteMessage = [

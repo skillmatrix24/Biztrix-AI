@@ -56,6 +56,7 @@ import {
   useCollection,
   useMemoFirebase,
   addDocumentNonBlocking,
+  setDocumentNonBlocking,
   commitBatchNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
@@ -334,7 +335,7 @@ export default function TeamClientPage() {
           ? "active"
           : "pending";
 
-      updateDocumentNonBlocking(doc(firestore, "users", existingTarget.id), {
+      const targetPayload = {
         name: cleanName,
         email: cleanEmail,
         phone: newUserPhone.trim(),
@@ -348,7 +349,12 @@ export default function TeamClientPage() {
         resentAt: nowIso,
         inviteCount: (Number(existingTarget.inviteCount) || 0) + 1,
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      setDocumentNonBlocking(doc(firestore, "users", existingTarget.id), targetPayload, { merge: true });
+      if (businessId) {
+        setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", existingTarget.id), targetPayload, { merge: true });
+      }
 
       await syncInviteMarker({
         email: cleanEmail,
@@ -456,7 +462,7 @@ export default function TeamClientPage() {
       !inviteState.isPending && inviteState.hasEmail && reinviteTarget.status === "active";
     const nextStatus = isAlreadyActive ? "active" : "pending";
 
-    updateDocumentNonBlocking(doc(firestore, "users", reinviteTarget.id), {
+    const reinvitePayload = {
       email: cleanEmail,
       phone: reinvitePhone.trim(),
       role: reinviteRole,
@@ -465,7 +471,12 @@ export default function TeamClientPage() {
       resentAt: nowIso,
       inviteCount: (Number(reinviteTarget.inviteCount) || 0) + 1,
       updatedAt: serverTimestamp(),
-    });
+    };
+
+    setDocumentNonBlocking(doc(firestore, "users", reinviteTarget.id), reinvitePayload, { merge: true });
+    if (businessId) {
+      setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", reinviteTarget.id), reinvitePayload, { merge: true });
+    }
 
     await syncInviteMarker({
       email: cleanEmail,
@@ -564,17 +575,21 @@ export default function TeamClientPage() {
     }
 
     const userRef = doc(firestore, "users", editingUser.id);
-    updateDocumentNonBlocking(userRef, {
+    const updatePayload = {
       name: (editingUser.name || "").trim(),
       email: cleanEmail,
-      role: editingUser.role,
+      role: editingUser.role || "Staff",
       phone: (editingUser.phone || "").trim(),
       address: editingUser.address || "",
       dailyRate: parseNonNegativeNumber(editDailyRate) || 500,
       shiftHours: Number.parseInt(editShiftHours, 10) || 8,
       shiftTimings: `${editShiftStart} - ${editShiftEnd}`,
       updatedAt: serverTimestamp(),
-    });
+    };
+    setDocumentNonBlocking(userRef, updatePayload, { merge: true });
+    if (businessId) {
+      setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", editingUser.id), updatePayload, { merge: true });
+    }
 
     if (cleanEmail && (editingUser.status === "pending" || editingUser._originalEmail !== cleanEmail)) {
       await syncInviteMarker({
@@ -586,12 +601,15 @@ export default function TeamClientPage() {
     }
 
     setIsEditUserOpen(false);
-    toast({ title: "Profile Updated" });
+    toast({ title: "Profile & Role Updated" });
   };
 
   const handleDeleteUser = (member: any) => {
     if (!member?.id || member.id === user?.uid) return;
     deleteDocumentNonBlocking(doc(firestore, "users", member.id));
+    if (businessId) {
+      deleteDoc(doc(firestore, "businesses", businessId, "users", member.id)).catch(() => {});
+    }
     const cleanEmail = (member.email || "").trim().toLowerCase();
     if (businessId && cleanEmail) {
       deleteDoc(doc(firestore, "businesses", businessId, "invites", cleanEmail)).catch(() => {});
@@ -742,9 +760,10 @@ export default function TeamClientPage() {
       name: shareContext.name,
       role: shareContext.role,
       businessName: business?.name || "Workspace",
+      businessId: businessId || "",
       phone: shareContext.phone,
     });
-  }, [shareContext, business?.name]);
+  }, [shareContext, business?.name, businessId]);
 
   const reinvitePreviewLinks = useMemo(() => {
     if (!reinviteTarget) return null;
@@ -755,9 +774,10 @@ export default function TeamClientPage() {
       name: reinviteTarget.name || "Team Member",
       role: reinviteRole,
       businessName: business?.name || "Workspace",
+      businessId: businessId || "",
       phone: reinvitePhone,
     });
-  }, [reinviteTarget, reinviteEmail, reinviteRole, reinvitePhone, business?.name]);
+  }, [reinviteTarget, reinviteEmail, reinviteRole, reinvitePhone, business?.name, businessId]);
 
   const mainDialogWhatsappPreview = useMemo(() => {
     if (!newUserName.trim() && !newUserEmail.trim() && !newUserPhone.trim()) return null;
@@ -768,9 +788,10 @@ export default function TeamClientPage() {
       name: newUserName.trim() || "Team Member",
       role: newUserRole,
       businessName: business?.name || "Workspace",
+      businessId: businessId || "",
       phone: newUserPhone,
     });
-  }, [newUserName, newUserEmail, newUserPhone, newUserRole, business?.name]);
+  }, [newUserName, newUserEmail, newUserPhone, newUserRole, business?.name, businessId]);
 
   const originForLinks = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -1036,6 +1057,7 @@ export default function TeamClientPage() {
                                 name: u.name || "Team Member",
                                 role: u.role || "Staff",
                                 businessName: business?.name || "Workspace",
+                                businessId: businessId || "",
                                 phone: u.phone || "",
                               }).whatsappUrl
                             }

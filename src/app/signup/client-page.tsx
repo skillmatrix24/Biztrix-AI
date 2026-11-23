@@ -74,17 +74,38 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isInviteFlow, setIsInviteFlow] = useState(false);
+  const [inviteContext, setInviteContext] = useState<{
+    isInvite: boolean;
+    bid: string;
+    role: string;
+    businessName: string;
+  }>({
+    isInvite: false,
+    bid: "",
+    role: "",
+    businessName: "",
+  });
 
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const inviteFlag = params.get("invite") === "1";
-      const emailParam = (params.get("email") || "").trim();
+      const bidParam = (params.get("bid") || params.get("businessId") || "").trim();
+      const roleParam = (params.get("role") || "").trim();
+      const emailParam = (params.get("email") || "").trim().toLowerCase();
       const nameParam = (params.get("name") || "").trim();
       const bizParam = (params.get("business") || "").trim();
-      if (inviteFlag || emailParam || nameParam || bizParam) {
-        setIsInviteFlow(inviteFlag || Boolean(emailParam));
+
+      const isInvited = inviteFlag || Boolean(bidParam) || Boolean(emailParam);
+      if (isInvited) {
+        setIsInviteFlow(true);
+        setInviteContext({
+          isInvite: true,
+          bid: bidParam,
+          role: roleParam || "Staff",
+          businessName: bizParam || "Workspace",
+        });
         setFormData((prev) => ({
           ...prev,
           email: emailParam || prev.email,
@@ -119,6 +140,7 @@ export default function SignupPage() {
     name: string,
     businessName: string
   ) => {
+    const cleanEmail = email.toLowerCase().trim();
     const userDocRef = doc(firestore, "users", uid);
     const userSnap = await getDoc(userDocRef);
     const existingProfile = userSnap.exists() ? userSnap.data() : null;
@@ -131,64 +153,143 @@ export default function SignupPage() {
       businessExists = bizSnap.exists();
     }
 
-    if (existingProfile && businessExists) return;
-
     let invitedProfile: any = null;
     let bid: string | null = null;
     let invitedDocId: string | null = null;
-    const cleanEmail = email.toLowerCase().trim();
 
-    try {
-      // 1. Try Collection Group invites
-      const groupQuery = query(
-        collectionGroup(firestore, "invites"),
-        where("email", "==", cleanEmail)
-      );
-      const groupSnap = await getDocs(groupQuery);
-      if (!groupSnap.empty) {
-        const invDoc = groupSnap.docs[0];
-        const invData = invDoc.data();
-        bid = invData.businessId;
-        invitedProfile = {
-          businessId: bid,
-          businessName: invData.businessName || "Workspace",
-          name: invData.name || name || "Team Member",
-          role: invData.role || "Staff",
-          email: cleanEmail,
-        };
+    // 1. Direct workspace invite check if bid was provided in URL (Fastest & 100% deterministic)
+    const targetBid = inviteContext.bid;
+    if (targetBid) {
+      try {
+        const invRef = doc(firestore, "businesses", targetBid, "invites", cleanEmail);
+        const invSnap = await getDoc(invRef);
+        if (invSnap.exists()) {
+          const invData = invSnap.data();
+          bid = targetBid;
+          invitedProfile = {
+            businessId: targetBid,
+            businessName: invData.businessName || inviteContext.businessName || "Workspace",
+            name: invData.name || name || "Team Member",
+            role: invData.role || inviteContext.role || "Staff",
+            email: cleanEmail,
+          };
+        } else {
+          // If invite marker was removed or not saved, verify business exists
+          const targetBizSnap = await getDoc(doc(firestore, "businesses", targetBid));
+          if (targetBizSnap.exists()) {
+            bid = targetBid;
+            invitedProfile = {
+              businessId: targetBid,
+              businessName: targetBizSnap.data()?.name || inviteContext.businessName || "Workspace",
+              name: name || "Team Member",
+              role: inviteContext.role || "Staff",
+              email: cleanEmail,
+            };
+          }
+        }
+      } catch (directErr) {
+        console.warn("Direct workspace invite check notice:", directErr);
       }
-    } catch (gErr) {
-      console.warn("Signup collectionGroup invite lookup notice:", gErr);
     }
 
+    // 2. Check pending user record in users collection
     if (!invitedProfile) {
       try {
-        // 2. Fallback to users collection pending search
         const invitedUsersQuery = query(
           collection(firestore, "users"),
-          where("email", "==", cleanEmail),
-          where("status", "==", "pending")
+          where("email", "==", cleanEmail)
         );
         const invitedSnap = await getDocs(invitedUsersQuery);
-        if (!invitedSnap.empty) {
-          const invitedDoc = invitedSnap.docs[0];
-          invitedDocId = invitedDoc.id;
-          invitedProfile = invitedDoc.data();
-          bid = invitedProfile.businessId;
+        const pendingDoc = invitedSnap.docs.find(
+          (d) => d.data().status === "pending" || (d.id !== uid && d.data().businessId)
+        );
+        if (pendingDoc) {
+          invitedDocId = pendingDoc.id;
+          const pData = pendingDoc.data();
+          bid = pData.businessId;
+          invitedProfile = {
+            ...pData,
+            role: pData.role || inviteContext.role || "Staff",
+            email: cleanEmail,
+          };
         }
       } catch (uErr) {
         console.warn("Signup users pending lookup notice:", uErr);
       }
     }
 
+    // 3. Scan businesses for matching invite marker
+    if (!invitedProfile) {
+      try {
+        const bizSnap = await getDocs(collection(firestore, "businesses"));
+        for (const b of bizSnap.docs) {
+          try {
+            const invSnap = await getDoc(doc(firestore, "businesses", b.id, "invites", cleanEmail));
+            if (invSnap.exists()) {
+              const invData = invSnap.data();
+              bid = b.id;
+              invitedProfile = {
+                businessId: b.id,
+                businessName: invData.businessName || b.data()?.name || "Workspace",
+                name: invData.name || name || "Team Member",
+                role: invData.role || inviteContext.role || "Staff",
+                email: cleanEmail,
+              };
+              break;
+            }
+          } catch (_) {}
+        }
+      } catch (bErr) {
+        console.warn("Businesses invite scan notice:", bErr);
+      }
+    }
+
+    // 4. Fallback to Collection Group invites
+    if (!invitedProfile) {
+      try {
+        const groupQuery = query(
+          collectionGroup(firestore, "invites"),
+          where("email", "==", cleanEmail)
+        );
+        const groupSnap = await getDocs(groupQuery);
+        if (!groupSnap.empty) {
+          const invDoc = groupSnap.docs[0];
+          const invData = invDoc.data();
+          bid = invData.businessId;
+          invitedProfile = {
+            businessId: bid,
+            businessName: invData.businessName || "Workspace",
+            name: invData.name || name || "Team Member",
+            role: invData.role || inviteContext.role || "Staff",
+            email: cleanEmail,
+          };
+        }
+      } catch (gErr) {
+        console.warn("Signup collectionGroup invite lookup notice:", gErr);
+      }
+    }
+
+    // If user already has an existing valid business AND no invite re-association is requested:
+    if (existingProfile && businessExists && !invitedProfile) {
+      return;
+    }
+
     if (invitedProfile && bid) {
+      // Connect member to the inviter's workspace with their assigned role
+      const assignedRole = invitedProfile.role || inviteContext.role || "Staff";
       const profileData = {
         ...invitedProfile,
         id: uid,
         name: name || invitedProfile.name || "Team Member",
+        email: cleanEmail,
+        businessId: bid,
+        businessName: invitedProfile.businessName || "Workspace",
+        role: assignedRole,
         status: "active",
+        claimedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
       await setDoc(userDocRef, profileData, { merge: true });
       await setDoc(
         doc(firestore, "businesses", bid, "users", uid),
@@ -198,17 +299,52 @@ export default function SignupPage() {
       if (invitedDocId && invitedDocId !== uid) {
         await deleteDoc(doc(firestore, "users", invitedDocId)).catch(() => {});
       }
-      await deleteDoc(
-        doc(firestore, "businesses", bid, "invites", cleanEmail)
+      // Update invite marker as claimed
+      await setDoc(
+        doc(firestore, "businesses", bid, "invites", cleanEmail),
+        {
+          status: "claimed",
+          claimedBy: uid,
+          claimedAt: serverTimestamp(),
+          role: assignedRole,
+        },
+        { merge: true }
       ).catch(() => {});
+    } else if (isInviteFlow) {
+      // User arrived through invite link, but workspace was not found
+      if (targetBid) {
+        const assignedRole = inviteContext.role || "Staff";
+        const profileData = {
+          id: uid,
+          name: name || "Team Member",
+          email: cleanEmail,
+          businessId: targetBid,
+          businessName: inviteContext.businessName || "Workspace",
+          role: assignedRole,
+          status: "active",
+          claimedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await setDoc(userDocRef, profileData, { merge: true });
+        await setDoc(
+          doc(firestore, "businesses", targetBid, "users", uid),
+          profileData,
+          { merge: true }
+        );
+      } else {
+        throw new Error(
+          "We could not find an active workspace invitation for this email address. Please ask your workspace administrator to resend your invite link."
+        );
+      }
     } else {
+      // Standard new business owner signup
       const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;
       const trialEndDate = addDays(new Date(), 14);
 
       const profileData = {
         id: uid,
         businessId: tenantId,
-        email: email.toLowerCase(),
+        email: cleanEmail,
         name: name,
         role: "admin",
         createdAt: new Date().toISOString(),
@@ -400,41 +536,75 @@ export default function SignupPage() {
                   </Alert>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 text-left">
-                    <Label htmlFor="signup-name" className="text-xs font-semibold text-slate-700">
-                      Full Name
-                    </Label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="signup-name"
-                        placeholder="John Doe"
-                        required
-                        className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      />
+                {isInviteFlow ? (
+                  <div className="space-y-4">
+                    <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900 font-medium">
+                      <div className="flex items-center gap-2.5">
+                        <Building2 className="h-4 w-4 text-blue-600 shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-blue-600 uppercase font-bold tracking-wider">Joining Team Workspace</p>
+                          <p className="text-sm font-bold text-slate-900">{formData.businessName || "Workspace"}</p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-semibold">
+                        Role: {inviteContext.role || "Staff"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-left">
+                      <Label htmlFor="signup-name" className="text-xs font-semibold text-slate-700">
+                        Your Full Name
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                          id="signup-name"
+                          placeholder="John Doe"
+                          required
+                          className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-1.5 text-left">
-                    <Label htmlFor="signup-biz" className="text-xs font-semibold text-slate-700">
-                      Business Name
-                    </Label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input
-                        id="signup-biz"
-                        placeholder="Acme Solutions"
-                        className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
-                        value={formData.businessName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, businessName: e.target.value })
-                        }
-                      />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 text-left">
+                      <Label htmlFor="signup-name" className="text-xs font-semibold text-slate-700">
+                        Full Name
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                          id="signup-name"
+                          placeholder="John Doe"
+                          required
+                          className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 text-left">
+                      <Label htmlFor="signup-biz" className="text-xs font-semibold text-slate-700">
+                        Business Name
+                      </Label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                          id="signup-biz"
+                          placeholder="Acme Solutions"
+                          className="h-11 pl-10 rounded-xl bg-white border-slate-200 text-sm"
+                          value={formData.businessName}
+                          onChange={(e) =>
+                            setFormData({ ...formData, businessName: e.target.value })
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-1.5 text-left">
                   <Label htmlFor="signup-email" className="text-xs font-semibold text-slate-700">

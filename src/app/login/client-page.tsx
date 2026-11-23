@@ -104,66 +104,149 @@ export default function LoginPage() {
       businessExists = bizSnap.exists();
     }
 
-    if (existingProfile && businessExists) return;
-
-    const identifier = firebaseUser.email?.toLowerCase() || firebaseUser.phoneNumber;
+    const identifier = (firebaseUser.email || '').toLowerCase().trim() || firebaseUser.phoneNumber;
     if (!identifier) return;
 
     let invitedProfile: any = null;
     let bid: string | null = null;
     let invitedDocId: string | null = null;
 
-    try {
-      // 1. Try collectionGroup('invites') - direct invite marker
-      const groupQuery = query(
-        collectionGroup(firestore, 'invites'),
-        where('email', '==', identifier)
-      );
-      const groupSnap = await getDocs(groupQuery);
-      if (!groupSnap.empty) {
-        const invDoc = groupSnap.docs[0];
-        const invData = invDoc.data();
-        bid = invData.businessId;
-        invitedProfile = {
-          businessId: bid,
-          businessName: invData.businessName || 'Workspace',
-          name: invData.name || firebaseUser.displayName || 'Team Member',
-          role: invData.role || 'Staff',
-          email: identifier,
-          phone: invData.phone || firebaseUser.phoneNumber || null,
-        };
-      }
-    } catch (gErr) {
-      console.warn("Group invites lookup notice:", gErr);
+    // Check URL parameters for explicit bid target
+    let targetBidFromUrl = '';
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      targetBidFromUrl = (p.get('bid') || p.get('businessId') || '').trim();
     }
 
+    // 1. Direct check on targetBidFromUrl
+    if (targetBidFromUrl) {
+      try {
+        const invRef = doc(firestore, 'businesses', targetBidFromUrl, 'invites', identifier);
+        const invSnap = await getDoc(invRef);
+        if (invSnap.exists()) {
+          const invData = invSnap.data();
+          bid = targetBidFromUrl;
+          invitedProfile = {
+            businessId: targetBidFromUrl,
+            businessName: invData.businessName || 'Workspace',
+            name: invData.name || firebaseUser.displayName || 'Team Member',
+            role: invData.role || 'Staff',
+            email: identifier,
+            phone: invData.phone || firebaseUser.phoneNumber || null,
+          };
+        } else {
+          const bSnap = await getDoc(doc(firestore, 'businesses', targetBidFromUrl));
+          if (bSnap.exists()) {
+            bid = targetBidFromUrl;
+            invitedProfile = {
+              businessId: targetBidFromUrl,
+              businessName: bSnap.data()?.name || 'Workspace',
+              name: firebaseUser.displayName || 'Team Member',
+              role: 'Staff',
+              email: identifier,
+              phone: firebaseUser.phoneNumber || null,
+            };
+          }
+        }
+      } catch (dErr) {
+        console.warn('Login direct workspace lookup notice:', dErr);
+      }
+    }
+
+    // 2. Query users collection for pending profile
     if (!invitedProfile) {
       try {
-        // 2. Query pending user profile
         const invitedQuery = query(
           collection(firestore, 'users'),
-          where('email', '==', identifier),
-          where('status', '==', 'pending')
+          where('email', '==', identifier)
         );
         const invitedSnap = await getDocs(invitedQuery);
-        if (!invitedSnap.empty) {
-          const invitedDoc = invitedSnap.docs[0];
-          invitedDocId = invitedDoc.id;
-          invitedProfile = invitedDoc.data();
-          bid = invitedProfile.businessId;
+        const pendingDoc = invitedSnap.docs.find(
+          (d) => d.data().status === 'pending' || (d.id !== firebaseUser.uid && d.data().businessId)
+        );
+        if (pendingDoc) {
+          invitedDocId = pendingDoc.id;
+          const pData = pendingDoc.data();
+          bid = pData.businessId;
+          invitedProfile = {
+            ...pData,
+            role: pData.role || 'Staff',
+            email: identifier,
+          };
         }
       } catch (uErr) {
-        console.warn("Pending user lookup notice:", uErr);
+        console.warn('Pending user lookup notice:', uErr);
       }
     }
 
+    // 3. Scan businesses for matching invite marker
+    if (!invitedProfile) {
+      try {
+        const bizListSnap = await getDocs(collection(firestore, 'businesses'));
+        for (const b of bizListSnap.docs) {
+          try {
+            const invSnap = await getDoc(doc(firestore, 'businesses', b.id, 'invites', identifier));
+            if (invSnap.exists()) {
+              const invData = invSnap.data();
+              bid = b.id;
+              invitedProfile = {
+                businessId: b.id,
+                businessName: invData.businessName || b.data()?.name || 'Workspace',
+                name: invData.name || firebaseUser.displayName || 'Team Member',
+                role: invData.role || 'Staff',
+                email: identifier,
+                phone: invData.phone || firebaseUser.phoneNumber || null,
+              };
+              break;
+            }
+          } catch (_) {}
+        }
+      } catch (bErr) {
+        console.warn('Businesses invite scan notice:', bErr);
+      }
+    }
+
+    // 4. Fallback to collectionGroup('invites')
+    if (!invitedProfile) {
+      try {
+        const groupQuery = query(
+          collectionGroup(firestore, 'invites'),
+          where('email', '==', identifier)
+        );
+        const groupSnap = await getDocs(groupQuery);
+        if (!groupSnap.empty) {
+          const invDoc = groupSnap.docs[0];
+          const invData = invDoc.data();
+          bid = invData.businessId;
+          invitedProfile = {
+            businessId: bid,
+            businessName: invData.businessName || 'Workspace',
+            name: invData.name || firebaseUser.displayName || 'Team Member',
+            role: invData.role || 'Staff',
+            email: identifier,
+            phone: invData.phone || firebaseUser.phoneNumber || null,
+          };
+        }
+      } catch (gErr) {
+        console.warn('Group invites lookup notice:', gErr);
+      }
+    }
+
+    // If an invite was found, attach or re-link member to the inviting business
     if (invitedProfile && bid) {
+      const assignedRole = invitedProfile.role || 'Staff';
       const profileData = {
         ...invitedProfile,
         id: firebaseUser.uid,
         name: firebaseUser.displayName || invitedProfile.name || 'Team Member',
+        email: identifier,
+        phone: firebaseUser.phoneNumber || invitedProfile.phone || null,
+        businessId: bid,
+        businessName: invitedProfile.businessName || 'Workspace',
+        role: assignedRole,
         status: 'active',
-        updatedAt: serverTimestamp()
+        claimedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       await setDoc(userDocRef, profileData, { merge: true });
@@ -171,29 +254,46 @@ export default function LoginPage() {
       if (invitedDocId && invitedDocId !== firebaseUser.uid) {
         await deleteDoc(doc(firestore, 'users', invitedDocId)).catch(() => {});
       }
-      await deleteDoc(doc(firestore, 'businesses', bid, 'invites', identifier)).catch(() => {});
-    } else {
-      const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;
-      const trialEndDate = addDays(new Date(), 14);
+      await setDoc(
+        doc(firestore, 'businesses', bid, 'invites', identifier),
+        {
+          status: 'claimed',
+          claimedBy: firebaseUser.uid,
+          claimedAt: serverTimestamp(),
+          role: assignedRole,
+        },
+        { merge: true }
+      ).catch(() => {});
+      return;
+    }
 
-      const profileData = {
-        id: firebaseUser.uid,
-        businessId: tenantId,
-        email: firebaseUser.email?.toLowerCase() || null,
-        phone: firebaseUser.phoneNumber || null,
-        name: firebaseUser.displayName || "User",
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-        status: 'active',
-        dashboardLayout: [
-          { id: 'hero', label: 'AI Slate', enabled: true, order: 0 },
-          { id: 'pulse', label: 'Daily Pulse', enabled: true, order: 1 },
-          { id: 'stats', label: 'Main Stats', enabled: true, order: 2 },
-          { id: 'assistant', label: 'AI Assistant', enabled: true, order: 3 },
-        ]
-      };
+    // If already has an existing valid business profile and no invite was found, keep as-is
+    if (existingProfile && businessExists) return;
 
-      await setDoc(doc(firestore, 'businesses', tenantId), {
+    // Standard new individual business creation (only when no invite exists)
+    const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;
+    const trialEndDate = addDays(new Date(), 14);
+
+    const profileData = {
+      id: firebaseUser.uid,
+      businessId: tenantId,
+      email: firebaseUser.email?.toLowerCase() || null,
+      phone: firebaseUser.phoneNumber || null,
+      name: firebaseUser.displayName || 'User',
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+      status: 'active',
+      dashboardLayout: [
+        { id: 'hero', label: 'AI Slate', enabled: true, order: 0 },
+        { id: 'pulse', label: 'Daily Pulse', enabled: true, order: 1 },
+        { id: 'stats', label: 'Main Stats', enabled: true, order: 2 },
+        { id: 'assistant', label: 'AI Assistant', enabled: true, order: 3 },
+      ],
+    };
+
+    await setDoc(
+      doc(firestore, 'businesses', tenantId),
+      {
         id: tenantId,
         name: `${firebaseUser.displayName || 'My'} Business`,
         ownerId: firebaseUser.uid,
@@ -201,12 +301,13 @@ export default function LoginPage() {
         trialStartDate: serverTimestamp(),
         trialEndDate: trialEndDate,
         createdAt: serverTimestamp(),
-        activeAddonIds: []
-      }, { merge: true });
+        activeAddonIds: [],
+      },
+      { merge: true }
+    );
 
-      await setDoc(userDocRef, profileData, { merge: true });
-      await setDoc(doc(firestore, 'businesses', tenantId, 'users', firebaseUser.uid), profileData, { merge: true });
-    }
+    await setDoc(userDocRef, profileData, { merge: true });
+    await setDoc(doc(firestore, 'businesses', tenantId, 'users', firebaseUser.uid), profileData, { merge: true });
   };
 
   const handleLogin = async (e: React.FormEvent) => {
