@@ -194,24 +194,32 @@ export function UsersTab({
     if (!businessId || !cleanEmail) return;
 
     if (prevEmail && prevEmail !== cleanEmail) {
-      await deleteDoc(doc(firestore, "businesses", businessId, "invites", prevEmail)).catch(
-        () => {}
-      );
+      await deleteDoc(doc(firestore, "businesses", businessId, "invites", prevEmail)).catch(() => {});
+      await deleteDoc(doc(firestore, "invites", prevEmail)).catch(() => {});
     }
+
+    const invitePayload = {
+      email: cleanEmail,
+      role: params.role || "Staff",
+      name: params.name || "Team Member",
+      businessId,
+      businessName: business?.name || "Workspace",
+      invitedBy: currentUser?.uid || "",
+      updatedAt: new Date().toISOString(),
+      status: "pending",
+    };
 
     await setDoc(
       doc(firestore, "businesses", businessId, "invites", cleanEmail),
-      {
-        email: cleanEmail,
-        role: params.role,
-        name: params.name,
-        businessId,
-        businessName: business?.name || "Workspace",
-        invitedBy: currentUser?.uid || "",
-        updatedAt: new Date().toISOString(),
-      },
+      invitePayload,
       { merge: true }
     ).catch((err) => console.warn("Invite marker sync skipped:", err));
+
+    await setDoc(
+      doc(firestore, "invites", cleanEmail),
+      invitePayload,
+      { merge: true }
+    ).catch(() => {});
   };
 
   const applyExistingMemberSelection = (memberId: string) => {
@@ -286,7 +294,7 @@ export function UsersTab({
           ? "active"
           : "pending";
 
-      updateDocumentNonBlocking(doc(firestore, "users", existingTarget.id), {
+      const targetPayload = {
         name: cleanName,
         email: cleanEmail,
         phone: newUserPhone.trim(),
@@ -300,7 +308,11 @@ export function UsersTab({
         resentAt: nowIso,
         inviteCount: (Number(existingTarget.inviteCount) || 0) + 1,
         updatedAt: serverTimestamp(),
-      });
+      };
+      setDocumentNonBlocking(doc(firestore, "users", existingTarget.id), targetPayload, { merge: true });
+      if (businessId) {
+        setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", existingTarget.id), targetPayload, { merge: true });
+      }
 
       await syncInviteMarker({
         email: cleanEmail,
@@ -349,7 +361,16 @@ export function UsersTab({
       ],
     };
 
-    addDocumentNonBlocking(collection(firestore, "users"), userData);
+    const newDocRef = doc(collection(firestore, "users"));
+    const newDocId = newDocRef.id;
+    const userPayload = {
+      ...userData,
+      id: newDocId,
+    };
+    setDocumentNonBlocking(newDocRef, userPayload, { merge: true });
+    if (businessId) {
+      setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", newDocId), userPayload, { merge: true });
+    }
     await syncInviteMarker({
       email: cleanEmail,
       role: newUserRole,
@@ -409,7 +430,7 @@ export function UsersTab({
       !inviteState.isPending && inviteState.hasEmail && reinviteTarget.status === "active";
     const nextStatus = isAlreadyActive ? "active" : "pending";
 
-    updateDocumentNonBlocking(doc(firestore, "users", reinviteTarget.id), {
+    const reinvitePayload = {
       email: cleanEmail,
       phone: reinvitePhone.trim(),
       role: reinviteRole,
@@ -418,7 +439,11 @@ export function UsersTab({
       resentAt: nowIso,
       inviteCount: (Number(reinviteTarget.inviteCount) || 0) + 1,
       updatedAt: serverTimestamp(),
-    });
+    };
+    setDocumentNonBlocking(doc(firestore, "users", reinviteTarget.id), reinvitePayload, { merge: true });
+    if (businessId) {
+      setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", reinviteTarget.id), reinvitePayload, { merge: true });
+    }
 
     await syncInviteMarker({
       email: cleanEmail,
@@ -517,7 +542,7 @@ export function UsersTab({
     }
 
     const userRef = doc(firestore, "users", editingUser.id);
-    updateDocumentNonBlocking(userRef, {
+    const updatePayload = {
       name: (editingUser.name || "").trim(),
       email: cleanEmail,
       role: editingUser.role,
@@ -527,9 +552,13 @@ export function UsersTab({
       shiftHours: Number.parseInt(editShiftHours, 10) || 8,
       shiftTimings: `${editShiftStart} - ${editShiftEnd}`,
       updatedAt: serverTimestamp(),
-    });
+    };
+    setDocumentNonBlocking(userRef, updatePayload, { merge: true });
+    if (businessId) {
+      setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", editingUser.id), updatePayload, { merge: true });
+    }
 
-    if (cleanEmail && (editingUser.status === "pending" || editingUser._originalEmail !== cleanEmail)) {
+    if (cleanEmail) {
       await syncInviteMarker({
         email: cleanEmail,
         previousEmail: editingUser._originalEmail,
@@ -545,9 +574,15 @@ export function UsersTab({
   const handleDeleteUser = (member: any) => {
     if (!member?.id || member.id === currentUser?.uid) return;
     deleteDocumentNonBlocking(doc(firestore, "users", member.id));
+    if (businessId) {
+      deleteDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", member.id));
+    }
     const cleanEmail = (member.email || "").trim().toLowerCase();
-    if (businessId && cleanEmail) {
-      deleteDoc(doc(firestore, "businesses", businessId, "invites", cleanEmail)).catch(() => {});
+    if (cleanEmail) {
+      if (businessId) {
+        deleteDoc(doc(firestore, "businesses", businessId, "invites", cleanEmail)).catch(() => {});
+      }
+      deleteDoc(doc(firestore, "invites", cleanEmail)).catch(() => {});
     }
     toast({ title: "Member Removed", variant: "destructive" });
   };

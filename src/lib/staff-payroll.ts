@@ -808,12 +808,15 @@ export function buildTeamInviteLinks(params: {
   }
 
   const inviteUrl = `${cleanOrigin}/signup?${queryParams.toString()}`;
-  const loginParams = new URLSearchParams();
-  if (cleanEmail) loginParams.set("email", cleanEmail);
+  const loginParams = new URLSearchParams({
+    invite: "1",
+    name: cleanName,
+    business: cleanBusiness,
+    role: cleanRole,
+  });
   if (cleanBusinessId) loginParams.set("bid", cleanBusinessId);
-  const loginUrl = loginParams.toString()
-    ? `${cleanOrigin}/login?${loginParams.toString()}`
-    : `${cleanOrigin}/login`;
+  if (cleanEmail) loginParams.set("email", cleanEmail);
+  const loginUrl = `${cleanOrigin}/login?${loginParams.toString()}`;
 
   const inviteMessage = [
     `Hi ${cleanName},`,

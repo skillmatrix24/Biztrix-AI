@@ -90,12 +90,30 @@ export default function SignupPage() {
     setMounted(true);
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const inviteFlag = params.get("invite") === "1";
-      const bidParam = (params.get("bid") || params.get("businessId") || "").trim();
-      const roleParam = (params.get("role") || "").trim();
-      const emailParam = (params.get("email") || "").trim().toLowerCase();
-      const nameParam = (params.get("name") || "").trim();
-      const bizParam = (params.get("business") || "").trim();
+      let inviteFlag = params.get("invite") === "1";
+      let bidParam = (params.get("bid") || params.get("businessId") || "").trim();
+      let roleParam = (params.get("role") || "").trim();
+      let emailParam = (params.get("email") || "").trim().toLowerCase();
+      let nameParam = (params.get("name") || "").trim();
+      let bizParam = (params.get("business") || "").trim();
+
+      // Check storage fallback if URL params were omitted
+      if (!bidParam) {
+        try {
+          const raw = localStorage.getItem("biztrix_pending_invite") || sessionStorage.getItem("biztrix_pending_invite");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.bid) {
+              bidParam = parsed.bid;
+              roleParam = parsed.role || roleParam;
+              emailParam = parsed.email || emailParam;
+              nameParam = parsed.name || nameParam;
+              bizParam = parsed.businessName || bizParam;
+              inviteFlag = true;
+            }
+          }
+        } catch (_) {}
+      }
 
       const isInvited = inviteFlag || Boolean(bidParam) || Boolean(emailParam);
       if (isInvited) {
@@ -112,6 +130,20 @@ export default function SignupPage() {
           name: nameParam || prev.name,
           businessName: bizParam || prev.businessName,
         }));
+
+        if (bidParam) {
+          try {
+            const payload = {
+              bid: bidParam,
+              role: roleParam || "Staff",
+              email: emailParam,
+              name: nameParam,
+              businessName: bizParam,
+            };
+            localStorage.setItem("biztrix_pending_invite", JSON.stringify(payload));
+            sessionStorage.setItem("biztrix_pending_invite", JSON.stringify(payload));
+          } catch (_) {}
+        }
       }
     }
 
@@ -157,8 +189,40 @@ export default function SignupPage() {
     let bid: string | null = null;
     let invitedDocId: string | null = null;
 
-    // 1. Direct workspace invite check if bid was provided in URL (Fastest & 100% deterministic)
-    const targetBid = inviteContext.bid;
+    // 1. Direct workspace invite check if bid was provided in URL or storage (Fastest & 100% deterministic)
+    let targetBid = inviteContext.bid || "";
+    let targetRole = inviteContext.role || "Staff";
+    let targetBizName = inviteContext.businessName || "Workspace";
+    let targetName = "";
+
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      const urlBid = (p.get("bid") || p.get("businessId") || "").trim();
+      const urlRole = (p.get("role") || "").trim();
+      const urlBiz = (p.get("business") || "").trim();
+      const urlName = (p.get("name") || "").trim();
+
+      if (urlBid) targetBid = urlBid;
+      if (urlRole) targetRole = urlRole;
+      if (urlBiz) targetBizName = urlBiz;
+      if (urlName) targetName = urlName;
+
+      if (!targetBid) {
+        try {
+          const rawStored = localStorage.getItem("biztrix_pending_invite") || sessionStorage.getItem("biztrix_pending_invite");
+          if (rawStored) {
+            const parsed = JSON.parse(rawStored);
+            if (parsed?.bid) {
+              targetBid = parsed.bid;
+              if (parsed.role && !urlRole) targetRole = parsed.role;
+              if (parsed.businessName && !urlBiz) targetBizName = parsed.businessName;
+              if (parsed.name && !urlName) targetName = parsed.name;
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
     if (targetBid) {
       try {
         const invRef = doc(firestore, "businesses", targetBid, "invites", cleanEmail);
@@ -168,9 +232,9 @@ export default function SignupPage() {
           bid = targetBid;
           invitedProfile = {
             businessId: targetBid,
-            businessName: invData.businessName || inviteContext.businessName || "Workspace",
-            name: invData.name || name || "Team Member",
-            role: invData.role || inviteContext.role || "Staff",
+            businessName: invData.businessName || targetBizName || "Workspace",
+            name: invData.name || targetName || name || "Team Member",
+            role: invData.role || targetRole || "Staff",
             email: cleanEmail,
           };
         } else {
@@ -180,9 +244,9 @@ export default function SignupPage() {
             bid = targetBid;
             invitedProfile = {
               businessId: targetBid,
-              businessName: targetBizSnap.data()?.name || inviteContext.businessName || "Workspace",
-              name: name || "Team Member",
-              role: inviteContext.role || "Staff",
+              businessName: targetBizSnap.data()?.name || targetBizName || "Workspace",
+              name: targetName || name || "Team Member",
+              role: targetRole || "Staff",
               email: cleanEmail,
             };
           }
@@ -192,7 +256,27 @@ export default function SignupPage() {
       }
     }
 
-    // 2. Check pending user record in users collection
+    // 2. Direct root invite registry lookup: /invites/{cleanEmail}
+    if (!invitedProfile) {
+      try {
+        const rootInvSnap = await getDoc(doc(firestore, "invites", cleanEmail));
+        if (rootInvSnap.exists()) {
+          const invData = rootInvSnap.data();
+          bid = invData.businessId;
+          invitedProfile = {
+            businessId: bid,
+            businessName: invData.businessName || inviteContext.businessName || "Workspace",
+            name: invData.name || name || "Team Member",
+            role: invData.role || inviteContext.role || "Staff",
+            email: cleanEmail,
+          };
+        }
+      } catch (rErr) {
+        console.warn("Signup root invite check notice:", rErr);
+      }
+    }
+
+    // 3. Check pending user record in users collection
     if (!invitedProfile) {
       try {
         const invitedUsersQuery = query(
@@ -218,7 +302,7 @@ export default function SignupPage() {
       }
     }
 
-    // 3. Scan businesses for matching invite marker
+    // 4. Scan businesses for matching invite marker
     if (!invitedProfile) {
       try {
         const bizSnap = await getDocs(collection(firestore, "businesses"));
@@ -244,7 +328,7 @@ export default function SignupPage() {
       }
     }
 
-    // 4. Fallback to Collection Group invites
+    // 5. Fallback to Collection Group invites
     if (!invitedProfile) {
       try {
         const groupQuery = query(
@@ -270,7 +354,7 @@ export default function SignupPage() {
     }
 
     // If user already has an existing valid business AND no invite re-association is requested:
-    if (existingProfile && businessExists && !invitedProfile) {
+    if (existingProfile && businessExists && !invitedProfile && !targetBid) {
       return;
     }
 
@@ -310,16 +394,31 @@ export default function SignupPage() {
         },
         { merge: true }
       ).catch(() => {});
-    } else if (isInviteFlow) {
+      await setDoc(
+        doc(firestore, "invites", cleanEmail),
+        {
+          status: "claimed",
+          claimedBy: uid,
+          claimedAt: serverTimestamp(),
+          role: assignedRole,
+        },
+        { merge: true }
+      ).catch(() => {});
+
+      try {
+        localStorage.removeItem("biztrix_pending_invite");
+        sessionStorage.removeItem("biztrix_pending_invite");
+      } catch (_) {}
+    } else if (isInviteFlow || targetBid) {
       // User arrived through invite link, but workspace was not found
       if (targetBid) {
-        const assignedRole = inviteContext.role || "Staff";
+        const assignedRole = targetRole || "Staff";
         const profileData = {
           id: uid,
-          name: name || "Team Member",
+          name: name || targetName || "Team Member",
           email: cleanEmail,
           businessId: targetBid,
-          businessName: inviteContext.businessName || "Workspace",
+          businessName: targetBizName || "Workspace",
           role: assignedRole,
           status: "active",
           claimedAt: serverTimestamp(),
@@ -693,9 +792,11 @@ export default function SignupPage() {
                 Already have an account?{" "}
                 <Link
                   href={
-                    formData.email
-                      ? `/login?email=${encodeURIComponent(formData.email)}`
-                      : "/login"
+                    typeof window !== "undefined" && window.location.search
+                      ? `/login${window.location.search}`
+                      : formData.email
+                        ? `/login?email=${encodeURIComponent(formData.email)}`
+                        : "/login"
                   }
                   className="font-semibold text-primary hover:underline"
                 >

@@ -267,23 +267,23 @@ export default function TeamClientPage() {
 
     if (cleanPrev && cleanPrev !== cleanEmail) {
       deleteDoc(doc(firestore, "businesses", businessId, "invites", cleanPrev)).catch(() => {});
+      deleteDoc(doc(firestore, "invites", cleanPrev)).catch(() => {});
     }
 
+    const invitePayload = {
+      businessId,
+      businessName: business?.name || "Workspace",
+      email: cleanEmail,
+      name: params.name.trim(),
+      role: params.role || "Staff",
+      invitedBy: user?.uid || "",
+      status: "pending",
+      updatedAt: serverTimestamp(),
+    };
+
     const inviteRef = doc(firestore, "businesses", businessId, "invites", cleanEmail);
-    await setDoc(
-      inviteRef,
-      {
-        businessId,
-        businessName: business?.name || "Workspace",
-        email: cleanEmail,
-        name: params.name.trim(),
-        role: params.role || "Staff",
-        invitedBy: user?.uid || "",
-        status: "pending",
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    await setDoc(inviteRef, invitePayload, { merge: true });
+    await setDoc(doc(firestore, "invites", cleanEmail), invitePayload, { merge: true }).catch(() => {});
   };
 
   const handleSendInviteFromMainDialog = async () => {
@@ -403,7 +403,17 @@ export default function TeamClientPage() {
       ],
     };
 
-    addDocumentNonBlocking(collection(firestore, "users"), userData);
+    const newDocRef = doc(collection(firestore, "users"));
+    const newDocId = newDocRef.id;
+    const userPayload = {
+      ...userData,
+      id: newDocId,
+    };
+
+    setDocumentNonBlocking(newDocRef, userPayload, { merge: true });
+    if (businessId) {
+      setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", newDocId), userPayload, { merge: true });
+    }
     await syncInviteMarker({
       email: cleanEmail,
       role: newUserRole,
@@ -591,7 +601,7 @@ export default function TeamClientPage() {
       setDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", editingUser.id), updatePayload, { merge: true });
     }
 
-    if (cleanEmail && (editingUser.status === "pending" || editingUser._originalEmail !== cleanEmail)) {
+    if (cleanEmail) {
       await syncInviteMarker({
         email: cleanEmail,
         previousEmail: editingUser._originalEmail,
@@ -611,8 +621,11 @@ export default function TeamClientPage() {
       deleteDoc(doc(firestore, "businesses", businessId, "users", member.id)).catch(() => {});
     }
     const cleanEmail = (member.email || "").trim().toLowerCase();
-    if (businessId && cleanEmail) {
-      deleteDoc(doc(firestore, "businesses", businessId, "invites", cleanEmail)).catch(() => {});
+    if (cleanEmail) {
+      if (businessId) {
+        deleteDoc(doc(firestore, "businesses", businessId, "invites", cleanEmail)).catch(() => {});
+      }
+      deleteDoc(doc(firestore, "invites", cleanEmail)).catch(() => {});
     }
     toast({ title: "Member Removed", variant: "destructive" });
   };
@@ -653,9 +666,12 @@ export default function TeamClientPage() {
     for (let i = 0; i < rows.length; i += 1) {
       const row = rows[i];
       const userDocRef = doc(collection(firestore, "users"));
-      batch.set(userDocRef, {
+      const newUserId = userDocRef.id;
+      const cleanEmail = (row.email || "").trim().toLowerCase();
+      const batchPayload = {
+        id: newUserId,
         name: row.name,
-        email: row.email,
+        email: cleanEmail,
         phone: row.phone,
         address: row.address,
         role: row.role || "Staff",
@@ -675,29 +691,30 @@ export default function TeamClientPage() {
           { id: "assistant", label: "AI Assistant", enabled: true, order: 3 },
         ],
         updatedAt: serverTimestamp(),
-      });
-      ops += 1;
+      };
+      batch.set(userDocRef, batchPayload, { merge: true });
+      if (businessId) {
+        batch.set(doc(firestore, "businesses", businessId, "users", newUserId), batchPayload, { merge: true });
+      }
+      ops += 2;
 
-      if (row.email && row.email.includes("@")) {
-        const inviteRef = doc(firestore, "businesses", businessId, "invites", row.email);
-        batch.set(
-          inviteRef,
-          {
-            businessId,
-            businessName: business?.name || "Workspace",
-            email: row.email,
-            name: row.name,
-            role: row.role || "Staff",
-            invitedBy: user?.uid || "",
-            status: "pending",
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-        ops += 1;
+      if (cleanEmail && cleanEmail.includes("@")) {
+        const invitePayload = {
+          businessId,
+          businessName: business?.name || "Workspace",
+          email: cleanEmail,
+          name: row.name,
+          role: row.role || "Staff",
+          invitedBy: user?.uid || "",
+          status: "pending",
+          updatedAt: serverTimestamp(),
+        };
+        batch.set(doc(firestore, "businesses", businessId, "invites", cleanEmail), invitePayload, { merge: true });
+        batch.set(doc(firestore, "invites", cleanEmail), invitePayload, { merge: true });
+        ops += 2;
       }
 
-      if (ops >= 380) {
+      if (ops >= 360) {
         await commitBatchNonBlocking(batch);
         batch = writeBatch(firestore);
         ops = 0;

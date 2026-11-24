@@ -79,6 +79,7 @@ import { Badge } from "@/components/ui/badge";
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { useMarketplaceCatalog } from "@/hooks/use-marketplace-catalog";
 import { resolveCoreMenuState } from "@/lib/marketplace-catalog";
+import { resolveEffectivePermission, isStaffAdminRole } from "@/lib/staff-payroll";
 import { doc } from "firebase/firestore";
 import { differenceInDays, parseISO } from "date-fns";
 
@@ -200,6 +201,12 @@ export function SidebarNav() {
   const activeAddonIds = useMemo(() => business?.activeAddonIds || [], [business]);
   
   const userRole = (userProfile?.role || '').toLowerCase();
+  const isAdmin = useMemo(() => {
+    return Boolean(
+      (user?.uid && business?.ownerId === user.uid) ||
+      isStaffAdminRole(userProfile?.role, user?.email)
+    );
+  }, [userProfile?.role, user?.uid, user?.email, business?.ownerId]);
   const isAgent = userRole === 'agent';
 
   // DYNAMIC LOYALTY ITEMS WITH BUSINESS ID
@@ -280,9 +287,32 @@ export function SidebarNav() {
       return state !== 'locked' && state !== 'hidden';
     });
 
-    const roleFilteredItems = isAgent 
-      ? activatedItems.filter(item => ['Dashboard', 'Property Catalog', 'Real Estate Customers', 'Agent Performance'].includes(item.label))
-      : activatedItems;
+    const roleFilteredItems = activatedItems.filter((item) => {
+      if (isAdmin) return true;
+      if (isAgent) {
+        return ['Dashboard', 'Property Catalog', 'Real Estate Customers', 'Agent Performance'].includes(item.label);
+      }
+      
+      const role = userRole || 'staff';
+      const rbac = business?.rbacMatrix;
+
+      if (item.href === '/dashboard') return true;
+      if (item.href.startsWith('/billing')) return resolveEffectivePermission(rbac, "Billing (POS) & Invoice Checkout", role);
+      if (item.href.startsWith('/invoices')) return resolveEffectivePermission(rbac, "Invoices, Receipts & E-Way Bills", role);
+      if (item.href.startsWith('/accounting/gst')) return resolveEffectivePermission(rbac, "Invoices, Receipts & E-Way Bills", role);
+      if (item.href.startsWith('/quotations')) return resolveEffectivePermission(rbac, "Quotations & Estimates", role);
+      if (item.href.startsWith('/inventory')) return resolveEffectivePermission(rbac, "Inventory & Stock Adjustments", role);
+      if (item.href.startsWith('/leads')) return resolveEffectivePermission(rbac, "Sales CRM & Lead Pipeline", role);
+      if (item.href.startsWith('/customers') || item.href.startsWith('/vendors')) {
+        return resolveEffectivePermission(rbac, "Customer & Vendor Directories", role);
+      }
+      if (item.href.startsWith('/daily-entries')) return resolveEffectivePermission(rbac, "Staff Attendance & Daily Entries", role);
+      if (item.href.startsWith('/team')) return resolveEffectivePermission(rbac, "Staff Payroll & Wage Payouts", role);
+      if (item.href.startsWith('/accounting')) return resolveEffectivePermission(rbac, "Accounting, Ledgers & Cashbook", role);
+      if (item.href.startsWith('/settings')) return resolveEffectivePermission(rbac, "OS Settings & Role Configuration", role);
+
+      return true;
+    });
 
     if (roleFilteredItems.length === 0) return null;
 

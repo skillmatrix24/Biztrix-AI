@@ -60,14 +60,53 @@ export default function LoginPage() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [inviteInfo, setInviteInfo] = useState<{
+    bid?: string;
+    role?: string;
+    email?: string;
+    name?: string;
+    businessName?: string;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const emailParam = (params.get("email") || "").trim();
+      const bidParam = (params.get("bid") || params.get("businessId") || "").trim();
+      const roleParam = (params.get("role") || "").trim();
+      const nameParam = (params.get("name") || "").trim();
+      const bizParam = (params.get("business") || "").trim();
+      const isInvite = params.get("invite") === "1" || Boolean(bidParam);
+
       if (emailParam) {
         setEmail((prev) => prev || emailParam);
+      }
+
+      if (isInvite || bidParam) {
+        const payload = {
+          bid: bidParam,
+          role: roleParam || "Staff",
+          email: emailParam,
+          name: nameParam,
+          businessName: bizParam,
+        };
+        setInviteInfo(payload);
+        try {
+          localStorage.setItem("biztrix_pending_invite", JSON.stringify(payload));
+          sessionStorage.setItem("biztrix_pending_invite", JSON.stringify(payload));
+        } catch (_) {}
+      } else {
+        try {
+          const rawStored = localStorage.getItem("biztrix_pending_invite") || sessionStorage.getItem("biztrix_pending_invite");
+          if (rawStored) {
+            const parsed = JSON.parse(rawStored);
+            if (parsed?.bid) {
+              setInviteInfo(parsed);
+              if (parsed.email) setEmail((prev) => prev || parsed.email);
+            }
+          }
+        } catch (_) {}
       }
     }
 
@@ -111,15 +150,57 @@ export default function LoginPage() {
     let bid: string | null = null;
     let invitedDocId: string | null = null;
 
-    // Check URL parameters for explicit bid target
+    // Check URL parameters & local storage for explicit workspace invite target
     let targetBidFromUrl = '';
+    let targetRoleFromUrl = '';
+    let targetBizNameFromUrl = '';
+    let targetNameFromUrl = '';
+
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       targetBidFromUrl = (p.get('bid') || p.get('businessId') || '').trim();
+      targetRoleFromUrl = (p.get('role') || '').trim();
+      targetBizNameFromUrl = (p.get('business') || '').trim();
+      targetNameFromUrl = (p.get('name') || '').trim();
+
+      if (!targetBidFromUrl) {
+        try {
+          const rawStored = localStorage.getItem('biztrix_pending_invite') || sessionStorage.getItem('biztrix_pending_invite');
+          if (rawStored) {
+            const parsed = JSON.parse(rawStored);
+            if (parsed?.bid) {
+              targetBidFromUrl = parsed.bid;
+              targetRoleFromUrl = parsed.role || targetRoleFromUrl;
+              targetBizNameFromUrl = parsed.businessName || targetBizNameFromUrl;
+              targetNameFromUrl = parsed.name || targetNameFromUrl;
+            }
+          }
+        } catch (_) {}
+      }
     }
 
-    // 1. Direct check on targetBidFromUrl
-    if (targetBidFromUrl) {
+    // 1. Direct root invite registry lookup: /invites/{identifier}
+    try {
+      const rootInvRef = doc(firestore, 'invites', identifier);
+      const rootInvSnap = await getDoc(rootInvRef);
+      if (rootInvSnap.exists()) {
+        const invData = rootInvSnap.data();
+        bid = invData.businessId;
+        invitedProfile = {
+          businessId: bid,
+          businessName: invData.businessName || targetBizNameFromUrl || 'Workspace',
+          name: invData.name || targetNameFromUrl || firebaseUser.displayName || 'Team Member',
+          role: invData.role || targetRoleFromUrl || 'Staff',
+          email: identifier,
+          phone: invData.phone || firebaseUser.phoneNumber || null,
+        };
+      }
+    } catch (rErr) {
+      console.warn('Root invite lookup notice:', rErr);
+    }
+
+    // 2. Direct check on targetBidFromUrl
+    if (!invitedProfile && targetBidFromUrl) {
       try {
         const invRef = doc(firestore, 'businesses', targetBidFromUrl, 'invites', identifier);
         const invSnap = await getDoc(invRef);
@@ -128,9 +209,9 @@ export default function LoginPage() {
           bid = targetBidFromUrl;
           invitedProfile = {
             businessId: targetBidFromUrl,
-            businessName: invData.businessName || 'Workspace',
-            name: invData.name || firebaseUser.displayName || 'Team Member',
-            role: invData.role || 'Staff',
+            businessName: invData.businessName || targetBizNameFromUrl || 'Workspace',
+            name: invData.name || targetNameFromUrl || firebaseUser.displayName || 'Team Member',
+            role: invData.role || targetRoleFromUrl || 'Staff',
             email: identifier,
             phone: invData.phone || firebaseUser.phoneNumber || null,
           };
@@ -140,9 +221,9 @@ export default function LoginPage() {
             bid = targetBidFromUrl;
             invitedProfile = {
               businessId: targetBidFromUrl,
-              businessName: bSnap.data()?.name || 'Workspace',
-              name: firebaseUser.displayName || 'Team Member',
-              role: 'Staff',
+              businessName: bSnap.data()?.name || targetBizNameFromUrl || 'Workspace',
+              name: targetNameFromUrl || firebaseUser.displayName || 'Team Member',
+              role: targetRoleFromUrl || 'Staff',
               email: identifier,
               phone: firebaseUser.phoneNumber || null,
             };
@@ -264,13 +345,53 @@ export default function LoginPage() {
         },
         { merge: true }
       ).catch(() => {});
+      await setDoc(
+        doc(firestore, 'invites', identifier),
+        {
+          status: 'claimed',
+          claimedBy: firebaseUser.uid,
+          claimedAt: serverTimestamp(),
+          role: assignedRole,
+        },
+        { merge: true }
+      ).catch(() => {});
+
+      try {
+        localStorage.removeItem('biztrix_pending_invite');
+        sessionStorage.removeItem('biztrix_pending_invite');
+      } catch (_) {}
+
       return;
     }
 
     // If already has an existing valid business profile and no invite was found, keep as-is
-    if (existingProfile && businessExists) return;
+    if (existingProfile && businessExists && !targetBidFromUrl) return;
 
-    // Standard new individual business creation (only when no invite exists)
+    // If an explicit invite workspace was targeted, bind to that workspace with assigned role
+    if (targetBidFromUrl) {
+      const assignedRole = targetRoleFromUrl || 'Staff';
+      const profileData = {
+        id: firebaseUser.uid,
+        businessId: targetBidFromUrl,
+        businessName: targetBizNameFromUrl || 'Workspace',
+        email: identifier,
+        phone: firebaseUser.phoneNumber || null,
+        name: firebaseUser.displayName || targetNameFromUrl || 'Team Member',
+        role: assignedRole,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(userDocRef, profileData, { merge: true });
+      await setDoc(doc(firestore, 'businesses', targetBidFromUrl, 'users', firebaseUser.uid), profileData, { merge: true });
+      try {
+        localStorage.removeItem('biztrix_pending_invite');
+        sessionStorage.removeItem('biztrix_pending_invite');
+      } catch (_) {}
+      return;
+    }
+
+    // Standard new individual business creation (only when no invite was ever targeted)
     const tenantId = existingProfile?.businessId || `biz_${Date.now()}`;
     const trialEndDate = addDays(new Date(), 14);
 
@@ -436,6 +557,31 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500">Sign in to access your business workspace.</p>
         </div>
 
+        {inviteInfo && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-950 space-y-2 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Team Workspace Invitation</span>
+            </div>
+            <p className="text-xs text-emerald-800 leading-relaxed">
+              You are invited to join <strong className="font-semibold text-emerald-950">{inviteInfo.businessName || "Workspace"}</strong> as <strong className="font-semibold text-emerald-950">{inviteInfo.role || "Staff"}</strong>.
+            </p>
+            <div className="text-[11px] text-emerald-700 bg-white/70 border border-emerald-200/60 rounded-xl p-2.5 flex items-center justify-between gap-2">
+              <span>First time joining? Create password:</span>
+              <Link
+                href={
+                  typeof window !== "undefined" && window.location.search
+                    ? `/signup${window.location.search}`
+                    : `/signup?invite=1&email=${encodeURIComponent(inviteInfo.email || email)}&bid=${encodeURIComponent(inviteInfo.bid || "")}&role=${encodeURIComponent(inviteInfo.role || "Staff")}&business=${encodeURIComponent(inviteInfo.businessName || "")}`
+                }
+                className="font-semibold text-emerald-800 hover:text-emerald-950 underline shrink-0 inline-flex items-center gap-1"
+              >
+                Accept Invite <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+        )}
+
         <Card className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-none">
           <Tabs defaultValue="email" className="w-full">
             <CardHeader className="bg-slate-50/80 border-b border-slate-200 p-3">
@@ -457,7 +603,13 @@ export default function LoginPage() {
                     {isCredentialError && (
                       <div className="flex flex-wrap items-center gap-2 pt-1.5 border-t border-destructive/15">
                         <Link 
-                          href={email ? `/signup?email=${encodeURIComponent(email)}&invite=1` : "/signup"}
+                          href={
+                            typeof window !== "undefined" && window.location.search
+                              ? `/signup${window.location.search}`
+                              : email
+                                ? `/signup?email=${encodeURIComponent(email)}&invite=1${inviteInfo?.bid ? `&bid=${encodeURIComponent(inviteInfo.bid)}&role=${encodeURIComponent(inviteInfo.role || 'Staff')}` : ''}`
+                                : "/signup"
+                          }
                           className="inline-flex items-center text-[11px] font-semibold text-primary hover:underline gap-1"
                         >
                           <ArrowRight className="h-3 w-3" /> Set up password / Accept invite
@@ -641,7 +793,17 @@ export default function LoginPage() {
               <Separator className="flex-1" />
             </div>
             <Button asChild variant="outline" className="w-full h-11 rounded-xl border-slate-200 text-slate-800 hover:bg-slate-50 font-semibold text-xs">
-              <Link href={email ? `/signup?email=${encodeURIComponent(email)}` : "/signup"}>Create Business Account / Accept Invite</Link>
+              <Link
+                href={
+                  typeof window !== "undefined" && window.location.search
+                    ? `/signup${window.location.search}`
+                    : email
+                      ? `/signup?email=${encodeURIComponent(email)}`
+                      : "/signup"
+                }
+              >
+                Create Business Account / Accept Invite
+              </Link>
             </Button>
 
             <div className={mounted && user ? "grid grid-cols-2 gap-3 w-full" : "flex justify-center w-full"}>

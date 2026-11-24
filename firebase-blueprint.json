@@ -490,6 +490,12 @@
     "/businesses/{businessId}/publicStaff/{staffId}": {
       "schema": "#/backend/entities/PublicStaffProfile",
       "description": "Sanitized non-PII public tracking profile for staff portal sharing."
+    },
+    "/invites/{inviteEmail}": {
+      "description": "Global workspace invitation registry for instant member claims."
+    },
+    "/businesses/{businessId}/invites/{inviteEmail}": {
+      "description": "Business scoped workspace invite marker."
     }
   }
 }
