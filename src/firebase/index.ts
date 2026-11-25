@@ -1,7 +1,7 @@
 import firebaseConfig from '../../firebase-applet-config.json';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, updateDoc, runTransaction } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, updateDoc, runTransaction, type Firestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -18,10 +18,19 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  const db =
+  let db: Firestore;
+  const dbId =
     firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)'
-      ? getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId)
-      : getFirestore(firebaseApp);
+      ? firebaseConfig.firestoreDatabaseId
+      : undefined;
+
+  try {
+    db = dbId
+      ? initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true }, dbId)
+      : initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true });
+  } catch (_e) {
+    db = dbId ? getFirestore(firebaseApp, dbId) : getFirestore(firebaseApp);
+  }
 
   return {
     firebaseApp,

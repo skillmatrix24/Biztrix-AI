@@ -40,7 +40,9 @@ import {
   ArrowRight,
   ArrowUpRight,
   TrendingUp,
-  Target as TargetIcon
+  Target as TargetIcon,
+  ChevronDown,
+  Check
 } from "lucide-react";
 import { PageHeader, KpiStatCard, SectionCard, EmptyStatePanel } from "@/components/ui/editorial";
 import { Button } from "@/components/ui/button";
@@ -58,6 +60,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
@@ -160,7 +164,7 @@ export default function TaskManagerPage() {
   const [newDesc, setNewDesc] = useState("");
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newPriority, setNewPriority] = useState<'high' | 'medium' | 'low'>("medium");
-  const [newAssignee, setNewAssignee] = useState("");
+  const [newAssignees, setNewAssignees] = useState<string[]>([]);
   const [newCategory, setNewCategory] = useState("General");
   const [newProjectId, setNewProjectId] = useState("");
   const [draftSubtasks, setDraftSubtasks] = useState<{id: string, text: string, isCompleted: boolean}[]>([]);
@@ -218,14 +222,18 @@ export default function TaskManagerPage() {
 
   const handleAddTask = () => {
     if (!newTitle || !businessId) return;
-    const staff = businessUsers.find(s => s.id === newAssignee);
+    const selectedStaffList = businessUsers.filter(s => newAssignees.includes(s.id));
+    const assignedNames = selectedStaffList.map(s => s.name);
+    const assignedNameFormatted = assignedNames.length > 0 ? assignedNames.join(", ") : 'Unassigned';
     const linkedProject = projects.find(p => p.id === newProjectId);
     
     const taskData = {
       title: newTitle,
       description: newDesc,
-      assignedTo: newAssignee,
-      assignedName: staff?.name || 'Unassigned',
+      assignedTo: newAssignees,
+      assignedIds: newAssignees,
+      assignedNames,
+      assignedName: assignedNameFormatted,
       dueDate: newDate,
       priority: newPriority,
       status: 'pending',
@@ -240,16 +248,18 @@ export default function TaskManagerPage() {
     };
 
     addDocumentNonBlocking(collection(firestore, 'businesses', businessId, 'tasks'), taskData).then((docRef) => {
-      if (newAssignee && docRef) {
-        addDocumentNonBlocking(collection(firestore, 'businesses', businessId, 'notifications'), {
-          businessId,
-          recipientId: newAssignee,
-          title: "New Task Assigned",
-          message: `You are assigned to: ${newTitle}`,
-          type: 'task',
-          taskId: docRef.id,
-          isRead: false,
-          createdAt: serverTimestamp()
+      if (newAssignees.length > 0 && docRef) {
+        newAssignees.forEach((assigneeId) => {
+          addDocumentNonBlocking(collection(firestore, 'businesses', businessId, 'notifications'), {
+            businessId,
+            recipientId: assigneeId,
+            title: "New Task Assigned",
+            message: `You are assigned to: ${newTitle}`,
+            type: 'task',
+            taskId: docRef.id,
+            isRead: false,
+            createdAt: serverTimestamp()
+          });
         });
       }
     });
@@ -261,7 +271,7 @@ export default function TaskManagerPage() {
 
   const resetForm = () => {
     setNewTitle(""); setNewDesc(""); setNewPriority("medium"); 
-    setNewAssignee(""); setDraftSubtasks([]); setNewProjectId("");
+    setNewAssignees([]); setDraftSubtasks([]); setNewProjectId("");
   };
 
   const handleSendMessage = async (overrideMessage?: string) => {
@@ -495,9 +505,32 @@ export default function TaskManagerPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">{t.assignedName?.charAt(0)}</div>
-                            <span className="text-xs font-semibold text-slate-800">{t.assignedName}</span>
+                          <div className="flex items-center gap-2 max-w-[200px]">
+                            {Array.isArray(t.assignedNames) && t.assignedNames.length > 1 ? (
+                              <div className="flex -space-x-1.5 overflow-hidden shrink-0">
+                                {t.assignedNames.slice(0, 3).map((name: string, idx: number) => (
+                                  <div
+                                    key={idx}
+                                    className="inline-flex h-6 w-6 rounded-full ring-2 ring-white bg-slate-900 text-white font-bold text-[10px] items-center justify-center"
+                                    title={name}
+                                  >
+                                    {name.charAt(0).toUpperCase()}
+                                  </div>
+                                ))}
+                                {t.assignedNames.length > 3 && (
+                                  <div className="inline-flex h-6 w-6 rounded-full ring-2 ring-white bg-slate-200 text-slate-700 font-bold text-[9px] items-center justify-center">
+                                    +{t.assignedNames.length - 3}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="h-7 w-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700 shrink-0">
+                                {(t.assignedName || "U").charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs font-semibold text-slate-800 truncate" title={t.assignedName}>
+                              {t.assignedName || "Unassigned"}
+                            </span>
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
@@ -538,7 +571,15 @@ export default function TaskManagerPage() {
                 <SectionCard title="Team Workload" description="Assigned tasks per team member">
                   <div className="h-[260px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={businessUsers.slice(0, 5).map(u => ({ name: u.name?.split(' ')[0], tasks: taskList.filter(t => t.assignedTo === u.id).length }))}>
+                      <BarChart data={businessUsers.slice(0, 5).map(u => ({
+                        name: u.name?.split(' ')[0],
+                        tasks: taskList.filter(t => {
+                          if (t.assignedTo === u.id) return true;
+                          if (Array.isArray(t.assignedTo) && t.assignedTo.includes(u.id)) return true;
+                          if (Array.isArray(t.assignedIds) && t.assignedIds.includes(u.id)) return true;
+                          return false;
+                        }).length
+                      }))}>
                           <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={11} />
                           <YAxis hide />
                           <RechartsTooltip cursor={{fill: 'transparent'}} />
@@ -734,19 +775,136 @@ export default function TaskManagerPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5 text-left">
-                  <Label className="text-xs font-semibold text-slate-700">Assign Specialist</Label>
-                  <Select value={newAssignee} onValueChange={setNewAssignee}>
-                    <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white shadow-xs font-medium text-xs">
-                      <SelectValue placeholder="Pick member" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {businessUsers.map((u: any) => (
-                        <SelectItem key={u.id} value={u.id} className="text-xs">
-                          {u.name} ({u.role || "Staff"})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5 text-slate-500" />
+                      Assigned Specialists
+                      <span className="text-[10px] font-normal text-slate-500">(Multiple)</span>
+                    </Label>
+                    <span className="text-[10px] font-mono font-medium text-slate-500">
+                      {newAssignees.length} selected
+                    </span>
+                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 w-full rounded-xl border-slate-300 bg-white shadow-xs font-medium text-xs justify-between hover:bg-slate-50"
+                      >
+                        <span className="truncate">
+                          {newAssignees.length === 0
+                            ? "Pick specialists..."
+                            : newAssignees.length === 1
+                            ? businessUsers.find((u: any) => u.id === newAssignees[0])?.name || "1 Specialist"
+                            : `${newAssignees.length} Specialists Selected`}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 text-slate-400 shrink-0 ml-1" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0 rounded-2xl border-slate-200 shadow-xl overflow-hidden" align="start">
+                      <div className="p-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">Select Specialists</span>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 text-[10px] px-1.5 text-slate-600 hover:text-slate-900"
+                            onClick={() => setNewAssignees(businessUsers.map((u: any) => u.id))}
+                          >
+                            All
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 text-[10px] px-1.5 text-rose-600 hover:text-rose-700"
+                            onClick={() => setNewAssignees([])}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
+                      <ScrollArea className="max-h-48 p-1.5">
+                        <div className="space-y-1">
+                          {businessUsers.length === 0 ? (
+                            <p className="p-2 text-xs text-slate-400 text-center">No specialists found.</p>
+                          ) : (
+                            businessUsers.map((u: any) => {
+                              const isSelected = newAssignees.includes(u.id);
+                              return (
+                                <div
+                                  key={u.id}
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => {
+                                    setNewAssignees((prev) =>
+                                      prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                                    );
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setNewAssignees((prev) =>
+                                        prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                                      );
+                                    }
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-2 p-1.5 rounded-lg text-left cursor-pointer transition-colors text-xs",
+                                    isSelected ? "bg-slate-100 text-slate-900 font-semibold" : "hover:bg-slate-50 text-slate-700"
+                                  )}
+                                >
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => {
+                                      setNewAssignees((prev) =>
+                                        prev.includes(u.id) ? prev.filter((id) => id !== u.id) : [...prev, u.id]
+                                      );
+                                    }}
+                                    className="rounded"
+                                  />
+                                  <div className="min-w-0 flex-1 truncate">
+                                    <p className="truncate leading-tight">{u.name}</p>
+                                    <p className="text-[10px] text-slate-500 font-normal leading-tight">{u.role || "Staff"}</p>
+                                  </div>
+                                  {isSelected && <Check className="h-3 w-3 text-slate-900 shrink-0" />}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+
+                  {newAssignees.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1 max-h-16 overflow-y-auto">
+                      {newAssignees.map((uid) => {
+                        const member = businessUsers.find((u: any) => u.id === uid);
+                        return (
+                          <Badge
+                            key={uid}
+                            variant="outline"
+                            className="text-[10px] font-medium bg-slate-50 border-slate-200 text-slate-700 gap-1 px-1.5 py-0.5 rounded"
+                          >
+                            <span className="truncate max-w-[80px]">{member?.name || "Staff"}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setNewAssignees((prev) => prev.filter((id) => id !== uid));
+                              }}
+                              className="text-slate-400 hover:text-rose-600 ml-0.5"
+                            >
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1.5 text-left">
                   <Label className="text-xs font-semibold text-slate-700">Link Project</Label>

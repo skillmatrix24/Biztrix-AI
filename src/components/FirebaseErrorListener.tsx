@@ -15,17 +15,23 @@ export function FirebaseErrorListener() {
   useEffect(() => {
     // The callback now expects a strongly-typed error, matching the event payload.
     const handleError = (error: FirestorePermissionError) => {
-      // Non-critical background metadata and transient list queries during initial auth hydration should not crash the app
+      // Non-critical background metadata, list queries, and transient hydration checks should not crash the app
       const path = error?.request?.path || '';
       if (
-        path.includes('/system/config/branding/') ||
+        error?.request?.operation === 'list' ||
         path.includes('/system/config/') ||
-        (path.includes('/businesses/') && error?.request?.operation === 'list')
+        path.includes('/users') ||
+        path.includes('/invites') ||
+        path.includes('/businesses/')
       ) {
-        console.warn("[FirebaseErrorListener] Non-fatal query permission notice:", path);
+        console.warn("[FirebaseErrorListener] Non-fatal permission notice (gracefully handled):", {
+          path,
+          operation: error?.request?.operation,
+          code: error?.code,
+        });
         return;
       }
-      // Set error in state to trigger a re-render.
+      // Set error in state to trigger a re-render for critical single-document mutations.
       setError(error);
     };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { Plus, Zap, Sparkles, Loader2 } from "lucide-react";
+import { Plus, Zap, Sparkles, Loader2, Users, ChevronDown, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -84,6 +90,37 @@ export function AddProjectDialog({
             : [],
     }));
   }, [isOpen, initialLead]);
+
+  const toggleTeamMember = (id: string) => {
+    setFormData((prev) => {
+      const exists = prev.team.includes(id);
+      return {
+        ...prev,
+        team: exists ? prev.team.filter((item) => item !== id) : [...prev.team, id],
+      };
+    });
+  };
+
+  const removeTeamMember = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      team: prev.team.filter((item) => item !== id),
+    }));
+  };
+
+  const selectAllTeam = () => {
+    setFormData((prev) => ({
+      ...prev,
+      team: businessUsers.map((u) => u.id),
+    }));
+  };
+
+  const clearAllTeam = () => {
+    setFormData((prev) => ({
+      ...prev,
+      team: [],
+    }));
+  };
 
   const [deepResearch, setDeepResearch] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -431,25 +468,148 @@ export function AddProjectDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-slate-700">
-              Responsible Team Owner *
-            </Label>
-            <Select
-              value={formData.team[0] || ""}
-              onValueChange={(v) => setFormData({ ...formData, team: [v] })}
-            >
-              <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white text-sm shadow-xs font-medium">
-                <SelectValue placeholder="Select Staff Member" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                {businessUsers.map((s) => (
-                  <SelectItem key={s.id} value={s.id} className="text-xs">
-                    {s.name} ({s.role || "Staff"})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-slate-500" />
+                Responsible Team Owner *
+                <span className="text-[11px] font-normal text-slate-500">
+                  (Multiple Assign)
+                </span>
+              </Label>
+              <span className="text-[11px] font-mono font-medium text-slate-500">
+                {formData.team.length} selected
+              </span>
+            </div>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-full rounded-xl border-slate-300 bg-white text-xs font-medium shadow-xs justify-between hover:bg-slate-50"
+                >
+                  <span className="flex items-center gap-2 truncate">
+                    <Users className="h-4 w-4 text-slate-400 shrink-0" />
+                    {formData.team.length === 0 ? (
+                      <span className="text-slate-400">Select Team Owners / Assignees...</span>
+                    ) : formData.team.length === 1 ? (
+                      <span className="text-slate-800 font-semibold truncate">
+                        {businessUsers.find((u) => u.id === formData.team[0])?.name || "1 Member Selected"}
+                      </span>
+                    ) : (
+                      <span className="text-slate-800 font-semibold">
+                        {formData.team.length} Team Members Assigned
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 ml-2" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] sm:w-[380px] p-0 rounded-2xl border-slate-200 shadow-xl overflow-hidden" align="start">
+                <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Assign Team Owners</p>
+                    <p className="text-[10px] text-slate-500">Check all members responsible for this project</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 text-slate-600 hover:text-slate-900"
+                      onClick={selectAllTeam}
+                    >
+                      All
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2 text-rose-600 hover:text-rose-700"
+                      onClick={clearAllTeam}
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+                <ScrollArea className="max-h-56 p-2">
+                  <div className="space-y-1">
+                    {businessUsers.length === 0 ? (
+                      <p className="p-3 text-xs text-slate-400 text-center">No staff members found.</p>
+                    ) : (
+                      businessUsers.map((s) => {
+                        const isSelected = formData.team.includes(s.id);
+                        return (
+                          <div
+                            key={s.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => toggleTeamMember(s.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleTeamMember(s.id);
+                              }
+                            }}
+                            className={cn(
+                              "flex items-center gap-3 p-2 rounded-xl text-left cursor-pointer transition-colors",
+                              isSelected ? "bg-slate-100/90 text-slate-900 font-semibold" : "hover:bg-slate-50 text-slate-700"
+                            )}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleTeamMember(s.id)}
+                              className="rounded-md"
+                            />
+                            <div className="h-6 w-6 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                              {(s.name || "U").charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold truncate leading-tight">{s.name}</p>
+                              <p className="text-[10px] text-slate-500 capitalize leading-tight">{s.role || "Staff Member"}</p>
+                            </div>
+                            {isSelected && <Check className="h-3.5 w-3.5 text-slate-900 shrink-0" />}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
+
+            {/* Selected Members Badges */}
+            {formData.team.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {formData.team.map((uid) => {
+                  const member = businessUsers.find((u) => u.id === uid);
+                  return (
+                    <Badge
+                      key={uid}
+                      variant="outline"
+                      className="gap-1.5 pl-1.5 pr-2 py-1 text-[11px] font-semibold bg-slate-50 border-slate-200 text-slate-800 rounded-lg"
+                    >
+                      <div className="h-4 w-4 rounded-full bg-slate-900 text-white font-bold text-[9px] flex items-center justify-center">
+                        {(member?.name || "U").charAt(0).toUpperCase()}
+                      </div>
+                      <span className="truncate max-w-[120px]">{member?.name || "Member"}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeTeamMember(uid);
+                        }}
+                        className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 rounded-full p-0.5"
+                        title="Remove member"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

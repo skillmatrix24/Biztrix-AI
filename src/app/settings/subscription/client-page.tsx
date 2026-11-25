@@ -167,11 +167,29 @@ export default function SubscriptionPage() {
     [bundles, activeAddonIds]
   );
 
+  const userRole = (userProfile?.role || "").toLowerCase();
+  const isAdmin = useMemo(() => {
+    return Boolean(
+      (user?.uid && business?.ownerId === user.uid) ||
+      userRole === "owner" ||
+      userRole === "admin"
+    );
+  }, [userRole, user?.uid, business?.ownerId]);
+
   const handleToggleAddon = (item: MarketplaceItem, enable: boolean) => {
     if (!isSignedIn || !businessRef) {
       toast({
         title: "Sign in required",
         description: "Sign in to your business account to update active modules.",
+      });
+      return;
+    }
+
+    if (!isAdmin) {
+      toast({
+        variant: "destructive",
+        title: "Administrator Permission Required",
+        description: "Only workspace owners and administrators can manage active modules.",
       });
       return;
     }
@@ -196,6 +214,14 @@ export default function SubscriptionPage() {
 
   const confirmDisable = (item: MarketplaceItem) => {
     if (!businessRef) return;
+    if (!isAdmin) {
+      toast({
+        variant: "destructive",
+        title: "Administrator Permission Required",
+        description: "Only workspace owners and administrators can turn off modules.",
+      });
+      return;
+    }
     updateDocumentNonBlocking(businessRef, {
       activeAddonIds: activeAddonIds.filter((id) => id !== item.id),
       updatedAt: new Date().toISOString(),

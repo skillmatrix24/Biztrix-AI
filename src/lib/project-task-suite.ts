@@ -11,12 +11,38 @@ export interface TaskItem {
   priority?: 'low' | 'medium' | 'high' | 'urgent' | 'emergency' | string;
   projectId?: string | null;
   projectName?: string | null;
-  assignedTo?: string;
+  assignedTo?: string | string[];
+  assignedIds?: string[];
+  assignedNames?: string[];
   assignedName?: string;
   dueDate?: string;
   category?: string;
   section?: string;
   subtasks?: Array<{ id: string; text: string; isCompleted: boolean }>;
+}
+
+/**
+ * Resolves all assignee IDs from a task (supporting string, string[], or assignedIds).
+ */
+export function resolveTaskAssigneeIds(task: { assignedTo?: any; assignedIds?: any } | null | undefined): string[] {
+  if (!task) return [];
+  if (Array.isArray(task.assignedTo)) return task.assignedTo.filter(Boolean);
+  if (Array.isArray(task.assignedIds)) return task.assignedIds.filter(Boolean);
+  if (typeof task.assignedTo === 'string' && task.assignedTo.trim() !== '') {
+    return [task.assignedTo.trim()];
+  }
+  return [];
+}
+
+/**
+ * Checks if a task is assigned to a specific user (handles single or multiple assignees).
+ */
+export function isTaskAssignedToUser(
+  task: { assignedTo?: any; assignedIds?: any } | null | undefined,
+  userId: string
+): boolean {
+  if (!task || !userId) return false;
+  return resolveTaskAssigneeIds(task).includes(userId);
 }
 
 export interface ProjectItem {
@@ -82,9 +108,13 @@ export function filterTasksByProject(
     // 2. Search Query (title, assignee, project name, category, or section)
     if (!cleanSearch) return true;
 
+    const assignedNamesString = Array.isArray(task.assignedNames)
+      ? task.assignedNames.join(' ')
+      : (task.assignedName || '');
+
     return (
       task.title?.toLowerCase().includes(cleanSearch) ||
-      task.assignedName?.toLowerCase().includes(cleanSearch) ||
+      assignedNamesString.toLowerCase().includes(cleanSearch) ||
       task.projectName?.toLowerCase().includes(cleanSearch) ||
       task.category?.toLowerCase().includes(cleanSearch) ||
       task.section?.toLowerCase().includes(cleanSearch)

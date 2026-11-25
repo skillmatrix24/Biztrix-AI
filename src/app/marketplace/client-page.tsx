@@ -44,6 +44,7 @@ import {
   useMemoFirebase,
   useUser,
   updateDocumentNonBlocking,
+  setDocumentNonBlocking,
 } from "@/firebase";
 import {
   Table,
@@ -144,6 +145,20 @@ export default function MarketplacePage() {
 
   const [quickViewItem, setQuickViewItem] = useState<MarketplaceItem | null>(null);
   const [confirmDeactivateItem, setConfirmDeactivateItem] = useState<MarketplaceItem | null>(null);
+  const [purchaseModalItem, setPurchaseModalItem] = useState<{
+    item: MarketplaceItem;
+    mode: "trial" | "pro";
+  } | null>(null);
+  const [purchaseCycle, setPurchaseCycle] = useState<MarketplaceBillingCycle>("monthly");
+
+  const userRole = (userProfile?.role || "").toLowerCase();
+  const isAdmin = useMemo(() => {
+    return Boolean(
+      (user?.uid && business?.ownerId === user.uid) ||
+      userRole === "owner" ||
+      userRole === "admin"
+    );
+  }, [userRole, user?.uid, business?.ownerId]);
 
   const activeAddonIds: string[] = useMemo(
     () => (Array.isArray(business?.activeAddonIds) ? business.activeAddonIds : []),
@@ -164,7 +179,7 @@ export default function MarketplacePage() {
         activeAddonIds,
         bundles,
       }),
-    [bundles, searchTerm, categoryFilter, activeOnly, activeAddonIds]
+      [bundles, searchTerm, categoryFilter, activeOnly, activeAddonIds]
   );
 
   const filteredIndividuals = useMemo(
@@ -176,7 +191,7 @@ export default function MarketplacePage() {
         activeAddonIds,
         bundles,
       }),
-    [individuals, bundles, searchTerm, categoryFilter, activeOnly, activeAddonIds]
+      [individuals, bundles, searchTerm, categoryFilter, activeOnly, activeAddonIds]
   );
 
   const activeItemsList = useMemo(
@@ -184,7 +199,7 @@ export default function MarketplacePage() {
     [allItems, activeAddonIds]
   );
 
-  const handleActivate = (item: MarketplaceItem, mode: "trial" | "pro" = "trial") => {
+  const handleOpenPurchase = (item: MarketplaceItem, mode: "trial" | "pro" = "trial") => {
     if (!isSignedIn) {
       toast({
         title: "Sign in required",
@@ -192,15 +207,28 @@ export default function MarketplacePage() {
       });
       return;
     }
-    if (!businessRef) {
+    if (!isAdmin) {
       toast({
-        title: "Workspace loading",
-        description: "Your business profile is still syncing. Please try again in a moment.",
+        variant: "destructive",
+        title: "Administrator Permission Required",
+        description: "Only workspace owners and administrators can activate or modify business modules.",
       });
       return;
     }
+    setPurchaseCycle(billingCycle);
+    setPurchaseModalItem({ item, mode });
+  };
 
-    if (activeAddonIds.includes(item.id)) return;
+  const executeActivation = (
+    item: MarketplaceItem,
+    mode: "trial" | "pro",
+    cycle: MarketplaceBillingCycle
+  ) => {
+    if (!businessRef || !businessId || !user) return;
+    if (activeAddonIds.includes(item.id)) {
+      setPurchaseModalItem(null);
+      return;
+    }
 
     const updatedIds = [...activeAddonIds, item.id];
     updateDocumentNonBlocking(businessRef, {
@@ -208,19 +236,66 @@ export default function MarketplacePage() {
       updatedAt: new Date().toISOString(),
     });
 
+    // Record subscription log in Firestore for audit & billing tracking
+    const subLogRef = doc(firestore, "businesses", businessId, "subscriptions", item.id);
+    setDocumentNonBlocking(
+      subLogRef,
+      {
+        id: item.id,
+        moduleId: item.id,
+        moduleName: item.name,
+        businessId,
+        businessName: business?.name || "Workspace",
+        category: item.category,
+        price: item.price,
+        billingCycle: cycle,
+        mode: mode === "trial" ? "trial" : "active",
+        status: "active",
+        activatedAt: new Date().toISOString(),
+        activatedByUid: user.uid,
+        activatedByEmail: user.email || "",
+      },
+      { merge: true }
+    );
+
+    setPurchaseModalItem(null);
+    setQuickViewItem(null);
+
     toast({
-      title: mode === "pro" ? `${item.name} Activated` : `14-Day Trial Started: ${item.name}`,
-      description: `Added to your sidebar and billed on your ${billingCycle} preference.`,
+      title: mode === "pro" ? `${item.name} Activated` : `14-Day Free Trial: ${item.name}`,
+      description: `Added to ${business?.name || "your workspace"} sidebar (${cycle} billing).`,
     });
   };
 
   const handleDeactivate = (item: MarketplaceItem) => {
     if (!isSignedIn || !businessRef) return;
+    if (!isAdmin) {
+      toast({
+        variant: "destructive",
+        title: "Administrator Permission Required",
+        description: "Only workspace owners and administrators can turn off business modules.",
+      });
+      return;
+    }
+
     const updatedIds = activeAddonIds.filter((id) => id !== item.id);
     updateDocumentNonBlocking(businessRef, {
       activeAddonIds: updatedIds,
       updatedAt: new Date().toISOString(),
     });
+
+    if (businessId) {
+      const subLogRef = doc(firestore, "businesses", businessId, "subscriptions", item.id);
+      setDocumentNonBlocking(
+        subLogRef,
+        {
+          status: "disabled",
+          disabledAt: new Date().toISOString(),
+          disabledByUid: user?.uid,
+        },
+        { merge: true }
+      );
+    }
 
     setConfirmDeactivateItem(null);
     setQuickViewItem(null);
@@ -619,7 +694,7 @@ export default function MarketplacePage() {
                           <Button
                             type="button"
                             onClick={() =>
-                              handleActivate(bundle, bundle.isTrialAvailable ? "trial" : "pro")
+                              handleOpenPurchase(bundle, bundle.isTrialAvailable ? "trial" : "pro")
                             }
                             className="flex-1 h-10 rounded-xl font-semibold text-xs"
                           >
@@ -784,7 +859,7 @@ export default function MarketplacePage() {
                             type="button"
                             size="sm"
                             onClick={() =>
-                              handleActivate(item, item.isTrialAvailable ? "trial" : "pro")
+                              handleOpenPurchase(item, item.isTrialAvailable ? "trial" : "pro")
                             }
                             className="h-9 rounded-xl px-4 text-xs font-semibold"
                           >
@@ -966,11 +1041,10 @@ export default function MarketplacePage() {
                     <Button
                       type="button"
                       onClick={() => {
-                        handleActivate(
+                        handleOpenPurchase(
                           quickViewItem,
                           quickViewItem.isTrialAvailable ? "trial" : "pro"
                         );
-                        setQuickViewItem(null);
                       }}
                       className="rounded-xl"
                     >
@@ -983,6 +1057,134 @@ export default function MarketplacePage() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Module Purchase & Activation Confirmation Dialog */}
+      <Dialog
+        open={Boolean(purchaseModalItem)}
+        onOpenChange={(open) => !open && setPurchaseModalItem(null)}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200">
+          {purchaseModalItem && (() => {
+            const item = purchaseModalItem.item;
+            const mode = purchaseModalItem.mode;
+            const pricing = calculateMarketplacePrice(
+              item.price,
+              purchaseCycle,
+              item.annualDiscountPercent ?? limits.annualDiscountPercent
+            );
+            const isTrial = mode === "trial" && item.isTrialAvailable;
+
+            return (
+              <>
+                <DialogHeader className="text-left space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                      <ModuleIcon name={item.icon} className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-bold text-slate-900">
+                        {isTrial ? `Start Free Trial: ${item.name}` : `Activate ${item.name}`}
+                      </DialogTitle>
+                      <p className="text-xs text-slate-500">
+                        Workspace: <span className="font-semibold text-slate-800">{business?.name || "Workspace"}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <DialogDescription className="text-xs text-slate-600 leading-relaxed">
+                    {item.description}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="my-4 space-y-4 pt-2">
+                  {/* Billing cycle toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-900">Billing Preference</p>
+                      <p className="text-[11px] text-slate-500">
+                        {purchaseCycle === "yearly" ? `Save ${limits.annualDiscountPercent}% annually` : "Standard monthly billing"}
+                      </p>
+                    </div>
+                    <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setPurchaseCycle("monthly")}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                          purchaseCycle === "monthly"
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-600 hover:text-slate-900"
+                        )}
+                      >
+                        Monthly
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPurchaseCycle("yearly")}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                          purchaseCycle === "yearly"
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-600 hover:text-slate-900"
+                        )}
+                      >
+                        Yearly
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pricing breakdown */}
+                  <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-xs text-slate-600">Plan Rate:</span>
+                      <div className="text-right">
+                        <span className="text-lg font-bold text-slate-900">
+                          ₹{pricing.effectiveMonthly.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-500">/mo</span>
+                      </div>
+                    </div>
+                    {purchaseCycle === "yearly" && (
+                      <p className="text-[11px] text-emerald-700 font-medium text-right">
+                        Billed ₹{pricing.yearlyTotal.toLocaleString()}/yr · Save ₹{pricing.yearlySavings.toLocaleString()}
+                      </p>
+                    )}
+                    <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
+                      <span className="text-slate-500">Charge Today:</span>
+                      <span className="font-bold text-emerald-700">
+                        {isTrial ? "₹0.00 (14 Days Free)" : `₹${pricing.effectiveMonthly.toLocaleString()} (Added to Plan)`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-slate-500 bg-slate-100/70 p-3 rounded-lg leading-relaxed">
+                    {isTrial
+                      ? `You will get instant full access for ${item.trialDays ?? limits.trialDurationDays} days. Features unlock in your workspace navigation immediately.`
+                      : `This module will be immediately active for all team members in ${business?.name || "your workspace"}. You can manage or disable anytime.`}
+                  </div>
+                </div>
+
+                <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setPurchaseModalItem(null)}
+                    className="rounded-xl text-xs font-medium"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => executeActivation(item, mode, purchaseCycle)}
+                    className="rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white flex-1"
+                  >
+                    {isTrial ? "Confirm & Start Free Trial" : "Confirm & Activate"}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

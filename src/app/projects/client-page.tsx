@@ -183,12 +183,18 @@ function ProjectsPageContent() {
       }
 
       if (initialTasks && initialTasks.length > 0) {
+        const assignedOwners = businessUsers.filter(u => (projectData.team || []).includes(u.id));
+        const assignedNames = assignedOwners.map(u => u.name);
+        const assignedNameFormatted = assignedNames.length > 0 ? assignedNames.join(", ") : 'Unassigned';
+
         initialTasks.forEach((task: any) => {
           addDocumentNonBlocking(tasksRef, {
             ...task,
             projectId: docRef.id,
-            assignedTo: projectData.team[0] || '',
-            assignedName: businessUsers.find(u => u.id === projectData.team[0])?.name || 'Unassigned',
+            assignedTo: projectData.team || [],
+            assignedIds: projectData.team || [],
+            assignedNames,
+            assignedName: assignedNameFormatted,
             status: 'pending',
             remindWhatsApp: true,
             repeat: 'none',

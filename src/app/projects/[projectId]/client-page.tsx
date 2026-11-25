@@ -219,10 +219,17 @@ export default function ProjectDashboardPage(props: { params: { projectId: strin
       section: quickTaskSection || "Execution",
       projectId,
       projectName: project?.title || "Project",
-      assignedTo: effectiveAssignee || project?.team?.[0] || "",
+      assignedTo: effectiveAssignee ? effectiveAssignee : (project?.team || []),
+      assignedIds: effectiveAssignee ? [effectiveAssignee] : (project?.team || []),
+      assignedNames: effectiveAssignee
+        ? [assignedUser?.name || "Unassigned"]
+        : businessUsers.filter((u: any) => (project?.team || []).includes(u.id)).map((u: any) => u.name),
       assignedName:
         assignedUser?.name ||
-        businessUsers.find((u: any) => u.id === project?.team?.[0])?.name ||
+        businessUsers
+          .filter((u: any) => (project?.team || []).includes(u.id))
+          .map((u: any) => u.name)
+          .join(", ") ||
         "Unassigned",
       businessId,
       createdAt: serverTimestamp(),

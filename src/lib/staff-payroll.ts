@@ -398,10 +398,17 @@ export function aggregateStaffPayrollRow<TStaff extends StaffMemberLike>(params:
   const totalPaidMonth = attendancePaid + standalonePaid;
   const pendingBalance = totalEarnedMonth - totalPaidMonth;
 
+  const isStaffAssigned = (t: any) => {
+    if (!t) return false;
+    if (t.assignedTo === staff.id) return true;
+    if (Array.isArray(t.assignedTo) && t.assignedTo.includes(staff.id)) return true;
+    if (Array.isArray(t.assignedIds) && t.assignedIds.includes(staff.id)) return true;
+    return false;
+  };
   const completedTasks = tasksList.filter(
-    (t) => t.assignedTo === staff.id && t.status === "completed"
+    (t) => isStaffAssigned(t) && t.status === "completed"
   ).length;
-  const totalAssignedTasks = tasksList.filter((t) => t.assignedTo === staff.id).length;
+  const totalAssignedTasks = tasksList.filter((t) => isStaffAssigned(t)).length;
 
   return {
     staff,

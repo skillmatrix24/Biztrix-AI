@@ -5,6 +5,8 @@ import {
   filterTasksByProject,
   calculateProjectFinancials,
   calculateMilestoneProgress,
+  resolveTaskAssigneeIds,
+  isTaskAssignedToUser,
 } from './project-task-suite';
 
 test('Project-Task Suite: Project Progress Derivation from Tasks', () => {
@@ -92,4 +94,34 @@ test('Project-Task Suite: Milestone Progress Tracking', () => {
   assert.equal(progress.approvedMilestones, 2); // m1 (completed) + m2 (approved_by_client)
   assert.equal(progress.milestoneProgressPercentage, 33);
   assert.equal(progress.totalBilledAmount, 20000);
+});
+
+test('Project-Task Suite: Multi-Assignee Task Resolution and Search', () => {
+  // Single string assignedTo
+  const taskSingle = { id: 't1', assignedTo: 'user_1', assignedName: 'Karan Singh' };
+  assert.deepEqual(resolveTaskAssigneeIds(taskSingle), ['user_1']);
+  assert.equal(isTaskAssignedToUser(taskSingle, 'user_1'), true);
+  assert.equal(isTaskAssignedToUser(taskSingle, 'user_2'), false);
+
+  // Array assignedTo
+  const taskMultiple = {
+    id: 't2',
+    assignedTo: ['user_1', 'user_2', 'user_3'],
+    assignedNames: ['Karan Singh', 'Neha Patil', 'Arjun Verma'],
+    assignedName: 'Karan Singh, Neha Patil, Arjun Verma'
+  };
+  assert.deepEqual(resolveTaskAssigneeIds(taskMultiple), ['user_1', 'user_2', 'user_3']);
+  assert.equal(isTaskAssignedToUser(taskMultiple, 'user_1'), true);
+  assert.equal(isTaskAssignedToUser(taskMultiple, 'user_2'), true);
+  assert.equal(isTaskAssignedToUser(taskMultiple, 'user_3'), true);
+  assert.equal(isTaskAssignedToUser(taskMultiple, 'user_4'), false);
+
+  // Search by any of the multiple assignees
+  const tasks = [taskSingle, taskMultiple] as any;
+  const matchKaran = filterTasksByProject(tasks, 'all', 'Karan');
+  assert.equal(matchKaran.length, 2);
+
+  const matchNeha = filterTasksByProject(tasks, 'all', 'Neha');
+  assert.equal(matchNeha.length, 1);
+  assert.equal(matchNeha[0].id, 't2');
 });

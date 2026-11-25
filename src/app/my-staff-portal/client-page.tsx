@@ -116,12 +116,19 @@ export default function MyStaffPortalPage() {
     if (!businessId || !user?.uid) return null;
     return query(
       collection(firestore, "businesses", businessId, "tasks"),
-      where("assignedTo", "==", user.uid),
       orderBy("createdAt", "desc")
     );
   }, [firestore, businessId, user?.uid]);
   const { data: myTasksData } = useCollection<any>(tasksQuery);
-  const myTasks = useMemo(() => myTasksData || [], [myTasksData]);
+  const myTasks = useMemo(() => {
+    if (!myTasksData || !user?.uid) return [];
+    return myTasksData.filter((t: any) => {
+      if (t.assignedTo === user.uid) return true;
+      if (Array.isArray(t.assignedTo) && t.assignedTo.includes(user.uid)) return true;
+      if (Array.isArray(t.assignedIds) && t.assignedIds.includes(user.uid)) return true;
+      return false;
+    });
+  }, [myTasksData, user?.uid]);
 
   const bizRef = useMemoFirebase(
     () => (businessId ? doc(firestore, "businesses", businessId) : null),

@@ -83,6 +83,48 @@ export const SIDEBAR_ARCHITECTURE_RULES: BlueprintAccessRule[] = [
     behavior: 'Mobile par max 5 primary tabs (ya 4 + More drawer + optional Center FAB) role-wise render hote hain aur same suiteId/addonId locks respect karte hain.',
     sourceFile: 'src/components/layout/bottom-nav.tsx',
   },
+  {
+    id: 'financial_integrity_gate',
+    title: 'Pillar 1: Financial & Statutory Anti-Pilferage Gate',
+    trigger: 'Firestore Security Rules: /businesses/{id}/invoices, creditNotes, cashbook, fixedExpenses, products',
+    behavior: 'GST Tax Invoices immutable statutory record hain: client deletion strictly blocked (allow delete: if isPlatformOwner()), edits restricted to dispatch/E-Way and admin cancellation. Reversals mandatory via Credit Notes. Cashbook P&L read restricted to isBusinessAdmin; POS counter staff can write entries but cannot edit/delete past cash transactions. Product deletion restricted to admin.',
+    sourceFile: 'firestore.rules',
+  },
+  {
+    id: 'team_invite_wage_sync',
+    title: 'Team Directory Invite & Wage Sync Matrix',
+    trigger: 'User login via invite link / Google Auth + /team deduplication',
+    behavior: 'Invited staff member login par unka assigned dailyRate (default ₹500/d), shiftHours, aur role active Firebase Auth UID par seamlessly bind hota hai. emailMap deduplication engine unke purane pending invitation row ko active account ke sath merge karta hai aur duplicate documents ko delete karta hai.',
+    sourceFile: 'src/app/team/client-page.tsx & src/app/login/client-page.tsx',
+  },
+  {
+    id: 'marketplace_admin_entitlement',
+    title: 'Marketplace Module Activation & Quota Control',
+    trigger: 'userRole === "admin" || userRole === "owner" || isPlatformOwner',
+    behavior: 'Tenant add-on ya suite activation sirf verified admin/owner trigger kar sakte hain with 2-step confirmation modal. Global Users me Platform Owner ko kisi bhi business ke modules ko activate/deactivate karne ka master toggle milta hai with automatic fallback business lookup.',
+    sourceFile: 'src/app/marketplace/client-page.tsx & src/app/owner/users/client-page.tsx',
+  },
+  {
+    id: 'pillar2_customer_privacy_gate',
+    title: 'Pillar 2: Customer Data Privacy & Anti-Leakage Gate',
+    trigger: 'Firestore Security Rules: customers, leads, storefront_leads, vendors, realEstateLeads, campaigns, orders',
+    behavior: 'Customer directory, CRM leads, storefront leads, real estate leads, aur orders ka deletion strictly admin-only hai (staff delete nahi kar sakte, debtor records tamper-proof hain). Vendors ka wholesale margin & bank details update/delete locked to admin. WhatsApp campaigns blast control admin-only hai taki brand account ban aur bulk spamming na ho sake.',
+    sourceFile: 'firestore.rules',
+  },
+  {
+    id: 'pillar3_api_tenant_defense_gate',
+    title: 'Pillar 3: Multi-Tenant Isolation & Cyber Attack Defense',
+    trigger: 'next.config.ts security headers, firestore.rules privateConfig lock, API rate limiting & server secrets',
+    behavior: 'Har business ka data dusre tenant se strictly isolated hai via isBusinessMember verification. Private credentials (payment gateway secrets, GSP client secrets, Meta tokens) client reads ke liye permanently blocked hain (allow read, write: if false;). Public API routes (chatbot, contact form) par IP rate limiting aur input truncation active hai, aur next.config.ts me X-Content-Type-Options, Referrer-Policy, va X-XSS-Protection headers cyber attacks ko block karte hain.',
+    sourceFile: 'next.config.ts & firestore.rules',
+  },
+  {
+    id: 'pillar4_cyber_defense_gate',
+    title: 'Pillar 4: Cyber Attacks & Hacking Defense (System Hardening)',
+    trigger: 'HMAC timing-safe webhooks, CSV formula sanitization, NoSQL parameterization, role escalation lock',
+    behavior: 'Cyber attack vectors 100% hardened: (1) Razorpay & Meta webhooks timing-safe HMAC-SHA256 crypto signatures verify karte hain. (2) CSV exports spreadsheet formula injection (=,+,-,@) ko auto-neutralize karte hain. (3) User role escalation rules me strictly locked hai (members cannot self-promote to admin/owner). (4) IP-based rate limiting (10 req/2 min) AI chatbot ko bot scraping aur credit drainage se bachata hai. (5) System audit logs (/system/logs) tamper-proof aur platform-owner only hain.',
+    sourceFile: 'src/app/api/webhook/* & src/lib/staff-payroll.ts & firestore.rules',
+  },
 ];
 
 export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
@@ -230,11 +272,12 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/owner/users/page.tsx',
         entitlement: 'Platform Owner Only',
         howItWorks:
-          'Platform par registered sabhi businesses aur users ko inspect karta hai; owner yahan se tenant plans upgrade, activeAddonIds assign, ya account status control kar sakta hai.',
+          'Platform par registered sabhi businesses aur users ko inspect karta hai; owner/admin leadership matrix dikhata hai jisse tenant owners, team members aur managers alag pehchane jayein. Owner yahan se tenant plans upgrade, activeAddonIds activate/deactivate, ya account status control kar sakta hai with auto-fallback business lookup for missing business mappings.',
         pageSections: [
           'Tenant Businesses Directory & Search',
-          'Users Role & Business Mapping Table',
-          'Addon Entitlement & Subscription Override Modal',
+          'Owner & Admin Leadership Matrix (Distinct Owner vs Staff distinction)',
+          'Users Role & Business Mapping Table with Direct Tenant Jump',
+          'Addon Entitlement & Subscription Override Modal (Activate/Deactivate Modules)',
         ],
         connectedPages: [
           { label: 'Overview', href: '/owner', relation: 'Master tenant telemetry' },
@@ -431,9 +474,10 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/invoices/page.tsx',
         entitlement: 'Core (Free)',
         howItWorks:
-          'Sabhi saved POS aur Split invoices ko track karta hai: Unpaid/Partial udhaar payment recovery record kar sakte hain, Sales Return / Credit Note bana sakte hain (stock restock ke saath), WhatsApp + UPI QR reminder bhej sakte hain, NIC JSON export kar sakte hain, aur Live GSP API ke through 1-click E-Way Bill generate, Part-B vehicle update ya cancel kar sakte hain.',
+          'Sabhi saved POS aur Split invoices ko track karta hai with Pillar 1 Financial Security: Tax Invoices immutable statutory records hain (zero client deletion: allow delete strictly platform owner only, edits restricted to dispatch/E-Way and admin cancellation). Reversals ke liye Credit Notes / Sales Return (stock restock ke saath) generate hota hai. Unpaid udhaar recovery, WhatsApp + UPI QR reminders, NIC JSON export, aur Live GSP API se E-Way Bill generation support karta hai.',
         pageSections: [
           'Invoice KPIs (Total Billed, Collected, Pending Udhaar, E-Way Pending)',
+          'Pillar 1 Security Banner (Statutory Zero-Deletion & Immutable Tax Records)',
           'Status/Search Filters & Invoice Registry Table',
           'Udhaar Recovery Payment Modal (Partial/Full settlement + Cashbook sync)',
           'Credit Note / Sales Return Dialog (Stock restock + GST reversal)',
@@ -452,11 +496,11 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         backendStack: {
           firestoreCollections: [
-            'businesses/{businessId}/invoices',
-            'businesses/{businessId}/creditNotes',
-            'businesses/{businessId}/cashbook',
+            'businesses/{businessId}/invoices (Pillar 1: Immutable tax records, zero client delete)',
+            'businesses/{businessId}/creditNotes (Pillar 1: Statutory GST reversals)',
+            'businesses/{businessId}/cashbook (Pillar 1: Admin-only P&L, POS write-only)',
             'businesses/{businessId}/customers',
-            'businesses/{businessId}/products',
+            'businesses/{businessId}/products (Pillar 1: Admin-only delete)',
           ],
           apiRoutes: ['/api/eway-bill/generate', '/api/eway-bill/action', '/api/eway-bill/config'],
           serverActions: [],
@@ -553,9 +597,10 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/leads/page.tsx',
         entitlement: 'Core (Free)',
         howItWorks:
-          'Incoming sales inquiries aur pipeline stages (New, Contacted, Qualified, Proposal, Won, Lost) ko track karta hai; Won leads ko directly Customer registry me promote karta hai.',
+          'Incoming sales inquiries aur pipeline stages (New, Contacted, Qualified, Proposal, Won, Lost) ko track karta hai with Pillar 2 Anti-Leakage Protection: Leads ka deletion strictly Admin/Owner only hai taki rogue staff ya rival agents customer inquiries delete ya wipe na kar sakein. Won leads directly Customer registry me promote hoti hain.',
         pageSections: [
           'Pipeline Stage Counters & Search/Source Filters',
+          'Pillar 2 Lead Anti-Poaching & Deletion Lock',
           'Lead Capture Form (Name, Phone, Source, Estimated Value, Follow-up Date)',
           'Stage Transition Controls & Convert-to-Customer Action',
         ],
@@ -566,7 +611,10 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         frontendStack: ['src/app/leads/page.tsx'],
         backendStack: {
-          firestoreCollections: ['businesses/{businessId}/leads', 'businesses/{businessId}/customers'],
+          firestoreCollections: [
+            'businesses/{businessId}/leads (Pillar 2: Admin-only delete, anti-poaching)',
+            'businesses/{businessId}/customers',
+          ],
           apiRoutes: [],
           serverActions: [],
           aiAndExternal: [],
@@ -579,9 +627,10 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/customers/page.tsx',
         entitlement: 'Core (Free)',
         howItWorks:
-          'Sabhi retail/B2B customers ka unified directory maintain karta hai — GSTIN, State, Address, Phone, Total Spent, Pending Udhaar (`dueBalance`), Online Orders history, aur AI Loyalty Risk/Engagement insights ke saath.',
+          'Sabhi retail/B2B customers ka unified directory maintain karta hai with Pillar 2 Anti-Theft Protection: Customer profiles aur unka udhaar khata (`dueBalance`) deletion permanently locked to Admin/Owner only hai (staff cannot delete debtor ledgers). GSTIN, State, Address, Phone, Total Spent, Online Orders, aur AI Loyalty Risk insights provide karta hai.',
         pageSections: [
           'Customer Directory & Udhaar Filter Views',
+          'Pillar 2 Debtor & Customer Tamper Protection Lock',
           'Add/Edit Customer Modal (GSTIN, State, Pincode, Phone, Email)',
           'Customer Profile Drawer (Purchase History, Udhaar Balance, Store Orders, Loyalty Status)',
           'AI Loyalty & Churn Analysis Trigger',
@@ -593,7 +642,10 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         frontendStack: ['src/app/customers/page.tsx'],
         backendStack: {
-          firestoreCollections: ['businesses/{businessId}/customers', 'businesses/{businessId}/orders'],
+          firestoreCollections: [
+            'businesses/{businessId}/customers (Pillar 2: Zero staff delete, debtor ledger tamper-proof)',
+            'businesses/{businessId}/orders (Pillar 2: Admin-only delete)',
+          ],
           apiRoutes: [],
           serverActions: ['src/app/actions/customer-actions.ts'],
           aiAndExternal: ['src/ai/flows/loyalty-intelligence-flow.ts (Gemini)'],
@@ -606,9 +658,10 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/vendors/page.tsx',
         entitlement: 'Core (Free)',
         howItWorks:
-          'Suppliers aur manufacturers ka payable ledger track karta hai — har purchase bill vs vendor payment ka running balance (`/vendors/[vendorId]`) maintain hota hai.',
+          'Suppliers aur manufacturers ka payable ledger track karta hai with Pillar 2 Supplier Privacy: Counter staff product create karte waqt vendor name pick kar sakte hain, lekin vendor bank accounts, purchase margins, aur profile edit/delete strictly Business Admin/Owner ke liye locked hai.',
         pageSections: [
           'Total Vendors & Outstanding Payables Summary',
+          'Pillar 2 Wholesale Margin & Bank Details Protection',
           'Vendor Directory with Quick Payment & Ledger Link (/vendors/[vendorId])',
           'Add Vendor Form (GSTIN, Phone, Category, Opening Balance)',
         ],
@@ -632,10 +685,11 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/team/page.tsx',
         entitlement: 'Core (Free)',
         howItWorks:
-          'Organization team members, phone/email directory, direct WhatsApp onboarding invites, re-invite links, member status, aur CSV export/import ko manage karta hai.',
+          'Organization team members, phone/email directory, direct WhatsApp onboarding invites, re-invite links, member status, CSV export/import, aur wage syncing ko manage karta hai. Invited members login karne par unka ₹500/d daily rate aur shift hours automatically authenticated UID par link hote hain aur emailMap deduplication engine duplicate rows ko background me merge aur prune karta hai.',
         pageSections: [
           'Team Directory KPI Metrics (Total Members, Active Logins, Pending Invites, Defined Roles)',
           'Member Directory Table with Status Filter (All / Active / Pending) & Search',
+          'Wage Sync & Auto-Deduplication Engine (₹500/d default rate & shift hours binding)',
           'Direct WhatsApp Invite & Re-Invite Share Sheet with Pre-filled Welcome Message',
           'Team Member CSV Export & Safe CSV Import Dialog with Header Auto-mapping',
           'Quick Bridge to OS Settings Roles & RBAC Matrix (/settings?tab=roles)',
@@ -647,7 +701,13 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         frontendStack: ['src/app/team/page.tsx', 'src/app/team/client-page.tsx', 'src/app/settings/components/TeamImportDialog.tsx'],
         backendStack: {
-          firestoreCollections: ['businesses/{businessId}/team', 'users'],
+          firestoreCollections: [
+            'businesses/{businessId}/team',
+            'businesses/{businessId}/users',
+            'businesses/{businessId}/invites',
+            'invites',
+            'users',
+          ],
           apiRoutes: [],
           serverActions: [],
           aiAndExternal: ['WhatsApp Web Direct Invite Links'],
@@ -2070,11 +2130,12 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         pageFile: 'src/app/marketplace/page.tsx',
         entitlement: 'Core (All Non-Agent Users)',
         howItWorks:
-          'Sabhi optional vertical suites aur add-ons ko showcase karta hai (`/marketplace/features/[moduleId]`); admin yahin se modules preview aur activate/subscribe kar sakte hain jisse Sidebar me naye groups unlock hote hain.',
+          'Sabhi optional vertical suites aur add-ons ko showcase karta hai (`/marketplace/features/[moduleId]`); business admin ya owner yahin se modules preview, 14-day free trial unlock, aur purchase confirm kar sakte hain with a 2-step confirmation modal jisse Sidebar me corresponding navigation groups instant unlock hote hain.',
         pageSections: [
           'Featured Suites & Add-ons Catalog Grid',
           'Feature Detail Preview (/marketplace/features/[moduleId])',
-          'Razorpay Checkout / Module Activation Controls',
+          'Admin Purchase & Free Trial Confirmation Modal (Secured against unauthorized staff clicks)',
+          'Razorpay / Gateway Checkout & Module Activation Controls',
         ],
         connectedPages: [
           { label: 'Plans & Limits', href: '/owner/limits', relation: 'Reads live quotas, prices & catalog configured by Platform Master' },
@@ -2082,7 +2143,11 @@ export const SIDEBAR_BLUEPRINT_GROUPS: BlueprintSidebarGroup[] = [
         ],
         frontendStack: ['src/app/marketplace/page.tsx', 'features/[moduleId]/page.tsx'],
         backendStack: {
-          firestoreCollections: ['system/config/marketplace', 'businesses/{businessId}'],
+          firestoreCollections: [
+            'system/config/marketplace',
+            'businesses/{businessId}',
+            'businesses/{businessId}/subscriptions (Pillar 1: Audit logs of module changes)',
+          ],
           apiRoutes: ['/api/payments/create-order', '/api/payments/verify'],
           serverActions: [],
           aiAndExternal: ['Razorpay'],

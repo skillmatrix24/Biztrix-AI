@@ -80,12 +80,20 @@ export function useCollection<T = any>(
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
 
         // LOGGING FOR DIAGNOSTICS - PRESERVE ORIGINAL ERROR INFO
-        console.error("[Firestore useCollection Error]", {
-          code: firestoreError.code,
-          message: firestoreError.message,
-          name: firestoreError.name,
-          path: path
-        });
+        if (firestoreError.code === 'unavailable') {
+          console.warn("[Firestore useCollection Notice - operating in offline mode]", {
+            code: firestoreError.code,
+            message: firestoreError.message,
+            path: path
+          });
+        } else {
+          console.error("[Firestore useCollection Error]", {
+            code: firestoreError.code,
+            message: firestoreError.message,
+            name: firestoreError.name,
+            path: path
+          });
+        }
 
         // ONLY wrap in FirestorePermissionError if it's actually a permission issue
         if (firestoreError.code === 'permission-denied') {

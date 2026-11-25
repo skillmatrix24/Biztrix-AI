@@ -183,6 +183,22 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/invoices",
         tags: ["eway", "transport", "vehicle", "gst", "consignment", "b2b"],
         severity: "high"
+      },
+      {
+        id: "inv_zero_deletion_statutory",
+        symptom: "User wants to delete a generated tax invoice or sees no delete button",
+        symptomHindi: "Tax invoice delete karne ka button nahi mil raha ya error aa raha hai",
+        rootCause: "Statutory GST Compliance & Pillar 1 Financial Security: Once an invoice is generated, client-side deletion is permanently locked to prevent tax serial number breaks, audit discrepancies, and tax evasion penalties. Legal adjustments must use Credit Notes or cancellation.",
+        agentSteps: [
+          "Explain GST series integrity: Inform the merchant that deleting invoices causes sequential number gaps on the GST portal.",
+          "If goods were returned or bill has error: Instruct them to open the invoice and click 'Credit Note / Sales Return'. This restocks inventory and generates a legal GST reversal note.",
+          "If completely invalid before GSTR-1 filing: Admin can click 'Cancel Invoice' with mandatory reason, which keeps the audit trail clean.",
+          "Never attempt manual database deletion of issued tax invoices."
+        ],
+        customerScript: "Namaste {customer_name}! GST niyam aur audit suraksha ke anusar generate hua Tax Invoice delete nahi kiya ja sakta, kyonki series break hone se GST portal par notice aa sakta hai. Agar bill me galti hui hai ya customer ne maal wapas kiya hai, toh aap usi invoice par 'Credit Note' bana sakte hain ya 'Cancel Invoice' kar sakte hain. Isse hisaab aur tax dono 100% legal rehte hain.",
+        settingsPath: "/invoices",
+        tags: ["delete", "invoice", "gst", "statutory", "audit", "credit note", "cancel", "pillar 1", "security"],
+        severity: "high"
       }
     ],
     relatedPages: [
@@ -287,6 +303,21 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/team",
         tags: ["crm", "leads", "permission", "staff", "role", "visibility"],
         severity: "low"
+      },
+      {
+        id: "lead_anti_poaching_delete_sop",
+        symptom: "Staff member wants to delete an inquiry/lead or sees delete action disabled",
+        symptomHindi: "Staff ko lead delete karne ka option nahi mil raha",
+        rootCause: "Pillar 2 Data Privacy & Anti-Poaching Security: CRM leads cannot be deleted by general staff. This prevents sales reps from wiping high-value leads, poaching clients to competitors, or hiding lost deal details. Leads can be marked 'Lost' with reason, but permanent deletion requires Business Admin.",
+        agentSteps: [
+          "Explain Anti-Poaching Rule: Clarify that lead data belongs to the business entity and staff cannot permanently delete inquiries.",
+          "If the lead decided not to purchase: Instruct the sales rep to move the stage to 'Lost' and add loss reason notes.",
+          "If lead is duplicate or invalid: Request a Business Admin or Owner to perform the deletion from their login."
+        ],
+        customerScript: "Namaste {customer_name}! Business ki customer data suraksha ke liye staff ko CRM leads permanently delete karne ki permission nahi hoti, taki koi lead leak ya chori na ho sake. Agar customer ne deal cancel kar di hai toh aap stage 'Lost' select karke reason likh sakte hain. Permanent delete sirf Business Admin hi kar sakte hain.",
+        settingsPath: "/leads",
+        tags: ["crm", "lead", "delete", "anti-theft", "privacy", "poaching", "pillar 2"],
+        severity: "medium"
       }
     ],
     relatedPages: [
@@ -468,6 +499,21 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/settings/whatsapp-templates",
         tags: ["template", "rejected", "meta", "whatsapp", "broadcast"],
         severity: "high"
+      },
+      {
+        id: "wa_campaign_admin_approval_sop",
+        symptom: "Staff member tries to create or launch a WhatsApp broadcast campaign, but gets permission error",
+        symptomHindi: "Staff ko WhatsApp broadcast campaign launch karne par permission error aa raha hai",
+        rootCause: "Pillar 2 Marketing & Brand Protection: Mass WhatsApp broadcasts burn prepaid Meta messaging balance and risk permanent phone number banning if unapproved messages trigger customer spam reports. Campaign creation and dispatch is strictly restricted to Business Admin/Owner.",
+        agentSteps: [
+          "Explain Anti-Spam Control: Clarify that bulk broadcasting directly incurs per-conversation Meta charges and affects phone quality rating.",
+          "Staff can draft the campaign message or prepare customer contact tags in /customers.",
+          "Business Admin or Owner must review and trigger the final launch from /whatsapp-automation/campaigns."
+        ],
+        customerScript: "Namaste {customer_name}! WhatsApp number ki rating bachane aur Meta messaging charges ko control karne ke liye bulk broadcast campaigns sirf Business Admin ya Owner hi launch kar sakte hain. Staff members contact groups tag kar sakte hain, aur Admin review karke 1-click me campaign send kar sakte hain.",
+        settingsPath: "/whatsapp-automation/campaigns",
+        tags: ["whatsapp", "campaign", "broadcast", "spam", "admin only", "permission", "pillar 2"],
+        severity: "medium"
       }
     ],
     relatedPages: [
@@ -558,6 +604,51 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/settings",
         tags: ["settings", "bank", "ifsc", "invoice", "print", "account"],
         severity: "low"
+      },
+      {
+        id: "multi_tenant_isolation_sop",
+        symptom: "Merchant asks how their business accounting, GST, or customer data is isolated from other businesses",
+        symptomHindi: "Customer pooch raha hai ki unka data dusre business ya competitor ko kaise nahi dikhega",
+        rootCause: "Pillar 3 Multi-Tenant Isolation: Biztrix runs strict Firestore multi-tenant security rules (`isBusinessMember`) and server-side verification where each database path is strictly isolated under `/businesses/{businessId}/`. No business can read, query, or search another business's records.",
+        agentSteps: [
+          "Assure merchant: Explain that each company has its own cryptographic business ID boundary.",
+          "Security rule verification: Even if someone knows another business's ID or document path, Firestore returns permission-denied.",
+          "Data segregation: Backups, ledgers, POS bills, and staff profiles are strictly segregated."
+        ],
+        customerScript: "Namaste {customer_name}! Biztrix me har business ka data military-grade Multi-Tenant Isolation se protected hota hai. Security rules ensure karte hain ki aapke bills, customers, aur hisaab sirf aapke authorized login se hi access ho sake. Koi dusra business ya user aapka 1 single record bhi nahi dekh sakta.",
+        settingsPath: "/settings",
+        tags: ["security", "multi-tenant", "isolation", "privacy", "competitor", "pillar 3", "protection"],
+        severity: "medium"
+      },
+      {
+        id: "server_credentials_vault_sop",
+        symptom: "Merchant asks where their payment gateway secret keys and GST credentials are stored and if staff can see them",
+        symptomHindi: "Merchant pooch raha hai ki unke Razorpay secret key aur GST password staff dekh sakta hai ya nahi",
+        rootCause: "Pillar 3 Private Credentials Vault: Sensitive API secrets (Razorpay Key Secret, ClearTax/MasterGST credentials, Meta Tokens) are stored in server-only `privateConfig` nodes. Firestore rules block all client browser reads (`allow read, write: if false;`), making it impossible for staff or browser inspect tools to extract secrets.",
+        agentSteps: [
+          "Explain Server-Side Isolation: Secrets are never sent to the browser or rendered in client HTML.",
+          "Gateway transactions execute securely via server API proxy routes (`/api/payments/*` and `/api/eway-bill/*`).",
+          "Staff roles only see configured public Merchant Key IDs, never private secrets."
+        ],
+        customerScript: "Aapke Razorpay Key Secret aur GST passwords Biztrix ke secure server vault (`privateConfig`) me store hote hain. Firestore rules browser se inka access 100% block karke rakhti hain. Dukaan ka koi bhi staff ya web browser aapke secrets ko inspect nahi kar sakta.",
+        settingsPath: "/settings",
+        tags: ["gateway", "secret", "razorpay", "vault", "credentials", "server-side", "pillar 3"],
+        severity: "medium"
+      },
+      {
+        id: "cyber_attack_defense_sop",
+        symptom: "Merchant asks if the software is vulnerable to hacking, SQL injection, bots, or cyber attacks",
+        symptomHindi: "Merchant pooch raha hai ki website hack toh nahi hogi ya cyber attack se surakshit hai ya nahi",
+        rootCause: "Pillar 4 Cyber Security & Hardening: Biztrix is fortified across all attack vectors: (1) HTTP security headers (nosniff, XSS protection, Referrer Policy) block MIME sniffing and reflected injection; (2) Webhooks use timing-safe HMAC cryptographic signatures; (3) NoSQL query architecture eliminates SQL injection entirely; (4) Rate limiters protect AI endpoints against bot credit abuse; (5) Exported CSV files sanitize spreadsheet formula injection.",
+        agentSteps: [
+          "Reassure merchant: Inform them that Biztrix runs on Google Cloud enterprise infrastructure with SSL/TLS encryption.",
+          "Explain NoSQL parameterization: Queries use strongly typed SDK methods that cannot be compromised by SQL injection.",
+          "Highlight rate limits and headers: Bots and scrapers are blocked by automatic IP throttling and browser security headers."
+        ],
+        customerScript: "Namaste {customer_name}! Biztrix 100% cloud enterprise security par run hota hai. Isme Google Cloud infrastructure, NoSQL parameterized queries, timing-safe webhook cryptography, aur browser XSS protection active hain. Kisi bhi third-party ya hacker ke liye database me ghusna ya script inject karna asambhav hai.",
+        settingsPath: "/settings",
+        tags: ["security", "cyber", "hacking", "firewall", "xss", "nosql", "bot", "pillar 4"],
+        severity: "medium"
       }
     ],
     relatedPages: [
@@ -664,6 +755,21 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/customers",
         tags: ["customer", "loyalty", "points", "grahak", "reward", "tier", "udhaar", "ledger", "excel"],
         severity: "medium"
+      },
+      {
+        id: "customer_deletion_admin_only_sop",
+        symptom: "Staff member tries to delete a customer profile or clear credit balance, but delete fails or is hidden",
+        symptomHindi: "Staff ko customer ya unka udhaar khata delete karne ka option nahi mil raha",
+        rootCause: "Pillar 2 Customer Privacy & Anti-Theft Security: Customer directories and outstanding udhaar balances cannot be deleted by general staff. This prevents malicious wipeouts of borrower credit balances or illegal loss of company contacts. Customer deletion is restricted to Business Admin/Owner.",
+        agentSteps: [
+          "Explain Anti-Theft Protection: Inform the user that customer accounts with active balances or purchase history cannot be deleted by staff.",
+          "If customer paid their pending udhaar: Instruct staff to record a payment via 'Udhaar Quick Settle' rather than trying to delete the record.",
+          "If customer profile is a duplicate test entry: Request Business Admin or Owner to log in and delete the entry."
+        ],
+        customerScript: "Namaste {customer_name}! Udhaar khate aur dukaan ke hisaab me kisi bhi prakar ki heraferi ko rokne ke liye customer profile ya khata delete karne ka adhikar sirf Business Owner/Admin ke paas hota hai. Agar customer ne udhaar chuka diya hai, toh 'Udhaar Quick Settle' button se payment enter karein, jisse balance 0 ho jayega.",
+        settingsPath: "/customers",
+        tags: ["customer", "delete", "udhaar", "credit", "anti-theft", "debtor", "pillar 2"],
+        severity: "high"
       }
     ],
     relatedPages: [
@@ -750,6 +856,22 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/settings/roles",
         tags: ["staff", "role manager", "rbac", "permission", "attendance", "payroll", "salary", "karmchari"],
         severity: "high"
+      },
+      {
+        id: "team_invite_wage_sync_sop",
+        symptom: "Invited staff member logged in but was shown as separate pending invite or wage was not synced",
+        symptomHindi: "Invite kiye gaye staff ne login kiya par unki daily wage ya attendance profile sync nahi hui",
+        rootCause: "Invite email mismatch or duplicate placeholder row before account linking. When an invited member signs in with their invited email, the system automatically claims the pending invitation, binds the ₹500/d daily rate and shift hours to their authenticated UID, and purges duplicate rows.",
+        agentSteps: [
+          "Check invited email address: Ensure the user logs in using the exact email address where the WhatsApp/email invite was sent.",
+          "Confirm claim status in /team: The member should show 'Active' status badge with their configured role.",
+          "Verify Daily Wage: Check /staff profile to confirm their ₹500/d daily wage and 8-hour shift timings are attached.",
+          "If duplicate existed prior to login: Biztrix background deduplication engine merges and cleans orphan records on next page visit."
+        ],
+        customerScript: "Staff member ko invite kiye gaye email ID se hi login karna anivarya hai. Login hote hi unka daily wage (₹500/din) aur shift timings automatically unke active account se bind ho jate hain aur duplicate entries clean ho jati hain. Ek baar /team page refresh karke status check karein.",
+        settingsPath: "/team",
+        tags: ["team", "invite", "login", "duplicate", "wage", "daily rate", "sync", "staff"],
+        severity: "medium"
       }
     ],
     relatedPages: [
@@ -835,6 +957,21 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
         settingsPath: "/daily-entries",
         tags: ["cashbook", "khata", "jama", "kharch", "income", "expense", "galla", "opening balance"],
         severity: "medium"
+      },
+      {
+        id: "cashbook_anti_pilferage_guard",
+        symptom: "Staff cashier asks to edit/delete yesterday's cash entries, or staff sees limited P&L data",
+        symptomHindi: "Staff ko purani cash entry edit ya delete karne ka option nahi mil raha",
+        rootCause: "Pillar 1 Anti-Pilferage Financial Security: Daily cashbook entries are tamper-protected in Firestore rules. Counter staff can record daily income/expenses from POS, but past entry editing and deleting is strictly restricted to Business Admin/Owner to prevent counter cash pilferage.",
+        agentSteps: [
+          "Verify user role: Check if user is Staff or Admin under /settings?tab=roles.",
+          "Explain Anti-Theft Guard: Inform them that staff cannot alter past cash records to ensure cash drawer transparency and prevent accounting manipulation.",
+          "If a genuine error occurred: Have the Business Owner/Admin make the edit, or log an offsetting adjustment entry with clear reason note."
+        ],
+        customerScript: "Namaste {customer_name}! Counter cash aur galle ki suraksha ke liye Biztrix me staff ko purani cash entry edit ya delete karne ki permission nahi hoti, taki kisi bhi prakar ki heraferi na ho sake. Agar koi entry galat hui hai, toh Business Owner/Admin apne login se use theek kar sakte hain ya nayi adjustment entry pass kar sakte hain.",
+        settingsPath: "/daily-entries",
+        tags: ["cashbook", "anti-theft", "pilferage", "delete cash", "edit entry", "audit", "admin only", "pillar 1"],
+        severity: "high"
       }
     ],
     relatedPages: [
@@ -852,13 +989,14 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
     summary: "Assign team tasks, track execution checklists, monitor overdue items, and sprint workload balance.",
     summaryHindi: "Team ko kaam assign karne, checklist track karne, aur deadline hisaab ke liye.",
     customerJourney: [
-      "Admin or manager creates a task with priority, due date, and assigned team member.",
-      "Assigned staff receives notification and works through subtask checklists.",
+      "Admin or manager creates a task with priority, due date, and multiple assigned specialists as needed.",
+      "Assigned staff members receive individual notifications and work through subtask checklists.",
       "Task moves from To Do -> Working -> Done.",
       "Manager reviews completion % and activity audit trail."
     ],
     keyFrontendControls: [
-      { label: "New Task Dialog", actionDescription: "Create task with checklists, priority, linked project, and assignee." },
+      { label: "New Task Dialog", actionDescription: "Create task with checklists, priority, linked project, and multi-specialist assignment." },
+      { label: "Assigned Specialists (Multiple Assign)", actionDescription: "Popover selector allowing multiple specialists with badges and instant removal." },
       { label: "Board / List Switcher", actionDescription: "Switch between visual Kanban column board and tabular list." },
       { label: "AI Sprint Assistant", actionDescription: "Chat advisor for workload bottlenecks and delegation." }
     ],
@@ -883,6 +1021,63 @@ export const SUPPORT_KNOWLEDGE_BASE: SupportPageGuide[] = [
       { label: "Projects Pipeline", route: "/projects" }
     ],
     searchKeywords: ["task", "kaam", "notes", "todo", "sprint", "delegation", "subtask", "deadline", "urgent", "checklist"]
+  },
+  {
+    id: "marketplace_modules",
+    title: "Marketplace Suites, Add-ons & Module Activation",
+    group: "Marketplace & OS Settings",
+    route: "/marketplace",
+    iconName: "ShoppingBag",
+    summary: "Discover, trial, and activate optional industry suites (Solar EPC, Real Estate CRM, Storefront) and modular add-ons with admin authorization.",
+    summaryHindi: "Naye business suites aur add-ons activate karne, 14-din trial shuru karne, aur permissions manage karne ke liye.",
+    customerJourney: [
+      "Business Admin opens /marketplace to inspect modular industry solutions.",
+      "Clicks 'Start 14-Day Free Trial' or 'Activate Module' on desired suite (e.g. Solar, Real Estate, E-Commerce Store).",
+      "2-step confirmation modal displays feature breakdown, pricing, and quota enhancements.",
+      "Upon confirmation, module immediately unlocks in Sidebar and Mobile BottomNav for all authorized workspace members."
+    ],
+    keyFrontendControls: [
+      { label: "Activate / Trial Button", actionDescription: "Opens 2-step confirmation modal with feature breakdown and trial terms." },
+      { label: "Feature Details Link", actionDescription: "Opens /marketplace/features/[moduleId] with interactive feature demo." },
+      { label: "Category Filter", actionDescription: "Filters between All, Industry Suites, Operations, Marketing, and AI Add-ons." }
+    ],
+    commonIssues: [
+      {
+        id: "mod_staff_cannot_activate",
+        symptom: "Staff member sees 'Admin Required' when trying to activate marketplace module",
+        symptomHindi: "Staff ko module activate karne par admin authorization ka message aa raha hai",
+        rootCause: "Marketplace module subscriptions directly impact business billing and operational quotas. Only Business Admins or Platform Owners are permitted to activate modules or start trials.",
+        agentSteps: [
+          "Verify the caller's role: If they are a staff member, clarify that account security requires a Business Admin or Owner to approve billing add-ons.",
+          "Have a workspace Admin log into /marketplace to click 'Activate Module'.",
+          "Confirm the module status badge changes to 'Active' or 'Trial'."
+        ],
+        customerScript: "Namaste {customer_name}! Billing aur account suraksha ke liye Marketplace modules sirf Business Admin ya Owner hi activate kar sakte hain, taki bina jankari ke koi extra charges na lagein. Kripya apne workspace Admin se ise /marketplace me activate karne ko kahein.",
+        settingsPath: "/marketplace",
+        tags: ["marketplace", "activate", "addon", "suite", "admin only", "permission", "trial"],
+        severity: "medium"
+      },
+      {
+        id: "mod_sidebar_not_appearing",
+        symptom: "Module shows active in Marketplace but does not appear in Sidebar immediately",
+        symptomHindi: "Module activate karne ke baad bhi sidebar me menu nahi dikh raha",
+        rootCause: "Client navigation state cache or role-based permission switch was not toggled in OS Role Manager.",
+        agentSteps: [
+          "Advise merchant to perform a quick page refresh to sync latest activeAddonIds.",
+          "If still hidden for staff: Open /settings/roles and make sure the new module toggle is switched ON for that staff role.",
+          "For real estate agents: Note that agent isolation rules intentionally keep unrelated business suites hidden."
+        ],
+        customerScript: "Module activate hote hi Sidebar update ho jata hai. Agar turant na dikhe toh page refresh karein. Staff members ke liye /settings/roles me jakar check karein ki us role ke liye permission ON hai ya nahi.",
+        settingsPath: "/marketplace",
+        tags: ["marketplace", "sidebar", "suite", "refresh", "addon", "roles"],
+        severity: "low"
+      }
+    ],
+    relatedPages: [
+      { label: "Subscription Settings", route: "/settings/subscription" },
+      { label: "OS Settings (Roles & RBAC)", route: "/settings/roles" }
+    ],
+    searchKeywords: ["marketplace", "modules", "add-on", "suite", "solar", "store", "property", "activate", "purchase", "trial", "subscribe", "upgrade"]
   }
 ];
 

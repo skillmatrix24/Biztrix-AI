@@ -223,7 +223,15 @@
       "properties": {
         "title": { "type": "string" },
         "status": { "type": "string" },
-        "assignedTo": { "type": "string" }
+        "assignedTo": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "assignedIds": { "type": "array", "items": { "type": "string" } },
+        "assignedNames": { "type": "array", "items": { "type": "string" } },
+        "assignedName": { "type": "string" }
       }
     },
     "Notification": {

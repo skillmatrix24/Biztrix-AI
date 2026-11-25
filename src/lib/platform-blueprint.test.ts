@@ -54,7 +54,12 @@ test('SIDEBAR_BLUEPRINT_GROUPS matches SidebarNav hrefs and includes Store Build
     );
   }
 
-  assert.equal(SIDEBAR_ARCHITECTURE_RULES.length, 5);
+  assert.ok(SIDEBAR_ARCHITECTURE_RULES.length >= 5);
+  assert.ok(SIDEBAR_ARCHITECTURE_RULES.some((r) => r.id === 'financial_integrity_gate'));
+  assert.ok(SIDEBAR_ARCHITECTURE_RULES.some((r) => r.id === 'team_invite_wage_sync'));
+  assert.ok(SIDEBAR_ARCHITECTURE_RULES.some((r) => r.id === 'pillar2_customer_privacy_gate'));
+  assert.ok(SIDEBAR_ARCHITECTURE_RULES.some((r) => r.id === 'pillar3_api_tenant_defense_gate'));
+  assert.ok(SIDEBAR_ARCHITECTURE_RULES.some((r) => r.id === 'pillar4_cyber_defense_gate'));
 
   const storeBuilder = SIDEBAR_BLUEPRINT_GROUPS.find((g) => g.id === 'store_builder');
   assert.ok(storeBuilder);

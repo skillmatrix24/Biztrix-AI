@@ -307,7 +307,7 @@ service cloud.firestore {
         // Public can read only products intended for the storefront
         allow read: if resource.data.showOnWebsite == true || isBusinessMember(businessId) || isPlatformOwner();
         allow create, update: if (isBusinessMember(businessId) && isStockValid()) || isPlatformOwner();
-        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
 
         match /stockHistory/{historyId} {
           allow read, create: if isBusinessMember(businessId) || isPlatformOwner();
@@ -434,9 +434,10 @@ service cloud.firestore {
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
-      // GROWTH ENGINE & WHATSAPP AUTOMATION
+      // GROWTH ENGINE & WHATSAPP AUTOMATION (Admin Blast Control)
       match /campaigns/{campaignId} {
-        allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /chats/{chatId} {
@@ -477,16 +478,75 @@ service cloud.firestore {
         allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
-      // ORDERS & PAYMENTS
+      // ORDERS & PAYMENTS (Anti-Pilferage Deletion Lock)
       match /orders/{orderId} {
         allow get: if isBusinessMember(businessId) ||
           isTargetCustomer(businessId, resource.data.customerId) ||
           isPlatformOwner();
-        allow list, write: if isBusinessMember(businessId) || isPlatformOwner();
+        allow list: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create, update: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /payments/{paymentId} {
         allow read, write: if isBusinessMember(businessId) || isPlatformOwner();
+      }
+
+      // --- PILLAR 1: FINANCIAL & STATUTORY INTEGRITY RULES ---
+
+      // TAX INVOICES (Immutable Statutory GST Documents)
+      match /invoices/{invoiceId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if (isBusinessMember(businessId) && request.resource.data.businessId == businessId) || isPlatformOwner();
+        allow update: if isPlatformOwner() || (
+          isBusinessAdmin(businessId) &&
+          request.resource.data.businessId == resource.data.businessId &&
+          (
+            // 1. Dispatch, E-Way Bill, notes or payment status updates allowed
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'ewayBill', 'notes', 'status', 'cancellationReason', 'cancelledAt', 'cancelledBy',
+              'transportDetails', 'updatedAt', 'paymentStatus', 'paidAmount', 'balanceAmount', 'payments'
+            ]) ||
+            // 2. Controlled cancellation by admin
+            (resource.data.status != 'cancelled' && request.resource.data.status == 'cancelled')
+          )
+        );
+        // ZERO Client Deletion: Tax invoices cannot be deleted from client SDK. Reversals must be executed via Credit Notes.
+        allow delete: if isPlatformOwner();
+      }
+
+      // CREDIT NOTES (Statutory GST Reversals)
+      match /creditNotes/{noteId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create, update: if isBusinessAdmin(businessId) || isPlatformOwner();
+        allow delete: if isPlatformOwner();
+      }
+
+      // CASHBOOK & GENERAL ACCOUNTING LEDGER (Anti-Pilferage Protection)
+      match /cashbook/{entryId} {
+        // Financial Privacy: Full Profit & Loss ledger read restricted to admin/owner
+        allow read: if isBusinessAdmin(businessId) || isPlatformOwner();
+        // Counter staff can record daily income/expense entry from POS
+        allow create: if (isBusinessMember(businessId) && request.resource.data.businessId == businessId) || isPlatformOwner();
+        // Silently editing or deleting cash transactions strictly restricted to admin
+        allow update, delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // FIXED EXPENSES & SYSTEM TRANSACTIONS
+      match /fixedExpenses/{expenseId} {
+        allow read, write: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      match /transactions/{txId} {
+        allow read: if isBusinessAdmin(businessId) || isPlatformOwner();
+        allow create: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update, delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // MODULE SUBSCRIPTIONS & PLATFORM AUDIT
+      match /subscriptions/{subId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow write: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /notifications/{notifId} {
@@ -505,15 +565,41 @@ service cloud.firestore {
           isPlatformOwner();
       }
 
+      // --- PILLAR 2: CUSTOMER PRIVACY, LEADS & ANTI-LEAKAGE RULES ---
+
+      // CUSTOMER DIRECTORY & UDHAAR KHATA (Anti-Theft Deletion Lock)
       match /customers/{customerId} {
         allow read: if isBusinessMember(businessId) ||
           isTargetCustomer(businessId, customerId) ||
           isPlatformOwner();
-        allow create, delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if isBusinessMember(businessId) || isPlatformOwner();
         allow update: if isBusinessMember(businessId) ||
           (isTargetCustomer(businessId, customerId) &&
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['events', 'email', 'dob', 'anniversary', 'gender', 'city', 'address', 'profileBonusClaimed', 'updatedAt'])) ||
           isPlatformOwner();
+        // Deletion locked to Admin/Owner only (Staff cannot delete customer records or debtor ledgers)
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // CRM LEADS (Lead Poaching & Deletion Protection)
+      match /leads/{leadId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create, update: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // STOREFRONT INBOUND LEADS
+      match /storefront_leads/{leadId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if isBusinessMember(businessId) || isPlatformOwner() || (request.resource.data.businessId == businessId);
+        allow update, delete: if isBusinessAdmin(businessId) || isPlatformOwner();
+      }
+
+      // VENDORS & SUPPLIER PURCHASE PRIVACY
+      match /vendors/{vendorId} {
+        allow read: if isBusinessMember(businessId) || isPlatformOwner();
+        allow create: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update, delete: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       // SUPPORT TICKETS
@@ -583,13 +669,14 @@ service cloud.firestore {
       match /properties/{propertyId} {
         allow read: if isBusinessMember(businessId) || isPlatformOwner() || resource.data.isPublic == true;
         allow create, update: if isBusinessMember(businessId) || isPlatformOwner();
-        allow delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       match /realEstateLeads/{leadId} {
         allow read: if isBusinessMember(businessId) || isPlatformOwner();
         allow create: if isBusinessMember(businessId) || isPlatformOwner() || (request.resource.data.businessId == businessId && request.resource.data.name is string);
-        allow update, delete: if isBusinessMember(businessId) || isPlatformOwner();
+        allow update: if isBusinessMember(businessId) || isPlatformOwner();
+        allow delete: if isBusinessAdmin(businessId) || isPlatformOwner();
       }
 
       // BACK OFFICE: PROJECTS & TASK MANAGEMENT

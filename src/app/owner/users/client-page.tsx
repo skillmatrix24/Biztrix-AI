@@ -115,6 +115,7 @@ export default function GlobalUserManagementPage() {
   const { data: businesses } = useCollection<any>(businessesQuery);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("leaders");
   const [selectedOwner, setSelectedOwner] = useState<any>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -135,17 +136,27 @@ export default function GlobalUserManagementPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
 
-    const adminUsers = users.filter(
-      (u: any) => (u.role || "").toLowerCase() === "admin"
-    );
+    return users.filter((u: any) => {
+      const r = (u.role || "").toLowerCase();
+      if (roleFilter === "leaders") {
+        if (r !== "admin" && r !== "owner") return false;
+      } else if (roleFilter === "owner") {
+        if (r !== "owner") return false;
+      } else if (roleFilter === "admin") {
+        if (r !== "admin") return false;
+      }
 
-    return adminUsers.filter(
-      (u) =>
-        u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.businessId?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [users, searchTerm]);
+      const q = searchTerm.trim().toLowerCase();
+      if (!q) return true;
+
+      return (
+        (u.name || "").toLowerCase().includes(q) ||
+        (u.email || "").toLowerCase().includes(q) ||
+        (u.businessId || "").toLowerCase().includes(q) ||
+        r.includes(q)
+      );
+    });
+  }, [users, searchTerm, roleFilter]);
 
   const handleOpenAdd = () => {
     setFormData({
@@ -235,7 +246,14 @@ export default function GlobalUserManagementPage() {
 
   const handleInspect = (u: any) => {
     setSelectedOwner(u);
-    const biz = businesses?.find((b: any) => b.id === u.businessId);
+    let biz = businesses?.find((b: any) => b.id === u.businessId);
+    if (!biz && u.id) {
+      biz = businesses?.find(
+        (b: any) =>
+          b.ownerId === u.id ||
+          (u.email && b.email?.toLowerCase() === u.email.toLowerCase())
+      );
+    }
     setSelectedBusiness(biz || null);
     setIsDetailOpen(true);
   };
@@ -259,6 +277,7 @@ export default function GlobalUserManagementPage() {
     setSelectedBusiness({ ...selectedBusiness, activeAddonIds: newAddons });
     toast({
       title: isCurrentlyActive ? "Module Revoked" : "Module Activated",
+      description: `Active add-ons updated for ${selectedBusiness.name || "workspace"}.`,
     });
   };
 
@@ -308,17 +327,30 @@ export default function GlobalUserManagementPage() {
       />
 
       <SectionCard
-        title="Business Owners Directory"
-        description={`${filteredUsers.length} workspace owner records matching filter`}
+        title="Business Owners & Administrators"
+        description={`${filteredUsers.length} user records matching criteria`}
         headerRight={
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Search name, email, or workspace ID..."
-              className="pl-9 h-9 text-xs rounded-xl bg-slate-50 border-slate-200"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-9 w-full sm:w-48 rounded-xl text-xs font-semibold bg-slate-50 border-slate-200">
+                <SelectValue placeholder="Role Filter" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-200">
+                <SelectItem value="leaders">Owners & Admins</SelectItem>
+                <SelectItem value="owner">Owners Only</SelectItem>
+                <SelectItem value="admin">Admins Only</SelectItem>
+                <SelectItem value="all">All Registered Users</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search name, email, or workspace..."
+                className="pl-9 h-9 text-xs rounded-xl bg-slate-50 border-slate-200"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
         }
       >
@@ -484,149 +516,163 @@ export default function GlobalUserManagementPage() {
 
               <ScrollArea className="flex-1 p-6 sm:p-8">
                 <div className="space-y-8">
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
-                      <Building className="h-4 w-4 text-slate-500" /> Linked
-                      Workspace & Plan Status
-                    </h4>
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
-                      <div className="flex justify-between items-center gap-4">
-                        <span className="text-xs font-medium text-slate-500">
-                          Business Name
-                        </span>
-                        <span className="text-sm font-bold text-slate-900">
-                          {selectedBusiness?.name || "N/A"}
-                        </span>
+                  {!selectedBusiness ? (
+                    <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2">
+                      <div className="flex items-center gap-2 font-semibold text-sm">
+                        <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
+                        No Linked Business Workspace
                       </div>
-                      <div className="flex justify-between items-center gap-4 border-t border-slate-200 pt-4">
-                        <div>
-                          <span className="text-xs font-semibold text-slate-700">
-                            Account Tier Status
-                          </span>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            Switch to Active to remove trial limits
-                          </p>
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        This user account currently has no active business workspace record linked ({selectedOwner.businessId || "no ID assigned"}). Modules and add-ons are managed at the business workspace level. Once a workspace is assigned, you can toggle all business suites and individual add-on tools here.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                          <Building className="h-4 w-4 text-slate-500" /> Linked
+                          Workspace & Plan Status
+                        </h4>
+                        <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                          <div className="flex justify-between items-center gap-4">
+                            <span className="text-xs font-medium text-slate-500">
+                              Business Name
+                            </span>
+                            <span className="text-sm font-bold text-slate-900">
+                              {selectedBusiness?.name || "N/A"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center gap-4 border-t border-slate-200 pt-4">
+                            <div>
+                              <span className="text-xs font-semibold text-slate-700">
+                                Account Tier Status
+                              </span>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Switch to Active or Pro to remove limits
+                              </p>
+                            </div>
+                            <Select
+                              value={selectedBusiness?.status || "trial"}
+                              onValueChange={handleUpdateBusinessStatus}
+                            >
+                              <SelectTrigger className="h-9 w-36 rounded-xl text-xs font-semibold bg-white border-slate-200">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-slate-200">
+                                <SelectItem value="trial">Trial</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="pro">Pro</SelectItem>
+                                <SelectItem value="suspended">Suspended</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <Select
-                          value={selectedBusiness?.status || "trial"}
-                          onValueChange={handleUpdateBusinessStatus}
-                        >
-                          <SelectTrigger className="h-9 w-36 rounded-xl text-xs font-semibold bg-white border-slate-200">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-slate-200">
-                            <SelectItem value="trial">Trial</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="pro">Pro</SelectItem>
-                            <SelectItem value="suspended">Suspended</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
-                      <Gem className="h-4 w-4 text-slate-500" /> Suite Bundles
-                    </h4>
-                    <div className="grid grid-cols-1 gap-2.5">
-                      {bundles.map((module: any) => {
-                        const isActive =
-                          selectedBusiness?.activeAddonIds?.includes(module.id);
-                        return (
-                          <div
-                            key={module.id}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === " " || e.key === "Enter") {
-                                e.preventDefault();
-                                handleToggleModule(module.id);
-                              }
-                            }}
-                            onClick={() => handleToggleModule(module.id)}
-                            className={cn(
-                              "w-full p-4 rounded-xl border text-left transition-colors flex items-center justify-between gap-4 cursor-pointer",
-                              isActive
-                                ? "border-slate-900 bg-slate-50"
-                                : "bg-white border-slate-200 hover:bg-slate-50/70"
-                            )}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <Checkbox
-                                checked={!!isActive}
-                                onCheckedChange={() => handleToggleModule(module.id)}
-                                aria-hidden="true"
-                                tabIndex={-1}
-                              />
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-900">
-                                  {module.name}
-                                </p>
-                                <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
-                                  {module.description}
-                                </p>
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                          <Gem className="h-4 w-4 text-slate-500" /> Suite Bundles
+                        </h4>
+                        <div className="grid grid-cols-1 gap-2.5">
+                          {bundles.map((module: any) => {
+                            const isActive =
+                              selectedBusiness?.activeAddonIds?.includes(module.id);
+                            return (
+                              <div
+                                key={module.id}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleToggleModule(module.id);
+                                  }
+                                }}
+                                onClick={() => handleToggleModule(module.id)}
+                                className={cn(
+                                  "w-full p-4 rounded-xl border text-left transition-colors flex items-center justify-between gap-4 cursor-pointer",
+                                  isActive
+                                    ? "border-slate-900 bg-slate-50"
+                                    : "bg-white border-slate-200 hover:bg-slate-50/70"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <Checkbox
+                                    checked={!!isActive}
+                                    onCheckedChange={() => handleToggleModule(module.id)}
+                                    aria-hidden="true"
+                                    tabIndex={-1}
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-900">
+                                      {module.name}
+                                    </p>
+                                    <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                                      {module.description}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-xs font-bold font-mono tabular-nums text-slate-900">
+                                    ₹{module.price}
+                                  </p>
+                                  <p className="text-xs text-slate-500">/mo</p>
+                                </div>
                               </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-xs font-bold font-mono tabular-nums text-slate-900">
-                                ₹{module.price}
-                              </p>
-                              <p className="text-xs text-slate-500">/mo</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
-                      <BoxSelect className="h-4 w-4 text-slate-500" />{" "}
-                      Individual Modules
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {individuals.map((module: any) => {
-                        const isActive =
-                          selectedBusiness?.activeAddonIds?.includes(module.id);
-                        return (
-                          <div
-                            key={module.id}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === " " || e.key === "Enter") {
-                                e.preventDefault();
-                                handleToggleModule(module.id);
-                              }
-                            }}
-                            onClick={() => handleToggleModule(module.id)}
-                            className={cn(
-                              "p-3.5 rounded-xl border text-left transition-colors flex items-center gap-3 cursor-pointer",
-                              isActive
-                                ? "bg-slate-50 border-slate-900"
-                                : "bg-white border-slate-200 hover:bg-slate-50/70"
-                            )}
-                          >
-                            <Checkbox
-                              checked={!!isActive}
-                              onCheckedChange={() => handleToggleModule(module.id)}
-                              aria-hidden="true"
-                              tabIndex={-1}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-slate-900 truncate">
-                                {module.name}
-                              </p>
-                              <p className="text-xs font-mono tabular-nums text-slate-500">
-                                ₹{module.price}/mo
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                          <BoxSelect className="h-4 w-4 text-slate-500" />{" "}
+                          Individual Modules
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {individuals.map((module: any) => {
+                            const isActive =
+                              selectedBusiness?.activeAddonIds?.includes(module.id);
+                            return (
+                              <div
+                                key={module.id}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleToggleModule(module.id);
+                                  }
+                                }}
+                                onClick={() => handleToggleModule(module.id)}
+                                className={cn(
+                                  "p-3.5 rounded-xl border text-left transition-colors flex items-center gap-3 cursor-pointer",
+                                  isActive
+                                    ? "bg-slate-50 border-slate-900"
+                                    : "bg-white border-slate-200 hover:bg-slate-50/70"
+                                )}
+                              >
+                                <Checkbox
+                                  checked={!!isActive}
+                                  onCheckedChange={() => handleToggleModule(module.id)}
+                                  aria-hidden="true"
+                                  tabIndex={-1}
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-semibold text-slate-900 truncate">
+                                    {module.name}
+                                  </p>
+                                  <p className="text-xs font-mono tabular-nums text-slate-500">
+                                    ₹{module.price}/mo
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="space-y-3 pb-4">
                     <h4 className="text-xs font-semibold text-slate-700 flex items-center gap-2">

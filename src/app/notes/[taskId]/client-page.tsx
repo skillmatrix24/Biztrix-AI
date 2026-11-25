@@ -27,6 +27,9 @@ import {
   AlertTriangle,
   Ban,
   Circle,
+  Users,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +45,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
@@ -54,7 +63,7 @@ import {
   addDocumentNonBlocking,
   useCollection,
 } from "@/firebase";
-import { doc, serverTimestamp, collection, query, where } from "firebase/firestore";
+import { doc, serverTimestamp, collection, query, where, orderBy } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -172,28 +181,95 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
     }
   };
 
-  const handleUpdateAssignee = (userId: string) => {
-    const staff = businessUsers.find((u: any) => u.id === userId);
-    handleUpdateField("assignedTo", userId);
-    handleUpdateField("assignedName", staff?.name || "Unassigned");
+  const assignedIds: string[] = useMemo(() => {
+    if (!task) return [];
+    if (Array.isArray(task.assignedTo)) return task.assignedTo.filter(Boolean);
+    if (Array.isArray(task.assignedIds)) return task.assignedIds.filter(Boolean);
+    if (typeof task.assignedTo === "string" && task.assignedTo.trim() !== "") {
+      return [task.assignedTo.trim()];
+    }
+    return [];
+  }, [task?.assignedTo, task?.assignedIds]);
 
-    if (userId) {
+  const assignedStaffList = useMemo(() => {
+    return businessUsers.filter((u: any) => assignedIds.includes(u.id));
+  }, [businessUsers, assignedIds]);
+
+  const toggleAssignee = (userId: string) => {
+    if (!task) return;
+    const isAlreadyAssigned = assignedIds.includes(userId);
+    const updatedIds = isAlreadyAssigned
+      ? assignedIds.filter((id) => id !== userId)
+      : [...assignedIds, userId];
+
+    const updatedStaff = businessUsers.filter((u: any) => updatedIds.includes(u.id));
+    const names = updatedStaff.map((u: any) => u.name);
+    const formattedName = names.length > 0 ? names.join(", ") : "Unassigned";
+
+    handleUpdateField("assignedTo", updatedIds);
+    handleUpdateField("assignedIds", updatedIds);
+    handleUpdateField("assignedNames", names);
+    handleUpdateField("assignedName", formattedName);
+
+    if (!isAlreadyAssigned) {
+      const addedMember = businessUsers.find((u: any) => u.id === userId);
       addDocumentNonBlocking(collection(firestore, "businesses", businessId!, "notifications"), {
         businessId: businessId!,
         recipientId: userId,
         title: "New Task Assignment",
-        message: `You are now responsible for: ${task.title}`,
+        message: `You are now assigned to: ${task.title}`,
         type: "task",
         taskId,
         isRead: false,
         createdAt: serverTimestamp(),
       });
+      toast({
+        title: "Specialist Assigned",
+        description: `${addedMember?.name || "Specialist"} added to this task.`,
+      });
+    } else {
+      toast({
+        title: "Specialist Removed",
+        description: "Removed from assigned specialists.",
+      });
     }
+  };
 
+  const removeAssignee = (userId: string) => {
+    if (!task) return;
+    const updatedIds = assignedIds.filter((id) => id !== userId);
+    const updatedStaff = businessUsers.filter((u: any) => updatedIds.includes(u.id));
+    const names = updatedStaff.map((u: any) => u.name);
+    const formattedName = names.length > 0 ? names.join(", ") : "Unassigned";
+
+    handleUpdateField("assignedTo", updatedIds);
+    handleUpdateField("assignedIds", updatedIds);
+    handleUpdateField("assignedNames", names);
+    handleUpdateField("assignedName", formattedName);
     toast({
-      title: "Assignee Updated",
-      description: `Task assigned to ${staff?.name || "Unassigned"}.`,
+      title: "Specialist Removed",
+      description: "Removed from assigned specialists.",
     });
+  };
+
+  const assignAllSpecialists = () => {
+    if (!task) return;
+    const allIds = businessUsers.map((u: any) => u.id);
+    const names = businessUsers.map((u: any) => u.name);
+    handleUpdateField("assignedTo", allIds);
+    handleUpdateField("assignedIds", allIds);
+    handleUpdateField("assignedNames", names);
+    handleUpdateField("assignedName", names.join(", "));
+    toast({ title: "All Specialists Assigned" });
+  };
+
+  const clearAllSpecialists = () => {
+    if (!task) return;
+    handleUpdateField("assignedTo", []);
+    handleUpdateField("assignedIds", []);
+    handleUpdateField("assignedNames", []);
+    handleUpdateField("assignedName", "Unassigned");
+    toast({ title: "Specialists Cleared" });
   };
 
   const handleAddStep = () => {
@@ -265,8 +341,8 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
   };
 
   const assignedStaff = useMemo(
-    () => businessUsers.find((u: any) => u.id === task?.assignedTo),
-    [businessUsers, task?.assignedTo]
+    () => businessUsers.find((u: any) => u.id === (assignedIds[0] || task?.assignedTo)),
+    [businessUsers, assignedIds, task?.assignedTo]
   );
 
   const whatsAppPingHref = useMemo(() => {
@@ -436,22 +512,151 @@ export default function TaskDetailPage(props: { params: { taskId: string } }) {
               <div className="p-6 text-left min-h-[360px]">
                 <TabsContent value="overview" className="m-0 space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-slate-700">
-                        Assigned Specialist
-                      </Label>
-                      <Select value={task.assignedTo || ""} onValueChange={handleUpdateAssignee}>
-                        <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white text-sm font-semibold shadow-xs">
-                          <SelectValue placeholder="Pick a specialist" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          {businessUsers.map((s: any) => (
-                            <SelectItem key={s.id} value={s.id} className="text-sm font-medium">
-                              {s.name} ({s.role || "Staff"})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-slate-500" />
+                          Assigned Specialists
+                          <span className="text-[10px] font-normal text-slate-500">(Multiple Assign)</span>
+                        </Label>
+                        <span className="text-[11px] font-mono font-medium text-slate-500">
+                          {assignedIds.length} assigned
+                        </span>
+                      </div>
+
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 w-full rounded-xl border-slate-300 bg-white text-xs font-semibold shadow-xs justify-between hover:bg-slate-50"
+                          >
+                            <span className="flex items-center gap-2 truncate">
+                              <Users className="h-4 w-4 text-slate-400 shrink-0" />
+                              {assignedIds.length === 0 ? (
+                                <span className="text-slate-400 font-normal">Pick specialists to assign...</span>
+                              ) : assignedIds.length === 1 ? (
+                                <span className="text-slate-900 font-semibold truncate">
+                                  {assignedStaffList[0]?.name || "1 Specialist Assigned"}
+                                </span>
+                              ) : (
+                                <span className="text-slate-900 font-semibold">
+                                  {assignedIds.length} Specialists Assigned
+                                </span>
+                              )}
+                            </span>
+                            <ChevronDown className="h-4 w-4 text-slate-400 shrink-0 ml-2" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] sm:w-[340px] p-0 rounded-2xl border-slate-200 shadow-xl overflow-hidden" align="start">
+                          <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-bold text-slate-800">Assign Specialists</p>
+                              <p className="text-[10px] text-slate-500">Check all specialists working on this task</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-[10px] px-2 text-slate-600 hover:text-slate-900"
+                                onClick={assignAllSpecialists}
+                              >
+                                All
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-[10px] px-2 text-rose-600 hover:text-rose-700"
+                                onClick={clearAllSpecialists}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          </div>
+                          <ScrollArea className="max-h-52 p-2">
+                            <div className="space-y-1">
+                              {businessUsers.length === 0 ? (
+                                <p className="p-3 text-xs text-slate-400 text-center">No team members found.</p>
+                              ) : (
+                                businessUsers.map((s: any) => {
+                                  const isSelected = assignedIds.includes(s.id);
+                                  return (
+                                    <div
+                                      key={s.id}
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={() => toggleAssignee(s.id)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          toggleAssignee(s.id);
+                                        }
+                                      }}
+                                      className={cn(
+                                        "flex items-center gap-3 p-2 rounded-xl text-left cursor-pointer transition-colors",
+                                        isSelected ? "bg-slate-100 text-slate-900 font-semibold" : "hover:bg-slate-50 text-slate-700"
+                                      )}
+                                    >
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleAssignee(s.id)}
+                                        className="rounded-md"
+                                      />
+                                      <div className="h-6 w-6 rounded-full bg-slate-900 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                                        {(s.name || "U").charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-semibold truncate leading-tight">{s.name}</p>
+                                        <p className="text-[10px] text-slate-500 capitalize leading-tight">{s.role || "Specialist"}</p>
+                                      </div>
+                                      {isSelected && <Check className="h-3.5 w-3.5 text-slate-900 shrink-0" />}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+
+                      {/* Display assigned specialists badges */}
+                      {assignedIds.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {assignedIds.map((uid: string) => {
+                            const staff = businessUsers.find((u: any) => u.id === uid);
+                            return (
+                              <Badge
+                                key={uid}
+                                variant="outline"
+                                className="gap-1.5 pl-1.5 pr-2 py-1 text-xs font-semibold bg-slate-50 border-slate-200 text-slate-800 rounded-lg"
+                              >
+                                <div className="h-4 w-4 rounded-full bg-slate-900 text-white font-bold text-[9px] flex items-center justify-center">
+                                  {(staff?.name || "U").charAt(0).toUpperCase()}
+                                </div>
+                                <span className="truncate max-w-[130px]">{staff?.name || "Specialist"}</span>
+                                <span className="text-[10px] text-slate-400 capitalize">({staff?.role || "Staff"})</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeAssignee(uid);
+                                  }}
+                                  className="text-slate-400 hover:text-rose-600 transition-colors ml-0.5 rounded-full p-0.5"
+                                  title="Remove specialist"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 italic pt-0.5">
+                          No specialist assigned yet. Click above to assign team members.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-slate-700">Task Status</Label>

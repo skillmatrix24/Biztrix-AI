@@ -36,13 +36,19 @@ export async function POST(request: Request) {
 
     if (!webhookSecret) throw new Error("Webhook secret not established");
 
-    // 2. Signature Verification
+    // 2. Timing-Safe Signature Verification
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawBody)
       .digest('hex');
 
-    if (expectedSignature !== signature) {
+    const expectedBuf = Buffer.from(expectedSignature, 'utf8');
+    const signatureBuf = Buffer.from(signature || '', 'utf8');
+    const isMatch =
+      expectedBuf.length === signatureBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, signatureBuf);
+
+    if (!isMatch) {
       console.warn(`[Webhook] Invalid signature for business ${businessId}`);
       return NextResponse.json({ status: 'error', message: 'Signature Mismatch' }, { status: 400 });
     }
