@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Users,
   Plus,
@@ -48,6 +48,7 @@ import {
   useFirestore,
   addDocumentNonBlocking,
   commitBatchNonBlocking,
+  setDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from "@/firebase";
@@ -167,21 +168,101 @@ export function UsersTab({
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending">("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+  // Deduplicate businessUsers by email, preserving wage data (e.g. dailyRate: 500) and identifying orphan duplicate placeholder docs
+  const cleanBusinessUsers = useMemo(() => {
+    if (!businessUsers || businessUsers.length === 0) return [];
+    const emailMap = new Map<string, any>();
+    const withoutEmail: any[] = [];
+
+    for (const u of businessUsers) {
+      const email = (u?.email || "").trim().toLowerCase();
+      if (!email || !email.includes("@")) {
+        withoutEmail.push(u);
+        continue;
+      }
+
+      if (!emailMap.has(email)) {
+        emailMap.set(email, u);
+      } else {
+        const existing = emailMap.get(email);
+        const existingIsActive = existing?.status === "active";
+        const currentIsActive = u?.status === "active";
+
+        if (currentIsActive && !existingIsActive) {
+          // Current is active, existing was pending: keep active account, copy over dailyRate/shift details
+          emailMap.set(email, {
+            ...existing,
+            ...u,
+            dailyRate: u.dailyRate ?? existing.dailyRate ?? 500,
+            shiftHours: u.shiftHours ?? existing.shiftHours ?? 8,
+            shiftTimings: u.shiftTimings || existing.shiftTimings || "09:00 AM - 06:00 PM",
+            _orphanDocIdToDelete: existing.id,
+          });
+        } else if (!currentIsActive && existingIsActive) {
+          // Existing is active, current is pending: keep active account, copy over dailyRate/shift details
+          emailMap.set(email, {
+            ...u,
+            ...existing,
+            dailyRate: existing.dailyRate ?? u.dailyRate ?? 500,
+            shiftHours: existing.shiftHours ?? u.shiftHours ?? 8,
+            shiftTimings: existing.shiftTimings || u.shiftTimings || "09:00 AM - 06:00 PM",
+            _orphanDocIdToDelete: u.id,
+          });
+        } else {
+          // Both active or both pending: keep the more recently updated
+          const timeA = new Date(existing.updatedAt?.toDate?.() || existing.createdAt || 0).getTime();
+          const timeB = new Date(u.updatedAt?.toDate?.() || u.createdAt || 0).getTime();
+          if (timeB >= timeA) {
+            emailMap.set(email, { ...existing, ...u, _orphanDocIdToDelete: existing.id });
+          } else {
+            emailMap.set(email, { ...u, ...existing, _orphanDocIdToDelete: u.id });
+          }
+        }
+      }
+    }
+
+    return [...Array.from(emailMap.values()), ...withoutEmail];
+  }, [businessUsers]);
+
+  // Clean up orphan duplicate documents in Firestore in the background
+  useEffect(() => {
+    if (!isAdmin || !businessId) return;
+    for (const m of cleanBusinessUsers) {
+      if (m._orphanDocIdToDelete && m.id && m._orphanDocIdToDelete !== m.id) {
+        const orphanId = m._orphanDocIdToDelete;
+        deleteDocumentNonBlocking(doc(firestore, "users", orphanId));
+        deleteDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", orphanId));
+        if (m.dailyRate !== undefined) {
+          setDocumentNonBlocking(
+            doc(firestore, "users", m.id),
+            { dailyRate: m.dailyRate, shiftHours: m.shiftHours, shiftTimings: m.shiftTimings },
+            { merge: true }
+          );
+          setDocumentNonBlocking(
+            doc(firestore, "businesses", businessId, "users", m.id),
+            { dailyRate: m.dailyRate, shiftHours: m.shiftHours, shiftTimings: m.shiftTimings },
+            { merge: true }
+          );
+        }
+      }
+    }
+  }, [cleanBusinessUsers, isAdmin, businessId, firestore]);
+
   const dynamicRoles = useMemo(
-    () => getDynamicRoleOptions(business?.staffRoles, businessUsers),
-    [business?.staffRoles, businessUsers]
+    () => getDynamicRoleOptions(business?.staffRoles, cleanBusinessUsers),
+    [business?.staffRoles, cleanBusinessUsers]
   );
 
   // Members eligible for Invite / Re-invite from the "Existing Member" picker
   const invitableExistingMembers = useMemo(
-    () => (businessUsers || []).filter((u: any) => u?.id && u.id !== currentUser?.uid),
-    [businessUsers, currentUser?.uid]
+    () => (cleanBusinessUsers || []).filter((u: any) => u?.id && u.id !== currentUser?.uid),
+    [cleanBusinessUsers, currentUser?.uid]
   );
 
   const matchedByTypedEmail = useMemo(() => {
     if (inviteDialogMode !== "new") return undefined;
-    return findMatchingExistingMemberByEmail(businessUsers || [], newUserEmail);
-  }, [inviteDialogMode, businessUsers, newUserEmail]);
+    return findMatchingExistingMemberByEmail(cleanBusinessUsers || [], newUserEmail);
+  }, [inviteDialogMode, cleanBusinessUsers, newUserEmail]);
 
   const syncInviteMarker = async (params: {
     email: string;
@@ -224,7 +305,7 @@ export function UsersTab({
 
   const applyExistingMemberSelection = (memberId: string) => {
     setSelectedExistingId(memberId);
-    const target = (businessUsers || []).find((u: any) => u.id === memberId);
+    const target = (cleanBusinessUsers || []).find((u: any) => u.id === memberId);
     if (!target) return;
     setNewUserName(target.name || "");
     setNewUserEmail(target.email || "");
@@ -269,7 +350,7 @@ export function UsersTab({
 
     const existingTarget =
       inviteDialogMode === "existing"
-        ? (businessUsers || []).find((u: any) => u.id === selectedExistingId)
+        ? (cleanBusinessUsers || []).find((u: any) => u.id === selectedExistingId)
         : matchedByTypedEmail;
 
     if (inviteDialogMode === "existing" && !existingTarget) {
@@ -414,7 +495,7 @@ export function UsersTab({
     }
 
     // Prevent colliding with a different member's email
-    const conflict = findMatchingExistingMemberByEmail(businessUsers || [], cleanEmail);
+    const conflict = findMatchingExistingMemberByEmail(cleanBusinessUsers || [], cleanEmail);
     if (conflict && conflict.id !== reinviteTarget.id) {
       toast({
         variant: "destructive",
@@ -530,7 +611,7 @@ export function UsersTab({
     const cleanEmail = (editingUser.email || "").trim().toLowerCase();
 
     if (cleanEmail) {
-      const conflict = findMatchingExistingMemberByEmail(businessUsers || [], cleanEmail);
+      const conflict = findMatchingExistingMemberByEmail(cleanBusinessUsers || [], cleanEmail);
       if (conflict && conflict.id !== editingUser.id) {
         toast({
           variant: "destructive",
@@ -598,7 +679,7 @@ export function UsersTab({
   };
 
   const handleExportMembersCsv = () => {
-    const sourceList = processedUsers.length > 0 ? processedUsers : businessUsers || [];
+    const sourceList = processedUsers.length > 0 ? processedUsers : cleanBusinessUsers || [];
     if (sourceList.length === 0) {
       toast({
         title: "No members to export",
@@ -629,7 +710,7 @@ export function UsersTab({
     const nowIso = new Date().toISOString();
     let batch = writeBatch(firestore);
     let ops = 0;
-
+    
     for (let i = 0; i < rows.length; i += 1) {
       const row = rows[i];
       const userDocRef = doc(collection(firestore, "users"));
@@ -697,17 +778,17 @@ export function UsersTab({
   const counts = useMemo(() => {
     let active = 0;
     let pending = 0;
-    for (const u of businessUsers || []) {
+    for (const u of cleanBusinessUsers || []) {
       const st = getMemberInviteState(u, currentUser?.uid);
       if (st.statusLabel === "Active") active += 1;
       else pending += 1;
     }
-    return { all: (businessUsers || []).length, active, pending };
-  }, [businessUsers, currentUser?.uid]);
+    return { all: (cleanBusinessUsers || []).length, active, pending };
+  }, [cleanBusinessUsers, currentUser?.uid]);
 
   const processedUsers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    const filtered = (businessUsers || []).filter((u: any) => {
+    const filtered = (cleanBusinessUsers || []).filter((u: any) => {
       const matchesQuery =
         !q ||
         (u.name || "").toLowerCase().includes(q) ||
@@ -729,7 +810,7 @@ export function UsersTab({
     });
 
     return filtered;
-  }, [businessUsers, searchTerm, statusFilter, sortOrder, currentUser?.uid]);
+  }, [cleanBusinessUsers, searchTerm, statusFilter, sortOrder, currentUser?.uid]);
 
   const shareLinks = useMemo(() => {
     if (!shareContext) return null;
@@ -1829,7 +1910,7 @@ export function UsersTab({
       <TeamImportDialog
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
-        existingMembers={businessUsers || []}
+        existingMembers={cleanBusinessUsers || []}
         currencySymbol={currencySymbol}
         onConfirmImport={handleBatchImportMembers}
       />

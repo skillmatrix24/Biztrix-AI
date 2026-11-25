@@ -158,7 +158,11 @@ export default function SignupPage() {
             googleUser.displayName || "User",
             formData.businessName || `${googleUser.displayName || "My"} Business`
           );
-          router.push("/dashboard");
+          if (typeof window !== "undefined") {
+            window.location.assign("/dashboard");
+          } else {
+            router.push("/dashboard");
+          }
         }
       }).catch((redirectErr) => {
         console.warn("Redirect sign-up notice:", redirectErr);
@@ -276,33 +280,38 @@ export default function SignupPage() {
       }
     }
 
-    // 3. Check pending user record in users collection
-    if (!invitedProfile) {
-      try {
-        const invitedUsersQuery = query(
-          collection(firestore, "users"),
-          where("email", "==", cleanEmail)
-        );
-        const invitedSnap = await getDocs(invitedUsersQuery);
-        const pendingDoc = invitedSnap.docs.find(
-          (d) => d.data().status === "pending" || (d.id !== uid && d.data().businessId)
-        );
-        if (pendingDoc) {
-          invitedDocId = pendingDoc.id;
-          const pData = pendingDoc.data();
-          bid = pData.businessId;
-          invitedProfile = {
-            ...pData,
-            role: pData.role || inviteContext.role || "Staff",
-            email: cleanEmail,
-          };
+    // 3. ALWAYS search users collection for pending placeholder docs for this email to merge wage/shift info and clean up duplicates
+    const orphanDocIdsToDelete: string[] = [];
+    let pendingUserData: any = null;
+
+    try {
+      const invitedUsersQuery = query(
+        collection(firestore, "users"),
+        where("email", "==", cleanEmail)
+      );
+      const invitedSnap = await getDocs(invitedUsersQuery);
+      for (const d of invitedSnap.docs) {
+        if (d.id !== uid) {
+          orphanDocIdsToDelete.push(d.id);
+          const pData = d.data();
+          if (!pendingUserData || pData.status === "pending") {
+            pendingUserData = pData;
+          }
         }
-      } catch (uErr) {
-        console.warn("Signup users pending lookup notice:", uErr);
       }
+      if (!invitedProfile && pendingUserData) {
+        bid = pendingUserData.businessId || bid;
+        invitedProfile = {
+          ...pendingUserData,
+          role: pendingUserData.role || targetRole || inviteContext.role || "Staff",
+          email: cleanEmail,
+        };
+      }
+    } catch (uErr) {
+      console.warn("Signup users pending lookup notice:", uErr);
     }
 
-    // 4. Scan businesses for matching invite marker
+    // 4. Scan businesses for matching invite marker if still not found
     if (!invitedProfile) {
       try {
         const bizSnap = await getDocs(collection(firestore, "businesses"));
@@ -354,20 +363,26 @@ export default function SignupPage() {
     }
 
     // If user already has an existing valid business AND no invite re-association is requested:
-    if (existingProfile && businessExists && !invitedProfile && !targetBid) {
+    if (existingProfile && businessExists && !invitedProfile && !targetBid && !pendingUserData) {
       return;
     }
 
-    if (invitedProfile && bid) {
-      // Connect member to the inviter's workspace with their assigned role
-      const assignedRole = invitedProfile.role || inviteContext.role || "Staff";
+    if ((invitedProfile || pendingUserData) && (bid || targetBid)) {
+      const finalBid = bid || targetBid || pendingUserData?.businessId;
+      const assignedRole = invitedProfile?.role || pendingUserData?.role || targetRole || inviteContext.role || "Staff";
       const profileData = {
-        ...invitedProfile,
+        ...(pendingUserData || {}),
+        ...(invitedProfile || {}),
         id: uid,
-        name: name || invitedProfile.name || "Team Member",
+        name: name || invitedProfile?.name || pendingUserData?.name || targetName || "Team Member",
         email: cleanEmail,
-        businessId: bid,
-        businessName: invitedProfile.businessName || "Workspace",
+        phone: pendingUserData?.phone || invitedProfile?.phone || null,
+        address: pendingUserData?.address || invitedProfile?.address || "",
+        dailyRate: pendingUserData?.dailyRate !== undefined ? pendingUserData.dailyRate : (invitedProfile?.dailyRate ?? 500),
+        shiftHours: pendingUserData?.shiftHours !== undefined ? pendingUserData.shiftHours : (invitedProfile?.shiftHours ?? 8),
+        shiftTimings: pendingUserData?.shiftTimings || invitedProfile?.shiftTimings || "09:00 AM - 06:00 PM",
+        businessId: finalBid,
+        businessName: invitedProfile?.businessName || pendingUserData?.businessName || targetBizName || inviteContext.businessName || "Workspace",
         role: assignedRole,
         status: "active",
         claimedAt: serverTimestamp(),
@@ -376,16 +391,22 @@ export default function SignupPage() {
 
       await setDoc(userDocRef, profileData, { merge: true });
       await setDoc(
-        doc(firestore, "businesses", bid, "users", uid),
+        doc(firestore, "businesses", finalBid, "users", uid),
         profileData,
         { merge: true }
       );
-      if (invitedDocId && invitedDocId !== uid) {
-        await deleteDoc(doc(firestore, "users", invitedDocId)).catch(() => {});
+
+      // Clean up all orphan placeholder docs from both collections
+      for (const orphanId of orphanDocIdsToDelete) {
+        await deleteDoc(doc(firestore, "users", orphanId)).catch(() => {});
+        if (finalBid) {
+          await deleteDoc(doc(firestore, "businesses", finalBid, "users", orphanId)).catch(() => {});
+        }
       }
+
       // Update invite marker as claimed
       await setDoc(
-        doc(firestore, "businesses", bid, "invites", cleanEmail),
+        doc(firestore, "businesses", finalBid, "invites", cleanEmail),
         {
           status: "claimed",
           claimedBy: uid,
@@ -409,6 +430,11 @@ export default function SignupPage() {
         localStorage.removeItem("biztrix_pending_invite");
         sessionStorage.removeItem("biztrix_pending_invite");
       } catch (_) {}
+
+      // Confirm write
+      await getDoc(userDocRef).catch(() => {});
+
+      return;
     } else if (isInviteFlow || targetBid) {
       // User arrived through invite link, but workspace was not found
       if (targetBid) {
@@ -497,7 +523,11 @@ export default function SignupPage() {
         formData.name,
         formData.businessName
       );
-      router.push("/dashboard");
+      if (typeof window !== "undefined") {
+        window.location.assign("/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       console.warn("Sign-up attempt notice:", err?.code || err?.message);
       if (err?.code === 'auth/email-already-in-use') {
@@ -527,7 +557,11 @@ export default function SignupPage() {
         googleUser.displayName || "User",
         formData.businessName || `${googleUser.displayName || "My"} Business`
       );
-      router.push("/dashboard");
+      if (typeof window !== "undefined") {
+        window.location.assign("/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       console.warn("Google signup notification:", err?.code || err?.message);
       setLoading(false);

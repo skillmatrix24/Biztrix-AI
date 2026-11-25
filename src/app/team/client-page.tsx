@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -142,7 +142,85 @@ export default function TeamClientPage() {
     if (!businessId) return null;
     return query(collection(firestore, "users"), where("businessId", "==", businessId));
   }, [firestore, businessId]);
-  const { data: businessUsers = [], isLoading: isUsersLoading } = useCollection<any>(usersQuery);
+  const { data: businessUsersRaw = [], isLoading: isUsersLoading } = useCollection<any>(usersQuery);
+
+  const businessUsers = useMemo(() => {
+    const emailMap = new Map<string, any>();
+    const withoutEmail: any[] = [];
+
+    for (const u of businessUsersRaw || []) {
+      const email = (u?.email || "").trim().toLowerCase();
+      if (!email || !email.includes("@")) {
+        withoutEmail.push(u);
+        continue;
+      }
+
+      if (!emailMap.has(email)) {
+        emailMap.set(email, u);
+      } else {
+        const existing = emailMap.get(email);
+        const existingIsActive = existing?.status === "active";
+        const currentIsActive = u?.status === "active";
+
+        if (currentIsActive && !existingIsActive) {
+          // Current is active, existing was pending: keep active account, copy over dailyRate/shift details
+          emailMap.set(email, {
+            ...existing,
+            ...u,
+            dailyRate: u.dailyRate ?? existing.dailyRate ?? 500,
+            shiftHours: u.shiftHours ?? existing.shiftHours ?? 8,
+            shiftTimings: u.shiftTimings || existing.shiftTimings || "09:00 AM - 06:00 PM",
+            _orphanDocIdToDelete: existing.id,
+          });
+        } else if (!currentIsActive && existingIsActive) {
+          // Existing is active, current is pending: keep active account, copy over dailyRate/shift details
+          emailMap.set(email, {
+            ...u,
+            ...existing,
+            dailyRate: existing.dailyRate ?? u.dailyRate ?? 500,
+            shiftHours: existing.shiftHours ?? u.shiftHours ?? 8,
+            shiftTimings: existing.shiftTimings || u.shiftTimings || "09:00 AM - 06:00 PM",
+            _orphanDocIdToDelete: u.id,
+          });
+        } else {
+          // Both active or both pending: keep the more recently updated
+          const timeA = new Date(existing.updatedAt?.toDate?.() || existing.createdAt || 0).getTime();
+          const timeB = new Date(u.updatedAt?.toDate?.() || u.createdAt || 0).getTime();
+          if (timeB >= timeA) {
+            emailMap.set(email, { ...existing, ...u, _orphanDocIdToDelete: existing.id });
+          } else {
+            emailMap.set(email, { ...u, ...existing, _orphanDocIdToDelete: u.id });
+          }
+        }
+      }
+    }
+
+    return [...Array.from(emailMap.values()), ...withoutEmail];
+  }, [businessUsersRaw]);
+
+  // Clean up orphan duplicate documents in Firestore in the background
+  useEffect(() => {
+    if (!isAdmin || !businessId) return;
+    for (const m of businessUsers) {
+      if (m._orphanDocIdToDelete && m.id && m._orphanDocIdToDelete !== m.id) {
+        const orphanId = m._orphanDocIdToDelete;
+        deleteDocumentNonBlocking(doc(firestore, "users", orphanId));
+        deleteDocumentNonBlocking(doc(firestore, "businesses", businessId, "users", orphanId));
+        if (m.dailyRate !== undefined) {
+          setDocumentNonBlocking(
+            doc(firestore, "users", m.id),
+            { dailyRate: m.dailyRate, shiftHours: m.shiftHours, shiftTimings: m.shiftTimings },
+            { merge: true }
+          );
+          setDocumentNonBlocking(
+            doc(firestore, "businesses", businessId, "users", m.id),
+            { dailyRate: m.dailyRate, shiftHours: m.shiftHours, shiftTimings: m.shiftTimings },
+            { merge: true }
+          );
+        }
+      }
+    }
+  }, [businessUsers, isAdmin, businessId, firestore]);
 
   const currencySymbol = getCurrencySymbol(business?.currency);
 

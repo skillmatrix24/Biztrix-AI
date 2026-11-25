@@ -116,7 +116,11 @@ export default function LoginPage() {
         if (result && result.user) {
           setLoading(true);
           await provisionMissingProfile(result.user);
-          router.push("/dashboard");
+          if (typeof window !== "undefined") {
+            window.location.assign("/dashboard");
+          } else {
+            router.push("/dashboard");
+          }
         }
       }).catch((redirectErr) => {
         console.warn("Redirect sign-in notice:", redirectErr);
@@ -234,33 +238,38 @@ export default function LoginPage() {
       }
     }
 
-    // 2. Query users collection for pending profile
-    if (!invitedProfile) {
-      try {
-        const invitedQuery = query(
-          collection(firestore, 'users'),
-          where('email', '==', identifier)
-        );
-        const invitedSnap = await getDocs(invitedQuery);
-        const pendingDoc = invitedSnap.docs.find(
-          (d) => d.data().status === 'pending' || (d.id !== firebaseUser.uid && d.data().businessId)
-        );
-        if (pendingDoc) {
-          invitedDocId = pendingDoc.id;
-          const pData = pendingDoc.data();
-          bid = pData.businessId;
-          invitedProfile = {
-            ...pData,
-            role: pData.role || 'Staff',
-            email: identifier,
-          };
+    // 2. ALWAYS search users collection for pending placeholder docs for this email to merge wage/shift info and clean up duplicates
+    const orphanDocIdsToDelete: string[] = [];
+    let pendingUserData: any = null;
+
+    try {
+      const invitedQuery = query(
+        collection(firestore, 'users'),
+        where('email', '==', identifier)
+      );
+      const invitedSnap = await getDocs(invitedQuery);
+      for (const d of invitedSnap.docs) {
+        if (d.id !== firebaseUser.uid) {
+          orphanDocIdsToDelete.push(d.id);
+          const pData = d.data();
+          if (!pendingUserData || pData.status === 'pending') {
+            pendingUserData = pData;
+          }
         }
-      } catch (uErr) {
-        console.warn('Pending user lookup notice:', uErr);
       }
+      if (!invitedProfile && pendingUserData) {
+        bid = pendingUserData.businessId || bid;
+        invitedProfile = {
+          ...pendingUserData,
+          role: pendingUserData.role || targetRoleFromUrl || 'Staff',
+          email: identifier,
+        };
+      }
+    } catch (uErr) {
+      console.warn('Pending user lookup notice:', uErr);
     }
 
-    // 3. Scan businesses for matching invite marker
+    // 3. Scan businesses for matching invite marker if still not found
     if (!invitedProfile) {
       try {
         const bizListSnap = await getDocs(collection(firestore, 'businesses'));
@@ -313,17 +322,23 @@ export default function LoginPage() {
       }
     }
 
-    // If an invite was found, attach or re-link member to the inviting business
-    if (invitedProfile && bid) {
-      const assignedRole = invitedProfile.role || 'Staff';
+    // If an invite was found or pending member data exists, attach or re-link member to the inviting business
+    if ((invitedProfile || pendingUserData) && (bid || targetBidFromUrl)) {
+      const finalBid = bid || targetBidFromUrl || pendingUserData?.businessId;
+      const assignedRole = invitedProfile?.role || pendingUserData?.role || targetRoleFromUrl || 'Staff';
       const profileData = {
-        ...invitedProfile,
+        ...(pendingUserData || {}),
+        ...(invitedProfile || {}),
         id: firebaseUser.uid,
-        name: firebaseUser.displayName || invitedProfile.name || 'Team Member',
+        name: firebaseUser.displayName || invitedProfile?.name || pendingUserData?.name || targetNameFromUrl || 'Team Member',
         email: identifier,
-        phone: firebaseUser.phoneNumber || invitedProfile.phone || null,
-        businessId: bid,
-        businessName: invitedProfile.businessName || 'Workspace',
+        phone: firebaseUser.phoneNumber || invitedProfile?.phone || pendingUserData?.phone || null,
+        address: pendingUserData?.address || invitedProfile?.address || '',
+        dailyRate: pendingUserData?.dailyRate !== undefined ? pendingUserData.dailyRate : (invitedProfile?.dailyRate ?? 500),
+        shiftHours: pendingUserData?.shiftHours !== undefined ? pendingUserData.shiftHours : (invitedProfile?.shiftHours ?? 8),
+        shiftTimings: pendingUserData?.shiftTimings || invitedProfile?.shiftTimings || '09:00 AM - 06:00 PM',
+        businessId: finalBid,
+        businessName: invitedProfile?.businessName || pendingUserData?.businessName || targetBizNameFromUrl || 'Workspace',
         role: assignedRole,
         status: 'active',
         claimedAt: serverTimestamp(),
@@ -331,12 +346,18 @@ export default function LoginPage() {
       };
 
       await setDoc(userDocRef, profileData, { merge: true });
-      await setDoc(doc(firestore, 'businesses', bid, 'users', firebaseUser.uid), profileData, { merge: true });
-      if (invitedDocId && invitedDocId !== firebaseUser.uid) {
-        await deleteDoc(doc(firestore, 'users', invitedDocId)).catch(() => {});
+      await setDoc(doc(firestore, 'businesses', finalBid, 'users', firebaseUser.uid), profileData, { merge: true });
+
+      // Clean up all orphan placeholder docs from both collections
+      for (const orphanId of orphanDocIdsToDelete) {
+        await deleteDoc(doc(firestore, 'users', orphanId)).catch(() => {});
+        if (finalBid) {
+          await deleteDoc(doc(firestore, 'businesses', finalBid, 'users', orphanId)).catch(() => {});
+        }
       }
+
       await setDoc(
-        doc(firestore, 'businesses', bid, 'invites', identifier),
+        doc(firestore, 'businesses', finalBid, 'invites', identifier),
         {
           status: 'claimed',
           claimedBy: firebaseUser.uid,
@@ -360,6 +381,9 @@ export default function LoginPage() {
         localStorage.removeItem('biztrix_pending_invite');
         sessionStorage.removeItem('biztrix_pending_invite');
       } catch (_) {}
+
+      // Confirm write
+      await getDoc(userDocRef).catch(() => {});
 
       return;
     }
@@ -440,7 +464,11 @@ export default function LoginPage() {
     try {
       const cred = await initiateEmailSignIn(auth, email, password);
       await provisionMissingProfile(cred.user);
-      router.push("/dashboard");
+      if (typeof window !== "undefined") {
+        window.location.assign("/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       console.warn("Sign-in attempt notice:", err?.code || err?.message);
       setLoading(false);
@@ -501,7 +529,11 @@ export default function LoginPage() {
       if (confirmationResult) {
         const cred = await confirmationResult.confirm(otp);
         await provisionMissingProfile(cred.user);
-        router.push("/dashboard");
+        if (typeof window !== "undefined") {
+          window.location.assign("/dashboard");
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch (err: any) {
       console.warn("Phone OTP verification notice:", err?.code || err?.message);
@@ -521,7 +553,11 @@ export default function LoginPage() {
         return;
       }
       await provisionMissingProfile(result.user);
-      router.push("/dashboard");
+      if (typeof window !== "undefined") {
+        window.location.assign("/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       console.warn("Google login notification:", err?.code || err?.message);
       setLoading(false);
