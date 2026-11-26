@@ -136,6 +136,7 @@ import {
   normalizeStoreTrackingConfig,
   removeStoreSection,
   resolveStorePreviewUrl,
+  resolveStorePublicUrl,
   sanitizeCouponCode,
   sanitizeGa4MeasurementId,
   sanitizeGoogleSiteVerification,
@@ -396,14 +397,27 @@ export default function EcommerceManagerPage() {
     (dbProducts || []).filter(p => p.showOnWebsite && !p.isArchived).length, 
   [dbProducts]);
 
+  const isPublished = websiteData?.status === "published";
+
   const previewStoreUrl = useMemo(
     () =>
       resolveStorePreviewUrl({
         slug: slug || business?.slug,
         businessId,
-        isPreview: websiteData?.status !== "published",
+        isPreview: !isPublished,
       }),
-    [slug, business?.slug, businessId, websiteData?.status]
+    [slug, business?.slug, businessId, isPublished]
+  );
+
+  const publicLiveUrl = useMemo(
+    () =>
+      resolveStorePublicUrl({
+        slug: slug || business?.slug,
+        businessId,
+        customDomain: websiteData?.customDomain,
+        customDomainStatus: websiteData?.customDomainStatus,
+      }),
+    [slug, business?.slug, businessId, websiteData?.customDomain, websiteData?.customDomainStatus]
   );
 
   const integrityReport = useMemo(
@@ -530,16 +544,13 @@ export default function EcommerceManagerPage() {
   };
 
   const handleCopyLink = () => {
-    const cleanSlug = sanitizeStoreSlug(slug || business?.slug || "");
-    const shareTarget = websiteData?.customDomain
-      ? `https://${websiteData.customDomain}`
-      : cleanSlug
-        ? `https://${cleanSlug}.biztrix.in`
-        : `${window.location.origin}${previewStoreUrl}`;
-    navigator.clipboard.writeText(shareTarget);
+    navigator.clipboard.writeText(publicLiveUrl);
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
-    toast({ title: "Link Copied", description: "Store URL is ready to share." });
+    toast({
+      title: "Store Link Copied",
+      description: publicLiveUrl,
+    });
   };
 
   const handleSave = async (targetStatus: 'draft' | 'published') => {
@@ -600,9 +611,18 @@ export default function EcommerceManagerPage() {
         setSlug(result.slug);
       }
 
+      const targetLiveUrl = resolveStorePublicUrl({
+        slug: cleanSlug,
+        businessId,
+        customDomain: websiteData?.customDomain,
+        customDomainStatus: websiteData?.customDomainStatus,
+      });
+
       toast({
-        title: targetStatus === 'published' ? "Site Published" : "Draft Saved",
-        description: result.message,
+        title: targetStatus === 'published' ? "Storefront Published!" : "Draft Saved",
+        description: targetStatus === 'published'
+          ? `Your store is live! Visit ${targetLiveUrl}`
+          : result.message,
       });
     } catch {
       // Fallback to client SDK merge if offline
@@ -770,11 +790,26 @@ export default function EcommerceManagerPage() {
           description="Storefront configuration, visual layout, catalog visibility, and domain settings."
           actions={
             <>
-              <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl border-slate-200 bg-white">
-                <Link href={previewStoreUrl} target="_blank">
-                  <ExternalLink className="mr-2 h-4 w-4" /> Live Preview
-                </Link>
-              </Button>
+              {isPublished ? (
+                <div className="flex items-center gap-2">
+                  <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100">
+                    <a href={publicLiveUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4 text-emerald-600" /> Visit Live Store
+                    </a>
+                  </Button>
+                  <Button asChild variant="ghost" size="sm" className="h-10 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" title="Direct in-app sandbox preview">
+                    <Link href={previewStoreUrl} target="_blank">
+                      App Preview
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl border-slate-200 bg-white">
+                  <Link href={previewStoreUrl} target="_blank">
+                    <ExternalLink className="mr-2 h-4 w-4" /> Live Preview
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => handleSave('draft')}
@@ -806,7 +841,7 @@ export default function EcommerceManagerPage() {
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-xs font-medium text-slate-500">Public Domain</p>
-                  <p className="text-sm font-bold font-mono text-primary truncate">{websiteData?.customDomain || (slug ? `${slug}.biztrix.in` : 'mystore.biztrix.in')}</p>
+                  <p className="text-sm font-bold font-mono text-primary truncate">{publicLiveUrl.replace(/^https?:\/\//, '')}</p>
                 </div>
                 <Button variant="ghost" size="icon" aria-label="Copy Store Link" className="h-8 w-8 rounded-xl" onClick={handleCopyLink}>
                   {isCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -882,22 +917,23 @@ export default function EcommerceManagerPage() {
                   <div className="flex items-center gap-2 text-xs text-slate-300">
                     <Globe className="h-3.5 w-3.5 text-sky-300" />
                     <span>Public URL:</span>
-                    <Link
-                      href={previewStoreUrl}
+                    <a
+                      href={publicLiveUrl}
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="font-mono text-sky-300 hover:underline font-semibold"
                     >
-                      {websiteData?.customDomain || (slug ? `${slug}.biztrix.in` : businessId ? `shop?bId=${businessId}` : 'mystore.biztrix.in')}
-                    </Link>
+                      {publicLiveUrl.replace(/^https?:\/\//, '')}
+                    </a>
                   </div>
                 </div>
 
                 {/* Save Draft / Publish Store Controls */}
                 <div className="flex flex-wrap items-center gap-2.5">
                   <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/20">
-                    <Link href={previewStoreUrl} target="_blank">
-                      <ExternalLink className="mr-2 h-3.5 w-3.5" /> Preview
-                    </Link>
+                    <a href={isPublished ? publicLiveUrl : previewStoreUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-3.5 w-3.5" /> {isPublished ? "Open Live Store" : "Preview"}
+                    </a>
                   </Button>
                   <Button
                     variant="outline"
@@ -2337,7 +2373,7 @@ export default function EcommerceManagerPage() {
                         {faviconUrl ? <img src={faviconUrl} alt="Store Favicon" referrerPolicy="no-referrer" className="h-4 w-4 rounded-full" /> : <Globe className="h-3 w-3 text-primary" />}
                       </div>
                       <span className="font-mono text-xs text-slate-800 truncate">
-                        https://{customDomain || (slug ? `${slug}.biztrix.in` : "mystore.biztrix.in")}/shop
+                        {publicLiveUrl}
                       </span>
                     </div>
                     <h3 className="text-base text-blue-700 hover:underline cursor-pointer font-medium line-clamp-1 leading-snug">
@@ -2375,7 +2411,7 @@ export default function EcommerceManagerPage() {
                     </div>
                     <div className="p-4 bg-white space-y-1 text-left">
                       <p className="text-xs font-mono text-slate-500">
-                        {customDomain || (slug ? `${slug}.biztrix.in` : "biztrix.in")}
+                        {publicLiveUrl.replace(/^https?:\/\//, '')}
                       </p>
                       <h4 className="text-sm font-bold text-slate-900 line-clamp-1 leading-snug">
                         {ogTitle || seoTitle || storeName || "Store Official Page"}
@@ -3013,9 +3049,9 @@ export default function EcommerceManagerPage() {
               Close
             </Button>
             <Button asChild className="rounded-xl text-xs font-semibold bg-primary text-white">
-              <Link href={previewStoreUrl} target="_blank">
-                Open Live Preview <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-              </Link>
+              <a href={isPublished ? publicLiveUrl : previewStoreUrl} target="_blank" rel="noopener noreferrer">
+                {isPublished ? "Open Live Store" : "Open Live Preview"} <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+              </a>
             </Button>
           </DialogFooter>
         </DialogContent>

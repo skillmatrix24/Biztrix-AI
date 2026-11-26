@@ -854,6 +854,33 @@ export function resolveStorePreviewUrl(params: {
 }
 
 /**
+ * Resolves the canonical public storefront URL for live traffic, customer sharing, and domain hub.
+ * Priority 1: Verified custom domain (e.g., https://shop.brand.com)
+ * Priority 2: Platform subdomain (e.g., https://ginger.biztrix.in)
+ * Priority 3: Fallback internal store route
+ */
+export function resolveStorePublicUrl(params: {
+  slug?: string | null;
+  businessId?: string | null;
+  customDomain?: string | null;
+  customDomainStatus?: string | null;
+}): string {
+  const isVerified = params.customDomainStatus === "verified" || params.customDomainStatus === "active";
+  if (params.customDomain && isVerified) {
+    const cleanDomain = params.customDomain.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    return `https://${cleanDomain}`;
+  }
+  const cleanSlug = sanitizeStoreSlug(params.slug || "");
+  if (cleanSlug) {
+    return `https://${cleanSlug}.biztrix.in`;
+  }
+  if (params.businessId) {
+    return `/shop?bId=${encodeURIComponent(params.businessId.trim())}`;
+  }
+  return "/shop";
+}
+
+/**
  * Determines whether a storefront can be viewed/ordered from publicly.
  * - Suspended businesses are always blocked.
  * - Explicit `websiteStatus` ('published' vs 'draft') takes priority over `businessStatus`

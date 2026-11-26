@@ -4,6 +4,7 @@ import {
   normalizeStoreSections,
   sanitizeStoreSlug,
   resolveStorePreviewUrl,
+  resolveStorePublicUrl,
   isStorePubliclyVisible,
   resolveMerchantWhatsAppPhone,
   computeStoreIntegrityAudit,
@@ -102,6 +103,26 @@ test("sanitizeStoreSlug and resolveStorePreviewUrl build safe preview links with
   assert.equal(
     resolveStorePreviewUrl({ slug: "ginger-mart", businessId: "biz_123" }),
     "/shop?slug=ginger-mart&bId=biz_123"
+  );
+  assert.equal(
+    resolveStorePublicUrl({ slug: "ginger", businessId: "biz_1778239581437" }),
+    "https://ginger.biztrix.in"
+  );
+  assert.equal(
+    resolveStorePublicUrl({
+      slug: "ginger",
+      businessId: "biz_1778239581437",
+      customDomain: "shop.gingerbrand.com",
+      customDomainStatus: "verified",
+    }),
+    "https://shop.gingerbrand.com"
+  );
+  assert.equal(
+    resolveStorePublicUrl({
+      slug: "",
+      businessId: "biz_1778239581437",
+    }),
+    "/shop?bId=biz_1778239581437"
   );
 });
 

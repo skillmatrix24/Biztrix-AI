@@ -44,6 +44,7 @@ import {
   normalizeStoreTrackingConfig,
   resolveFunnelPreviewUrl,
   resolveStorePreviewUrl,
+  resolveStorePublicUrl,
 } from "@/lib/storefront-engine";
 import { syncStorefrontRelays } from "@/app/actions/website-actions";
 import {
@@ -405,11 +406,19 @@ export default function VisitorInsightsPage() {
 
   const currencySymbol = getCurrencySymbol(business?.currency);
   const storeSlug = websiteData?.slug || business?.slug || "";
-  const publicStoreUrl = resolveStorePreviewUrl({
-    slug: storeSlug,
-    businessId,
-    isPreview: websiteData?.status !== "published",
-  });
+  const isPublished = websiteData?.status === "published";
+  const publicStoreUrl = isPublished
+    ? resolveStorePublicUrl({
+        slug: storeSlug,
+        businessId,
+        customDomain: websiteData?.customDomain,
+        customDomainStatus: websiteData?.customDomainStatus,
+      })
+    : resolveStorePreviewUrl({
+        slug: storeSlug,
+        businessId,
+        isPreview: true,
+      });
 
   if (isProfileLoading || (businessId && isEventsLoading)) {
     return (
