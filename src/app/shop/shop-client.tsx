@@ -27,6 +27,7 @@ import {
   Smartphone,
   Mail,
   Share2,
+  Headset,
   Flame,
   AlertTriangle,
   Phone,
@@ -4613,6 +4614,22 @@ export function ShopClient({
               >
                 <PackageCheck className="h-3.5 w-3.5" /> Track Order
               </Button>
+              {businessId && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-9 text-xs font-medium gap-1.5",
+                    buttonRadiusClass,
+                    isDarkSurface ? "border-slate-700 bg-slate-800 text-white" : ""
+                  )}
+                >
+                  <Link href={`/complaints/form/${businessId}`}>
+                    <Headset className="h-3.5 w-3.5" /> Support Desk
+                  </Link>
+                </Button>
+              )}
               {footerConfig.instagramUrl && (
                 <Button asChild variant="outline" size="icon" className="h-9 w-9 rounded-full" aria-label="Instagram">
                   <a href={footerConfig.instagramUrl} target="_blank" rel="noopener noreferrer">
@@ -4663,6 +4680,14 @@ export function ShopClient({
               >
                 Privacy &amp; Terms
               </button>
+              {businessId && (
+                <Link
+                  href={`/complaints/form/${businessId}`}
+                  className="hover:underline underline-offset-2 flex items-center gap-1 font-semibold text-accent"
+                >
+                  <Headset className="h-3 w-3" /> Raise Ticket
+                </Link>
+              )}
               {merchantPhoneDisplay && (
                 <span className="font-mono tabular-nums">Desk: {merchantPhoneDisplay}</span>
               )}

@@ -42,6 +42,7 @@ import {
   Lock,
   ShieldAlert,
   Loader2,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -138,6 +139,8 @@ export default function CustomerCareClientPage() {
 
   // Copy Feedback State
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [shareLinkModalOpen, setShareLinkModalOpen] = useState(false);
+  const [copiedFormLink, setCopiedFormLink] = useState(false);
 
   // Ticket Quick Resolution Modal
   const [resolveTicketModalOpen, setResolveTicketModalOpen] = useState(false);
@@ -153,6 +156,25 @@ export default function CustomerCareClientPage() {
   );
   const { data: userProfile } = useDoc<any>(userDocRef);
   const businessId = userProfile?.businessId;
+
+  const publicTicketFormUrl = useMemo(() => {
+    if (!businessId) return "";
+    if (typeof window !== "undefined") {
+      return `${window.location.origin}/complaints/form/${businessId}`;
+    }
+    return `/complaints/form/${businessId}`;
+  }, [businessId]);
+
+  const handleCopyPublicForm = () => {
+    if (!publicTicketFormUrl) return;
+    navigator.clipboard.writeText(publicTicketFormUrl);
+    setCopiedFormLink(true);
+    toast({
+      title: "Link Copied!",
+      description: "Customer Ticket Form link copied to clipboard.",
+    });
+    setTimeout(() => setCopiedFormLink(false), 2500);
+  };
 
   const isPlatformOwner =
     user?.email?.toLowerCase() === "skillmatrix24@gmail.com" ||
@@ -424,6 +446,16 @@ export default function CustomerCareClientPage() {
         badgeIcon={Lock}
         action={
           <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShareLinkModalOpen(true)}
+              className="h-9 rounded-xl border-orange-200 bg-orange-50/70 hover:bg-orange-100 text-orange-800 text-xs font-semibold gap-1.5"
+            >
+              <Share2 className="h-3.5 w-3.5 text-orange-600" />
+              Customer Ticket Link
+            </Button>
             <Button
               asChild
               variant="outline"
@@ -961,6 +993,73 @@ export default function CustomerCareClientPage() {
             TAB 3: LIVE TICKET & COMPLAINT QUEUE
         ========================================================================== */}
         <TabsContent value="tickets" className="space-y-6 m-0">
+          {/* Customer Self-Service Info Banner */}
+          <div className="rounded-2xl border border-orange-200 bg-gradient-to-r from-orange-50/80 to-amber-50/50 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-bold text-orange-900">
+                <Headset className="h-4 w-4 text-orange-600" />
+                <span>Customer Self-Service Ticket Portal</span>
+                <Badge variant="outline" className="border-orange-300 text-orange-800 bg-white text-[10px] font-semibold">
+                  Public Link
+                </Badge>
+              </div>
+              <p className="text-xs text-orange-950/80 leading-relaxed max-w-2xl">
+                Aapke customers bina login kiye seedhe is link se complaint ya service ticket generate kar sakte hain. Ticket submit hote hi unhe SMS/WhatsApp number aur real-time tracking link mil jati hai.
+              </p>
+              <div className="pt-1 flex items-center gap-2 flex-wrap">
+                <code className="text-[11px] font-mono bg-white px-2.5 py-1 rounded-md border border-orange-200 text-slate-700 truncate max-w-xs sm:max-w-md select-all">
+                  {publicTicketFormUrl || `/complaints/form/${businessId || "..."}`}
+                </code>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCopyPublicForm}
+                className="h-8.5 rounded-xl border-orange-300 bg-white hover:bg-orange-100 text-orange-900 text-xs font-semibold"
+              >
+                {copiedFormLink ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 mr-1 text-emerald-600" /> Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5 mr-1 text-orange-600" /> Copy Link
+                  </>
+                )}
+              </Button>
+              {businessId && (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-8.5 rounded-xl border-orange-300 bg-white hover:bg-orange-100 text-orange-900 text-xs font-semibold"
+                >
+                  <a
+                    href={buildWhatsAppDirectUrl("", `Namaste! Support ya complaint register karne ke liye is link par click karein: ${publicTicketFormUrl}`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 mr-1 text-emerald-600" /> WhatsApp
+                  </a>
+                </Button>
+              )}
+              {businessId && (
+                <Button
+                  asChild
+                  size="sm"
+                  className="h-8.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold shadow-xs"
+                >
+                  <Link href={`/complaints/form/${businessId}`} target="_blank">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open Form
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+
           <SectionCard
             title="Live Customer Tickets & Escalations"
             description="Customers dwara bheje gaye tickets ko review karein, status change karein, aur verified SOP se solve karein."
@@ -1250,6 +1349,72 @@ export default function CustomerCareClientPage() {
               className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
             >
               Mark Resolved & Send WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Customer Public Form Modal */}
+      <Dialog open={shareLinkModalOpen} onOpenChange={setShareLinkModalOpen}>
+        <DialogContent className="max-w-md rounded-2xl bg-white p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Headset className="h-5 w-5 text-orange-600" />
+              Public Customer Ticket Link
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-600">
+              Customers is link se direct support ticket generate kar sakte hain bina dashboard login kiye.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Self-Service Ticket URL</label>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={publicTicketFormUrl}
+                  className="font-mono text-xs bg-slate-50 border-slate-200 select-all"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleCopyPublicForm}
+                  className="rounded-xl shrink-0"
+                >
+                  {copiedFormLink ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-600">
+              <p className="font-semibold text-slate-800">Customer ticket kahan se generate karega?</p>
+              <ul className="list-disc pl-4 space-y-1 text-slate-600">
+                <li><strong className="text-slate-800">WhatsApp / SMS Share:</strong> Customer ko direct WhatsApp ya SMS me yeh link bhejiye.</li>
+                <li><strong className="text-slate-800">Website / Store Contact:</strong> Website footer ya Contact Us page par is form ka button/link dijiye.</li>
+                <li><strong className="text-slate-800">QR Code on Bills:</strong> Customer invoice ya delivery slip par QR print kar sakte hain.</li>
+                <li><strong className="text-slate-800">Instant Tracking:</strong> Submit hote hi customer ko ticket ID (`T-XXXX`) aur live status tracker link milta hai.</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between gap-2 sm:justify-between">
+            {businessId && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-xl text-xs font-medium"
+              >
+                <Link href={`/complaints/form/${businessId}`} target="_blank">
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" /> Test Form Preview
+                </Link>
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setShareLinkModalOpen(false)}
+              className="rounded-xl text-xs font-medium"
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -13,10 +13,10 @@ import {
   Receipt,
   Filter,
   ChevronRight,
-  Layout,
   Download,
   Check,
   LayoutList,
+  LayoutGrid,
   HandCoins,
   ShieldAlert,
 } from "lucide-react";
@@ -49,7 +49,6 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn, getCurrencySymbol } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -84,13 +83,11 @@ import {
   getEffectiveShiftHours,
   getPayrollYearOptions,
   isPendingStaffMember,
-  isPulseWidgetEnabled,
   isStaffAdminRole,
   parseNonNegativeNumber,
   PAYROLL_MONTHS,
   planAttendanceAction,
   resolveNumericDraft,
-  toggleDashboardPulseLayout,
   type AttendanceStatus,
 } from "@/lib/staff-payroll";
 import {
@@ -138,6 +135,7 @@ export default function StaffManagementPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("directory");
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
 
   // Settlement payment dialog state
   const [settleTarget, setSettleTarget] = useState<any | null>(null);
@@ -153,20 +151,6 @@ export default function StaffManagementPage() {
     [userProfile?.role, user?.email]
   );
 
-  const isPinned = useMemo(
-    () => isPulseWidgetEnabled(userProfile?.dashboardLayout),
-    [userProfile?.dashboardLayout]
-  );
-
-  const toggleDashboardPin = () => {
-    if (!userProfileRef || !userProfile) return;
-    const newLayout = toggleDashboardPulseLayout(userProfile.dashboardLayout);
-    updateDocumentNonBlocking(userProfileRef, { dashboardLayout: newLayout });
-    toast({
-      title: isPinned ? "Unpinned" : "Pinned",
-      description: `Daily Pulse widget ${isPinned ? "removed from" : "added to"} Dashboard.`,
-    });
-  };
 
   const queryRange = useMemo(
     () =>
@@ -620,21 +604,6 @@ export default function StaffManagementPage() {
         icon={Users2}
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
-            <div
-              className="flex items-center gap-2 bg-white px-3 h-10 rounded-xl border border-slate-200 shrink-0"
-              title="Pin Daily Pulse widget to Dashboard"
-            >
-              <Layout className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-xs font-medium text-slate-600 hidden sm:inline">
-                Pin widget
-              </span>
-              <Switch
-                checked={isPinned}
-                onCheckedChange={toggleDashboardPin}
-                aria-label="Pin daily pulse widget to dashboard"
-                className="scale-90 data-[state=checked]:bg-slate-900"
-              />
-            </div>
             <Button
               onClick={handleExportCSV}
               variant="outline"
@@ -720,6 +689,42 @@ export default function StaffManagementPage() {
           </TabsList>
 
           <div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto">
+            {/* View Mode Switcher: Card vs List */}
+            <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shrink-0 shadow-2xs">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("card")}
+                aria-label="Card view"
+                className={cn(
+                  "h-8 px-2.5 rounded-lg text-xs font-semibold gap-1.5 transition-colors cursor-pointer",
+                  viewMode === "card"
+                    ? "bg-slate-900 text-white hover:bg-slate-900 hover:text-white"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                )}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>Cards</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("list")}
+                aria-label="List view"
+                className={cn(
+                  "h-8 px-2.5 rounded-lg text-xs font-semibold gap-1.5 transition-colors cursor-pointer",
+                  viewMode === "list"
+                    ? "bg-slate-900 text-white hover:bg-slate-900 hover:text-white"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                )}
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+                <span>List</span>
+              </Button>
+            </div>
+
             <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-white px-2.5 h-10 rounded-xl border border-slate-200 w-full sm:w-auto">
               <div className="flex items-center gap-1.5">
                 <Filter className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -797,7 +802,7 @@ export default function StaffManagementPage() {
                 description="Try clearing your search or role filter, or invite a new member from Settings."
               />
             </SectionCard>
-          ) : (
+          ) : viewMode === "card" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredStaff.map((s: any) => {
                 const isPending = isPendingStaffMember(s);
@@ -850,6 +855,79 @@ export default function StaffManagementPage() {
                 );
               })}
             </div>
+          ) : (
+            <SectionCard bodyClassName="p-0 overflow-x-auto">
+              <Table className="min-w-[760px]">
+                <TableHeader>
+                  <TableRow className="border-b border-slate-200 bg-slate-50/70 hover:bg-slate-50/70">
+                    <TableHead className="text-xs font-bold text-slate-800 h-11 pl-5">Specialist</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 h-11">Role</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 h-11">Contact</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 h-11">Wage & Shift</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 h-11">Status</TableHead>
+                    <TableHead className="text-xs font-bold text-slate-800 h-11 text-right pr-5">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredStaff.map((s: any) => {
+                    const isPending = isPendingStaffMember(s);
+                    return (
+                      <TableRow key={s.id} className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors">
+                        <TableCell className="pl-5 py-3.5">
+                          <Link href={`/staff/${s.id}`} className="flex items-center gap-3 group">
+                            <div className="h-9 w-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-900 text-xs shrink-0 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                              {s.name?.charAt(0)?.toUpperCase() || "U"}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-900 group-hover:underline truncate">
+                                {s.name || "Unnamed member"}
+                              </p>
+                              <p className="text-[11px] text-slate-500 truncate">{s.email}</p>
+                            </div>
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs font-medium capitalize text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                            {s.role || "Staff"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 font-mono">
+                            <Phone className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span>{s.phone || "—"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs font-mono tabular-nums text-slate-700">
+                            <span className="font-semibold">{currencySymbol}{getEffectiveDailyRate(s)}/day</span>
+                            <span className="text-slate-400 ml-1">· {getEffectiveShiftHours(s)}h</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {isPending ? (
+                            <span className="inline-flex items-center text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                              Pending invite
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right pr-5">
+                          <Button asChild size="sm" variant="outline" className="h-8 rounded-lg text-xs font-medium border-slate-200 hover:bg-slate-900 hover:text-white">
+                            <Link href={`/staff/${s.id}`}>
+                              Profile & Slip
+                              <ChevronRight className="ml-1 h-3 w-3" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </SectionCard>
           )}
         </TabsContent>
 
@@ -1135,245 +1213,269 @@ export default function StaffManagementPage() {
             title={`Monthly payroll ledger (${PAYROLL_MONTHS[Number.parseInt(selectedMonth, 10) - 1]} ${selectedYear})`}
             bodyClassName="p-0"
           >
-            {/* MOBILE SETTLEMENT CARDS (<768px) */}
-            <div className="md:hidden">
-              {payrollSummary.length === 0 ? (
-                <div className="py-12 px-5 text-center text-slate-500 text-sm">
-                  No payroll records found for this month.
-                </div>
-              ) : (
-                <>
-                  <div className="divide-y divide-slate-100">
-                    {payrollSummary.map((s: any) => (
-                      <div key={s.id} className="p-4 space-y-3 text-left">
-                        <div className="flex items-start justify-between gap-3">
-                          <Link href={`/staff/${s.id}`} className="min-w-0 group">
-                            <p className="text-sm font-semibold text-slate-900 group-hover:underline truncate">
-                              {s.name}
-                            </p>
-                            <p className="text-xs text-slate-500 capitalize">
-                              {s.role} · {s.payableDays} days
-                              {s.otHours > 0 ? ` · ${s.otHours}h OT` : ""}
-                            </p>
-                          </Link>
-
-                          {canManagePayroll ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              aria-label={`Settle payment for ${s.name}`}
-                              className="h-9 px-3 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white shrink-0"
-                              onClick={() => openSettleDialog(s)}
-                            >
-                              <HandCoins className="mr-1.5 h-3.5 w-3.5" />
-                              Settle
-                            </Button>
-                          ) : (
-                            <Link
-                              href={`/staff/${s.id}`}
-                              className="text-xs font-semibold text-primary hover:underline shrink-0"
-                            >
-                              View slip
+            {viewMode === "card" ? (
+              <div className="p-4 sm:p-5">
+                {payrollSummary.length === 0 ? (
+                  <div className="py-12 px-5 text-center text-slate-500 text-sm">
+                    No payroll records found for this month.
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {payrollSummary.map((s: any) => (
+                        <div
+                          key={s.id}
+                          className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between space-y-4 hover:border-slate-300 transition-colors shadow-2xs text-left"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <Link href={`/staff/${s.id}`} className="min-w-0 flex items-center gap-3 group">
+                              <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-900 text-sm shrink-0 group-hover:bg-slate-900 group-hover:text-white transition-colors">
+                                {s.name?.charAt(0)?.toUpperCase() || "U"}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-slate-900 group-hover:underline truncate">
+                                  {s.name}
+                                </p>
+                                <p className="text-xs text-slate-500 capitalize">
+                                  {s.role} · {s.payableDays} days
+                                  {s.otHours > 0 ? ` · ${s.otHours}h OT` : ""}
+                                </p>
+                              </div>
                             </Link>
-                          )}
-                        </div>
 
-                        <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-xs font-mono tabular-nums">
-                          <div>
-                            <p className="font-sans text-[11px] text-slate-500">Earned</p>
-                            <p className="font-semibold text-slate-900 mt-0.5">
-                              {currencySymbol}
-                              {Math.round(s.totalEarnedMonth).toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-sans text-[11px] text-slate-500">Paid</p>
-                            <p className="font-semibold text-emerald-700 mt-0.5">
-                              {currencySymbol}
-                              {Math.round(s.totalPaidMonth).toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-sans text-[11px] text-slate-500">Balance</p>
-                            <p
+                            <span
                               className={cn(
-                                "font-bold mt-0.5",
+                                "text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0",
+                                (s.pendingBalance || 0) > 0
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              )}
+                            >
+                              {(s.pendingBalance || 0) > 0 ? "Due" : "Settled"}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 rounded-xl bg-slate-50 border border-slate-100 p-2.5 text-xs font-mono tabular-nums">
+                            <div>
+                              <p className="font-sans text-[11px] text-slate-500">Earned</p>
+                              <p className="font-semibold text-slate-900 mt-0.5">
+                                {currencySymbol}
+                                {Math.round(s.totalEarnedMonth).toLocaleString()}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-sans text-[11px] text-slate-500">Paid</p>
+                              <p className="font-semibold text-emerald-700 mt-0.5">
+                                {currencySymbol}
+                                {Math.round(s.totalPaidMonth).toLocaleString()}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-sans text-[11px] text-slate-500">Balance</p>
+                              <p
+                                className={cn(
+                                  "font-bold mt-0.5",
+                                  (s.pendingBalance || 0) > 0 ? "text-rose-600" : "text-emerald-700"
+                                )}
+                              >
+                                {currencySymbol}
+                                {Math.round(s.pendingBalance || 0).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <Button asChild size="sm" variant="ghost" className="h-8 px-2 text-xs font-medium text-slate-600 hover:text-slate-900">
+                              <Link href={`/staff/${s.id}`}>
+                                View slip <ChevronRight className="ml-1 h-3 w-3" />
+                              </Link>
+                            </Button>
+                            {canManagePayroll && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                aria-label={`Settle payment for ${s.name}`}
+                                className="h-8 px-3 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white shrink-0"
+                                onClick={() => openSettleDialog(s)}
+                              >
+                                <HandCoins className="mr-1.5 h-3.5 w-3.5" />
+                                Settle
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-5 p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs font-mono tabular-nums">
+                      <div className="flex items-center gap-2 font-sans font-semibold text-slate-700">
+                        <Wallet className="h-4 w-4 text-slate-500" />
+                        <span>Grand Total ({grandTotals.attendance} days attendance)</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-slate-600 font-sans">
+                          Paid: <strong className="font-mono text-emerald-700">{currencySymbol}{Math.round(grandTotals.paid).toLocaleString()}</strong>
+                        </span>
+                        <span className="font-bold text-rose-600 text-sm font-sans">
+                          Due: <strong className="font-mono">{currencySymbol}{Math.round(grandTotals.balance).toLocaleString()}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="min-w-[920px]">
+                  <TableHeader>
+                    <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
+                      <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11 w-14">
+                        #
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold text-slate-600 h-11">
+                        Member / role
+                      </TableHead>
+                      <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">
+                        Attendance
+                      </TableHead>
+                      <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">
+                        OT (hrs)
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
+                        OT pay
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
+                        Total earnings
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
+                        Amount paid
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
+                        Balance due
+                      </TableHead>
+                      <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11">
+                        Action
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payrollSummary.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="h-40 text-center text-slate-500 text-sm">
+                          No payroll records found for this month.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      payrollSummary.map((s: any, idx: number) => (
+                        <TableRow
+                          key={s.id}
+                          className="group hover:bg-slate-50/80 transition-colors cursor-pointer border-b border-slate-100"
+                          onClick={() => router.push(`/staff/${s.id}`)}
+                        >
+                          <TableCell className="pl-6 py-3.5 text-xs font-mono tabular-nums text-slate-400">
+                            #{idx + 1}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-slate-900 group-hover:underline">
+                                {s.name}
+                              </span>
+                              <span className="text-xs text-slate-500 capitalize">{s.role}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-mono tabular-nums text-xs font-medium text-slate-700">
+                            {s.payableDays} days
+                          </TableCell>
+                          <TableCell className="text-center font-mono tabular-nums text-xs text-slate-600">
+                            {s.otHours}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-xs font-medium text-slate-700">
+                            {currencySymbol}
+                            {Math.round(s.otPay).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-sm font-semibold text-slate-900">
+                            {currencySymbol}
+                            {Math.round(s.totalEarnedMonth).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums text-sm font-semibold text-emerald-700">
+                            {currencySymbol}
+                            {Math.round(s.totalPaidMonth).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span
+                              className={cn(
+                                "font-mono tabular-nums text-sm font-bold",
                                 (s.pendingBalance || 0) > 0 ? "text-rose-600" : "text-emerald-700"
                               )}
                             >
                               {currencySymbol}
                               {Math.round(s.pendingBalance || 0).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs font-mono tabular-nums">
-                    <span className="font-sans font-semibold text-slate-700">
-                      Grand Total ({grandTotals.attendance} days)
-                    </span>
-                    <span className="font-bold text-rose-600 text-sm">
-                      Due: {currencySymbol}
-                      {Math.round(grandTotals.balance).toLocaleString()}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* TABLET & DESKTOP PAYROLL TABLE (>=768px) */}
-            <div className="hidden md:block overflow-x-auto">
-              <Table className="min-w-[920px]">
-                <TableHeader>
-                  <TableRow className="bg-slate-50/80 border-b border-slate-200 hover:bg-slate-50/80">
-                    <TableHead className="pl-6 text-xs font-semibold text-slate-600 h-11 w-14">
-                      #
-                    </TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-600 h-11">
-                      Member / role
-                    </TableHead>
-                    <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">
-                      Attendance
-                    </TableHead>
-                    <TableHead className="text-center text-xs font-semibold text-slate-600 h-11">
-                      OT (hrs)
-                    </TableHead>
-                    <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
-                      OT pay
-                    </TableHead>
-                    <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
-                      Total earnings
-                    </TableHead>
-                    <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
-                      Amount paid
-                    </TableHead>
-                    <TableHead className="text-right text-xs font-semibold text-slate-600 h-11">
-                      Balance due
-                    </TableHead>
-                    <TableHead className="text-right pr-6 text-xs font-semibold text-slate-600 h-11">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payrollSummary.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="h-40 text-center text-slate-500 text-sm">
-                        No payroll records found for this month.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    payrollSummary.map((s: any, idx: number) => (
-                      <TableRow
-                        key={s.id}
-                        className="group hover:bg-slate-50/80 transition-colors cursor-pointer border-b border-slate-100"
-                        onClick={() => router.push(`/staff/${s.id}`)}
-                      >
-                        <TableCell className="pl-6 py-3.5 text-xs font-mono tabular-nums text-slate-400">
-                          #{idx + 1}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-slate-900 group-hover:underline">
-                              {s.name}
                             </span>
-                            <span className="text-xs text-slate-500 capitalize">{s.role}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center font-mono tabular-nums text-xs font-medium text-slate-700">
-                          {s.payableDays} days
-                        </TableCell>
-                        <TableCell className="text-center font-mono tabular-nums text-xs text-slate-600">
-                          {s.otHours}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-xs font-medium text-slate-700">
-                          {currencySymbol}
-                          {Math.round(s.otPay).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-sm font-semibold text-slate-900">
-                          {currencySymbol}
-                          {Math.round(s.totalEarnedMonth).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-sm font-semibold text-emerald-700">
-                          {currencySymbol}
-                          {Math.round(s.totalPaidMonth).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <span
-                            className={cn(
-                              "font-mono tabular-nums text-sm font-bold",
-                              (s.pendingBalance || 0) > 0 ? "text-rose-600" : "text-emerald-700"
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            {canManagePayroll ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                aria-label={`Settle payment for ${s.name}`}
+                                className="h-8 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white whitespace-nowrap"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openSettleDialog(s);
+                                }}
+                              >
+                                <HandCoins className="mr-1.5 h-3.5 w-3.5" />
+                                Settle / Pay
+                              </Button>
+                            ) : (
+                              <Link
+                                href={`/staff/${s.id}`}
+                                className="text-xs font-medium text-primary hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                View slip
+                              </Link>
                             )}
-                          >
-                            {currencySymbol}
-                            {Math.round(s.pendingBalance || 0).toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right pr-6">
-                          {canManagePayroll ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              aria-label={`Settle payment for ${s.name}`}
-                              className="h-8 rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-900 hover:text-white whitespace-nowrap"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openSettleDialog(s);
-                              }}
-                            >
-                              <HandCoins className="mr-1.5 h-3.5 w-3.5" />
-                              Settle / Pay
-                            </Button>
-                          ) : (
-                            <Link
-                              href={`/staff/${s.id}`}
-                              className="text-xs font-medium text-primary hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              View slip
-                            </Link>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-                <TableFooter className="bg-slate-50 hover:bg-slate-50 border-t border-slate-200">
-                  <TableRow>
-                    <TableCell colSpan={2} className="pl-6 py-4 font-semibold text-slate-900 text-xs">
-                      Grand total
-                    </TableCell>
-                    <TableCell className="text-center font-mono tabular-nums font-semibold text-slate-900 text-xs">
-                      {grandTotals.attendance} days
-                    </TableCell>
-                    <TableCell className="text-center font-mono tabular-nums font-medium text-slate-600 text-xs">
-                      {grandTotals.otHours} hrs
-                    </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums font-semibold text-slate-900 text-xs">
-                      {currencySymbol}
-                      {Math.round(grandTotals.otPay).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums font-semibold text-slate-900 text-sm">
-                      {currencySymbol}
-                      {Math.round(grandTotals.earnings).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums font-semibold text-emerald-700 text-sm">
-                      {currencySymbol}
-                      {Math.round(grandTotals.paid).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono tabular-nums font-bold text-rose-600 text-base">
-                      {currencySymbol}
-                      {Math.round(grandTotals.balance).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="pr-6" />
-                  </TableRow>
-                </TableFooter>
-              </Table>
-            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                  <TableFooter className="bg-slate-50 hover:bg-slate-50 border-t border-slate-200">
+                    <TableRow>
+                      <TableCell colSpan={2} className="pl-6 py-4 font-semibold text-slate-900 text-xs">
+                        Grand total
+                      </TableCell>
+                      <TableCell className="text-center font-mono tabular-nums font-semibold text-slate-900 text-xs">
+                        {grandTotals.attendance} days
+                      </TableCell>
+                      <TableCell className="text-center font-mono tabular-nums font-medium text-slate-600 text-xs">
+                        {grandTotals.otHours} hrs
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums font-semibold text-slate-900 text-xs">
+                        {currencySymbol}
+                        {Math.round(grandTotals.otPay).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums font-semibold text-slate-900 text-sm">
+                        {currencySymbol}
+                        {Math.round(grandTotals.earnings).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums font-semibold text-emerald-700 text-sm">
+                        {currencySymbol}
+                        {Math.round(grandTotals.paid).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums font-bold text-rose-600 text-base">
+                        {currencySymbol}
+                        {Math.round(grandTotals.balance).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="pr-6" />
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+            )}
           </SectionCard>
         </TabsContent>
       </Tabs>
