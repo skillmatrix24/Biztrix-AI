@@ -420,6 +420,30 @@ export default function EcommerceManagerPage() {
     [slug, business?.slug, businessId, websiteData?.customDomain, websiteData?.customDomainStatus]
   );
 
+  const [isDevHost, setIsDevHost] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isDev =
+        window.location.hostname.includes("run.app") ||
+        window.location.hostname.includes("localhost") ||
+        window.location.hostname.includes("studio-") ||
+        !window.location.hostname.endsWith("biztrix.in");
+      setIsDevHost(isDev);
+    }
+  }, []);
+
+  const activeStorefrontUrl = useMemo(() => {
+    if (isDevHost) {
+      const cleanSlug = sanitizeStoreSlug(slug || business?.slug || "");
+      if (cleanSlug) {
+        return `/shop?slug=${encodeURIComponent(cleanSlug)}`;
+      }
+      return previewStoreUrl;
+    }
+    return publicLiveUrl;
+  }, [isDevHost, slug, business?.slug, previewStoreUrl, publicLiveUrl]);
+
   const integrityReport = useMemo(
     () =>
       computeStoreIntegrityAudit({
@@ -793,8 +817,8 @@ export default function EcommerceManagerPage() {
               {isPublished ? (
                 <div className="flex items-center gap-2">
                   <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100">
-                    <a href={publicLiveUrl} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-2 h-4 w-4 text-emerald-600" /> Visit Live Store
+                    <a href={activeStorefrontUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4 text-emerald-600" /> Open Live Store
                     </a>
                   </Button>
                   <Button asChild variant="ghost" size="sm" className="h-10 text-xs font-semibold rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50" title="Direct in-app sandbox preview">
@@ -914,24 +938,37 @@ export default function EcommerceManagerPage() {
                   <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
                     {storeName || business?.name || 'Storefront Hub'}
                   </h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <Globe className="h-3.5 w-3.5 text-sky-300" />
-                    <span>Public URL:</span>
-                    <a
-                      href={publicLiveUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-mono text-sky-300 hover:underline font-semibold"
-                    >
-                      {publicLiveUrl.replace(/^https?:\/\//, '')}
-                    </a>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-3.5 w-3.5 text-sky-300" />
+                      <span>Production URL:</span>
+                      <a
+                        href={publicLiveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-sky-300 hover:underline font-semibold"
+                        title="Live production subdomain (requires Wildcard DNS *.biztrix.in)"
+                      >
+                        {publicLiveUrl.replace(/^https?:\/\//, '')}
+                      </a>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1" title="Subdomain DNS propagation typically takes 10 to 30 minutes globally">
+                        <Clock className="h-2.5 w-2.5 text-sky-400" /> 10–30 min DNS
+                      </span>
+                    </div>
+                    {isDevHost && isPublished && (
+                      <span className="text-slate-400 text-xs flex items-center gap-1.5">
+                        · <Link href={activeStorefrontUrl} target="_blank" className="text-emerald-400 hover:underline font-medium">
+                          Open in Preview ({activeStorefrontUrl})
+                        </Link>
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Save Draft / Publish Store Controls */}
                 <div className="flex flex-wrap items-center gap-2.5">
                   <Button asChild variant="outline" size="sm" className="h-10 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white border-white/20">
-                    <a href={isPublished ? publicLiveUrl : previewStoreUrl} target="_blank" rel="noopener noreferrer">
+                    <a href={isPublished ? activeStorefrontUrl : previewStoreUrl} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-2 h-3.5 w-3.5" /> {isPublished ? "Open Live Store" : "Preview"}
                     </a>
                   </Button>
@@ -2458,7 +2495,55 @@ export default function EcommerceManagerPage() {
                       />
                       <div className="h-11 px-4 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center font-mono font-semibold text-xs text-slate-500">.biztrix.in</div>
                     </div>
-                    <p className="text-xs text-slate-500 px-1">Public URL: <span className="font-mono">{slug || '...'}.biztrix.in</span></p>
+                    {/* Subdomain & Domain Activation Timeline Callout */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 mt-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <span className="text-xs font-bold text-slate-900">Domain &amp; Subdomain Activation Timeline</span>
+                        </div>
+                        <Link href="/website/domains" className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-0.5">
+                          DNS Hub <ChevronRight className="h-3 w-3" />
+                        </Link>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
+                        <div className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                              <Zap className="h-3 w-3 text-emerald-600" /> Subdomain
+                            </span>
+                            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200">
+                              Instant ~ 30 min
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Database me <strong>0 seconds</strong> me active ho jata hai. Global internet ISPs (Jio, Airtel, Vi) me DNS cache <strong>10–30 minute</strong> me propagate hoti hai.
+                          </p>
+                        </div>
+
+                        <div className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                              <Globe className="h-3 w-3 text-blue-600" /> Custom Domain
+                            </span>
+                            <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200">
+                              15 min ~ 24 hr
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Registrar DNS CNAME propagation me <strong>15 min se 24 ghante</strong> lag sakte hain. Verify hone ke <strong>5–15 min</strong> me SSL auto-issue hota hai.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2 text-[11px] text-slate-600 bg-amber-50/80 p-2.5 rounded-lg border border-amber-200">
+                        <Info className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Note:</strong> DNS propagation ke dauran bhi aapka store live rehta hai—aap <strong>Open Live Store / App Preview</strong> link se turant products share aur customer orders lena shuru kar sakte hain.
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
                     <div className="space-y-2">

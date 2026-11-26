@@ -13,6 +13,7 @@ import {
   RefreshCcw,
   CheckCircle2,
   Clock,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -507,6 +508,52 @@ export default function DomainSettingsPage() {
                   Only verified custom domains serve production storefront traffic with strict
                   cross-tenant isolation.
                 </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Activation & Propagation Timeline"
+            headerRight={<Clock className="h-4 w-4 text-primary" />}
+          >
+            <div className="space-y-4 text-xs">
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-emerald-900">
+                    <Zap className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Platform Subdomain</span>
+                  </div>
+                  <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 font-mono text-[10px]">
+                    Instant ~ 30 mins
+                  </Badge>
+                </div>
+                <p className="text-slate-600 leading-relaxed text-[11px]">
+                  <strong>In-App / Direct Store Link:</strong> Active immediately (0 seconds).<br />
+                  <strong>Global Internet Subdomain (*.biztrix.in):</strong> Takes <strong>10 to 30 minutes</strong> for worldwide ISP DNS caches (Jio, Airtel, Google DNS) to refresh.
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-blue-900">
+                    <Globe className="h-3.5 w-3.5 text-blue-600" />
+                    <span>Custom Domain (CNAME)</span>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 font-mono text-[10px]">
+                    15 mins ~ 24 hrs
+                  </Badge>
+                </div>
+                <p className="text-slate-600 leading-relaxed text-[11px]">
+                  <strong>DNS Propagation:</strong> Typically resolves within <strong>15 to 30 minutes</strong> on Cloudflare/GoDaddy, or up to 24 hours depending on registrar TTL settings.<br />
+                  <strong>Automatic SSL (HTTPS):</strong> Auto-issued within <strong>5 to 15 minutes</strong> after DNS verification succeeds.
+                </p>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2 text-slate-600 text-[11px] leading-relaxed">
+                <Info className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Merchant Guarantee:</strong> DNS propagation ke dauran aapka business rukta nahi hai! Aap Storefront Manager se <strong>Open Live Store / App Preview</strong> link se turant live orders receive kar sakte hain.
+                </span>
               </div>
             </div>
           </SectionCard>
