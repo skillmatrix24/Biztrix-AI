@@ -16,7 +16,7 @@ export function middleware(request: NextRequest) {
     const parts = hostname.split('.');
     if (parts.length >= 3) {
       const slug = parts[0].toLowerCase();
-      if (!['www', 'app', 'admin', 'api'].includes(slug)) {
+      if (!['www', 'app', 'admin', 'api', 'shop', 'owner'].includes(slug)) {
         if (url.pathname === '/') url.pathname = '/shop';
         
         const requestHeaders = new Headers(request.headers);

@@ -38,7 +38,58 @@ export const MARKETPLACE_FILTER_OPTIONS: Array<{
 ];
 
 export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
-  // Bundles / Suites
+  // Bundles / Mega Combos
+  suite_enterprise: {
+    workspaceHref: "/",
+    workspaceLabel: "Command Center",
+    bestFor: "Enterprises seeking complete unlocked access across all 11 business suites & add-ons",
+    filterGroup: "industry",
+    highlights: [
+      "Master unlock for all 11 Business Suites & 16+ Add-ons",
+      "Full Solar EPC, Real Estate, E-Commerce & Backoffice OS",
+      "Unlimited Multi-Branch locations and staff portals",
+      "Priority API queue & dedicated account management",
+    ],
+  },
+  suite_ecommerce: {
+    workspaceHref: "/website",
+    workspaceLabel: "Open Store & Funnels",
+    bestFor: "D2C brands and retailers selling online with storefront, funnels, WhatsApp & loyalty",
+    filterGroup: "store_sales",
+    highlights: [
+      "23-section storefront builder with live simulator",
+      "7 high-converting Sales Funnel & Landing Page templates",
+      "Official Meta Cloud WhatsApp automated sequences",
+      "Digital loyalty passes, VIP tier cashback & coupon engine",
+      "Photo-to-inventory OCR supplier bill scanner",
+    ],
+  },
+  suite_operations: {
+    workspaceHref: "/staff",
+    workspaceLabel: "Open Team Operations",
+    bestFor: "Staff-heavy businesses, offices & factories managing daily attendance & tasks",
+    filterGroup: "finance_ops",
+    highlights: [
+      "Card & List View Staff Directory with wage & shift tracking",
+      "Daily attendance matrix (Present/Half-day/Absent/OT/Pay today)",
+      "Multi-assignee Kanban Task Manager with AI SOP checklists",
+      "Staff & vendor advance payment approvals with cashbook sync",
+      "Self-service mobile staff portal & digital salary slips",
+    ],
+  },
+  suite_finance: {
+    workspaceHref: "/accounting",
+    workspaceLabel: "Open Finance & GST",
+    bestFor: "Traders, wholesalers & CAs needing audited accounting and live tax filing",
+    filterGroup: "finance_ops",
+    highlights: [
+      "Audited double-entry P&L ledger with cashbook security locks",
+      "Live GSP E-Way Bill API generation with Part-B updates",
+      "Direct GSTR-1 & GSTR-3B JSON/CSV reconciliation exports",
+      "AI purchase bill OCR scanner for automated supplier GST entry",
+      "Comprehensive party-wise vendor & customer statements",
+    ],
+  },
   suite_growth: {
     workspaceHref: "/whatsapp-automation",
     workspaceLabel: "Open Growth Hub",
@@ -130,6 +181,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Store Builder",
     bestFor: "Merchants selling online via a storefront + high-converting sales funnels",
     filterGroup: "store_sales",
+    includedInSuites: ["suite_ecommerce", "suite_enterprise"],
     highlights: [
       "23-section storefront builder & live mobile simulator",
       "Dedicated distraction-free Sales Funnel / Landing Page builder",
@@ -142,6 +194,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Customize Branding",
     bestFor: "Businesses putting their own logo, favicon & brand identity across portals",
     filterGroup: "store_sales",
+    includedInSuites: ["suite_enterprise"],
     highlights: [
       "Upload custom business logo across dashboard & portals",
       "Custom browser tab icon (favicon)",
@@ -153,7 +206,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open WhatsApp",
     bestFor: "Teams automating WhatsApp alerts, order updates & follow-ups",
     filterGroup: "ai_automation",
-    includedInSuites: ["suite_growth"],
+    includedInSuites: ["suite_growth", "suite_ecommerce", "suite_enterprise"],
     highlights: [
       "Connect official WhatsApp Business API",
       "Automated order & inquiry follow-ups",
@@ -165,7 +218,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Campaigns",
     bestFor: "Businesses capturing Facebook Lead Ads & Instagram inquiries directly",
     filterGroup: "ai_automation",
-    includedInSuites: ["suite_growth"],
+    includedInSuites: ["suite_growth", "suite_enterprise"],
     highlights: [
       "Sync Facebook Lead Ads directly into Leads CRM",
       "Connect Instagram DM & WhatsApp ad attribution",
@@ -176,7 +229,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Marketing ROI",
     bestFor: "Store & sales teams measuring coupon & ad campaign returns",
     filterGroup: "store_sales",
-    includedInSuites: ["suite_growth"],
+    includedInSuites: ["suite_growth", "suite_ecommerce", "suite_enterprise"],
     highlights: [
       "Smart discount coupons & bundle promos",
       "Revenue attribution per campaign",
@@ -187,7 +240,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open AI Advisor",
     bestFor: "Founders asking quick financial & inventory questions from live data",
     filterGroup: "ai_automation",
-    includedInSuites: ["suite_intelligence"],
+    includedInSuites: ["suite_intelligence", "suite_enterprise"],
     highlights: [
       "Instant Q&A over sales, cashflow & inventory",
       "Actionable weekly growth recommendations",
@@ -198,7 +251,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Inventory",
     bestFor: "Shops uploading supplier purchase bills to update stock automatically",
     filterGroup: "ai_automation",
-    includedInSuites: ["suite_intelligence"],
+    includedInSuites: ["suite_intelligence", "suite_ecommerce", "suite_finance", "suite_enterprise"],
     highlights: [
       "Scan supplier invoices via camera/photo",
       "Auto-extract line items, GST & stock quantities",
@@ -209,7 +262,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Accounting",
     bestFor: "Businesses tracking full Profit & Loss, ledgers, and GST reports",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_finance", "suite_enterprise"],
     highlights: [
       "Real-time P&L, balance breakdown & ledger sync",
       "GST reconciliation & tax-ready exports",
@@ -220,7 +273,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Approvals",
     bestFor: "Teams needing multi-step approval before releasing vendor payouts",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_operations", "suite_enterprise"],
     highlights: [
       "Staff payout request & manager approval flow",
       "Automatic cashbook entry on payout release",
@@ -231,7 +284,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Projects",
     bestFor: "Agencies & contractors tracking client milestones and project margins",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_solar", "suite_enterprise"],
     highlights: [
       "Milestone tracking & client progress portals",
       "Project-wise cost vs revenue tracking",
@@ -242,7 +295,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Staff & Payroll",
     bestFor: "Businesses managing staff attendance, shifts, and monthly salary slips",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_operations", "suite_enterprise"],
     highlights: [
       "Attendance logs & shift tracking",
       "Automated monthly salary & overtime calculation",
@@ -253,7 +306,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Tasks",
     bestFor: "Owners assigning daily shop chores, follow-ups, and recurring checklists",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_operations", "suite_enterprise"],
     highlights: [
       "Daily task board with assignees & due dates",
       "Recurring operational checklists",
@@ -264,6 +317,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Feedback",
     bestFor: "Service & retail brands collecting post-purchase ratings and reviews",
     filterGroup: "crm_support",
+    includedInSuites: ["suite_support", "suite_enterprise"],
     highlights: [
       "Shareable public customer feedback form",
       "CSAT rating dashboard & response inbox",
@@ -274,7 +328,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open POS Billing",
     bestFor: "High-volume shops & traders needing unlimited POS bills, quotes, party ledgers & cashbook",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_finance", "suite_enterprise"],
     highlights: [
       "Unlimited monthly GST POS invoices & split-bill settlements",
       "Unlimited quotations with 1-click POS invoice conversion",
@@ -287,7 +341,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open GST & E-Way",
     bestFor: "GST-registered businesses generating live GSP E-Way Bills & monthly GSTR-1/3B filings",
     filterGroup: "finance_ops",
-    includedInSuites: ["suite_backoffice"],
+    includedInSuites: ["suite_backoffice", "suite_finance", "suite_enterprise"],
     highlights: [
       "Live GSP E-Way Bill API generation & bulk NIC JSON export",
       "Part-B vehicle updates, validity tracking & cancellation",
@@ -300,7 +354,7 @@ export const MARKETPLACE_META: Record<string, MarketplaceMeta> = {
     workspaceLabel: "Open Property Catalog",
     bestFor: "Real estate brokers showcasing plot/building listings with maps",
     filterGroup: "industry",
-    includedInSuites: ["suite_property"],
+    includedInSuites: ["suite_property", "suite_enterprise"],
     highlights: [
       "Structured plot/flat catalog with dimensions & facing",
       "Interactive map pins & shareable brochures",

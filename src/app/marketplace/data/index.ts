@@ -1,4 +1,8 @@
 
+import { enterpriseItem, enterpriseDetail } from "./modules/enterprise";
+import { ecommerceItem, ecommerceDetail } from "./modules/ecommerce";
+import { operationsItem, operationsDetail } from "./modules/operations";
+import { financeItem, financeDetail } from "./modules/finance";
 import { loyaltyItem, loyaltyDetail } from "./modules/loyalty";
 import { growthItem, growthDetail } from "./modules/growth";
 import { intelligenceItem, intelligenceDetail } from "./modules/intelligence";
@@ -12,25 +16,33 @@ import { ModuleDetail, MarketplaceItem } from "./types";
 export * from "./types";
 
 export const bundles: MarketplaceItem[] = [
+  enterpriseItem,
+  ecommerceItem,
+  operationsItem,
+  financeItem,
   growthItem,
   loyaltyItem,
   propertyItem,
   intelligenceItem,
   backofficeItem,
   supportItem,
-  solarItem
+  solarItem,
 ];
 
 export const individuals: MarketplaceItem[] = individualItems;
 
 export const moduleDetailsRegistry: Record<string, ModuleDetail> = {
+  [enterpriseDetail.id]: enterpriseDetail,
+  [ecommerceDetail.id]: ecommerceDetail,
+  [operationsDetail.id]: operationsDetail,
+  [financeDetail.id]: financeDetail,
   [loyaltyDetail.id]: loyaltyDetail,
   [growthDetail.id]: growthDetail,
   [intelligenceDetail.id]: intelligenceDetail,
   [backofficeDetail.id]: backofficeDetail,
   [propertyDetail.id]: propertyDetail,
   [supportDetail.id]: supportDetail,
-  [solarDetail.id]: solarDetail
+  [solarDetail.id]: solarDetail,
 };
 
 export function getModuleDetail(id: string): ModuleDetail | undefined {

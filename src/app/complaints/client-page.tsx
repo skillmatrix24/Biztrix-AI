@@ -17,7 +17,6 @@ import {
   Loader2,
   User,
   Smartphone,
-  LayoutDashboard,
   LayoutList,
   Calendar,
   Share2,
@@ -50,7 +49,6 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
 import {
   useFirestore,
   useCollection,
@@ -311,23 +309,6 @@ export default function ComplaintsAdminPage() {
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  const isPinned = useMemo(() => {
-    const layout = (userProfile?.dashboardLayout as any[]) || [];
-    return layout.find((w) => w.id === "pulse")?.enabled ?? true;
-  }, [userProfile]);
-
-  const toggleDashboardPin = () => {
-    if (!userProfileRef || !userProfile) return;
-    const currentLayout = [...(userProfile.dashboardLayout || [])];
-    const newLayout = currentLayout.map((w) =>
-      w.id === "pulse" ? { ...w, enabled: !w.enabled } : w
-    );
-    updateDocumentNonBlocking(userProfileRef, { dashboardLayout: newLayout });
-    toast({
-      title: isPinned ? "Unpinned" : "Pinned",
-      description: `Support widget ${isPinned ? "removed from" : "added to"} Dashboard.`,
-    });
-  };
 
   const resolvedPercent =
     complaints.length > 0
@@ -365,15 +346,6 @@ export default function ComplaintsAdminPage() {
               <Share2 className="h-3.5 w-3.5 text-orange-600" />
               Customer Ticket Link
             </Button>
-            <div className="flex items-center gap-2 bg-white px-3 h-10 rounded-xl border border-slate-200">
-              <LayoutDashboard className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-xs font-medium text-slate-700">Pin Widget</span>
-              <Switch
-                aria-label="Pin support desk widget to dashboard"
-                checked={isPinned}
-                onCheckedChange={toggleDashboardPin}
-              />
-            </div>
             <Button
               type="button"
               variant="outline"

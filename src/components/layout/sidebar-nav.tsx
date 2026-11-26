@@ -271,9 +271,15 @@ export function SidebarNav() {
       }
       return isTrialExpired ? 'expired' : 'active';
     }
+    const isMasterEnterpriseActive = activeAddonIds.includes('suite_enterprise');
+    const isComboActive =
+      (activeAddonIds.includes('suite_ecommerce') && (suiteId === 'suite_growth' || addonId === 'feat_store' || addonId === 'feat_whatsapp' || addonId === 'feat_marketing_roi' || addonId === 'feat_scan')) ||
+      (activeAddonIds.includes('suite_operations') && (addonId === 'feat_staff' || addonId === 'feat_tasks' || addonId === 'feat_payments')) ||
+      (activeAddonIds.includes('suite_finance') && (addonId === 'feat_accounting' || addonId === 'feat_eway_gst' || addonId === 'feat_billing_pro' || addonId === 'feat_scan'));
+
     const isSuiteActive = suiteId && activeAddonIds.includes(suiteId);
     const isAddonActive = (addonId && activeAddonIds.includes(addonId)) || (altAddonId && activeAddonIds.includes(altAddonId));
-    if (isSuiteActive || isAddonActive || (business?.status || '').toLowerCase() === 'pro') {
+    if (isMasterEnterpriseActive || isSuiteActive || isAddonActive || isComboActive || (business?.status || '').toLowerCase() === 'pro') {
       return isTrialExpired ? 'expired' : 'active';
     }
     return 'locked';

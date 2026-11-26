@@ -23,7 +23,7 @@ import {
 } from "./marketplace-catalog";
 
 test("Every marketplace bundle and individual add-on has metadata, non-generic inclusions, and valid workspace route", () => {
-  assert.equal(bundles.length, 7);
+  assert.equal(bundles.length, 11);
   assert.equal(individuals.length, 16);
   for (const item of [...bundles, ...individuals]) {
     assert.ok(MARKETPLACE_META[item.id], `Missing metadata for ${item.id}`);
